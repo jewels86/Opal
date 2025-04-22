@@ -3,30 +3,65 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MessagePack;
 
 namespace Opal
 {
 	public class Context
 	{
 		private LogDelegate _log = Logging.StandardLog;
+		private readonly object _logLock = new object();
 
-		public Dictionary<string, IModule> SyncModules { get; } = new();
-		public Dictionary<string, IAsyncModule> AsyncModules { get; } = new();
+		private Dictionary<string, IModule> _syncModules = new();
+		private Dictionary<string, IAsyncModule> _asyncModules = new();
+		private readonly object _syncModulesLock = new object();
+		private readonly object _asyncModulesLock = new object();
 
-		public void Send(Signal sig)
+		private bool _exit { get; set; } = false;
+		private readonly object _exitLock = new object();
+
+		public void Add(IInteractable interactable)
 		{
-			if (SyncModules.TryGetValue(sig.To, out var module))
+			if (interactable is IModule module)
 			{
-				module.Receive(sig);
+				lock (_syncModulesLock) { _syncModules.Add(module.ID, module); }
 			}
-			else if (AsyncModules.TryGetValue(sig.To, out var asyncModule))
+			else if (interactable is IAsyncModule asyncModule)
 			{
-				asyncModule.ReceiveAsync(sig);
-			}
-			else
-			{
-				_log.Invoke("ctx", 2, $"Module not found, {sig.To} (from {sig.From} with type {sig.Type})");
+				lock (_asyncModulesLock) { _asyncModules.Add(asyncModule.ID, asyncModule); }
 			}
 		}
+		public void Send(Packet packet)
+		{
+			lock (_syncModulesLock)
+			{
+				if (_syncModules.TryGetValue(packet.TargetID, out var module))
+				{
+					module.Input.Write(MessagePackSerializer.Serialize(packet));
+				}
+			}
+			lock (_asyncModulesLock)
+			{
+				if (_asyncModules.TryGetValue(packet.TargetID, out var asyncModule))
+				{
+					asyncModule.Input.Write(MessagePackSerializer.Serialize(packet));
+				}
+			}
+		}
+
+		public void Log(string ID, int level, string content)
+		{
+			_log.Invoke(ID, level, content);
+		}
+		public void SetLog(LogDelegate log)
+		{
+			lock (_logLock) { _log = log; }
+		}
+
+		public void Exit()
+		{
+			lock (_exitLock) { _exit = true; }
+		}
+		public bool ShouldExit() { return _exit; }
 	}
 }

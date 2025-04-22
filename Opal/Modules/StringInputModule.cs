@@ -9,17 +9,30 @@ namespace Opal.Modules
 {
 	public class StringInputModule : IModule
 	{
-		public string ID => "string-input";
-		public bool IsInput => true; 
-		public Stream Input { get; set; }
+		public MemoryStream Input { get; } = new();
+		public string ID { get; } = "string-input";
+		public readonly object InputLock = new();
 
-		public 
-
-		public void Initialize(Context ctx) { }
-		public void Receive(Signal sig) { }
-		public void Step(Context ctx)
+		public void Initialize(Context ctx)
 		{
+			ctx.Add(this);
+		}
+		public void Main(Context ctx)
+		{
+			while (!ctx.ShouldExit())
+			{
+				if (Input.CanRead)
+				{
+					Span<byte> bytes = new();
+					lock (InputLock)
+					{
+						Input.Read(bytes);
+					}
+					string text = Encoding.UTF8.GetString(bytes); //! "Input" is a stream of string here
 
+					ctx
+				}
+			}
 		}
 	}
 }
