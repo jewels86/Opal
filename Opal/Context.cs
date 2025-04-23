@@ -39,10 +39,12 @@ namespace Opal
 				{
 					if (stream != -1)
 					{
+						module.Available[stream] = false;
 						lock (module.InputLocks[stream])
 						{
 							module.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
 						}
+						module.Available[stream] = true;
 					}
 					else
 					{
@@ -51,10 +53,12 @@ namespace Opal
 						{
 							if (availability)
 							{
+								module.Available[i] = false;
 								lock (module.InputLocks[i])
 								{
 									module.Inputs[i].Write(MessagePackSerializer.Serialize(packet));
 								}
+								module.Available[i] = true;
 								return;
 							}
 							i++;
@@ -62,7 +66,9 @@ namespace Opal
 
 						lock (module.InputLocks[0])
 						{
+							module.Available[0] = false;
 							module.Inputs[0].Write(MessagePackSerializer.Serialize(packet));
+							module.Available[0] = true;
 						}
 					}
 				}
@@ -73,12 +79,34 @@ namespace Opal
 				{
 					if (stream != -1)
 					{
-						asyncModule.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
+						asyncModule.Available[stream] = false;
+						lock (asyncModule.InputLocks[stream]) { asyncModule.Inputs[stream].Write(MessagePackSerializer.Serialize(packet)); }
+						asyncModule.Available[stream] = true;
 					}
 					else
 					{
-						// Fallback to input 0 for async modules  
-						asyncModule.Inputs[0].Write(MessagePackSerializer.Serialize(packet));
+						int i = 0;
+						foreach (bool availability in asyncModule.Available)
+						{
+							if (availability)
+							{
+								asyncModule.Available[i] = false;
+								lock (asyncModule.InputLocks[i])
+								{
+									asyncModule.Inputs[i].Write(MessagePackSerializer.Serialize(packet));
+								}
+								asyncModule.Available[i] = true;
+								return;
+							}
+							i++;
+						}
+
+						lock (asyncModule.InputLocks[0])
+						{
+							asyncModule.Available[0] = false;
+							asyncModule.Inputs[0].Write(MessagePackSerializer.Serialize(packet));
+							asyncModule.Available[0] = true;
+						}
 					}
 				}
 			}
