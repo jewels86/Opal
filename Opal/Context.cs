@@ -31,20 +31,20 @@ namespace Opal
 				lock (_asyncModulesLock) { _asyncModules.Add(asyncModule.ID, asyncModule); }
 			}
 		}
-		public void Send(Packet packet)
+		public void Send(Packet packet, int stream = 0)
 		{
 			lock (_syncModulesLock)
 			{
 				if (_syncModules.TryGetValue(packet.TargetID, out var module))
 				{
-					module.Input.Write(MessagePackSerializer.Serialize(packet));
+					module.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
 				}
 			}
 			lock (_asyncModulesLock)
 			{
 				if (_asyncModules.TryGetValue(packet.TargetID, out var asyncModule))
 				{
-					asyncModule.Input.Write(MessagePackSerializer.Serialize(packet));
+					asyncModule.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
 				}
 			}
 		}
@@ -63,5 +63,6 @@ namespace Opal
 			lock (_exitLock) { _exit = true; }
 		}
 		public bool ShouldExit() { return _exit; }
+		public bool ShouldNotExit() { return !_exit; }
 	}
 }

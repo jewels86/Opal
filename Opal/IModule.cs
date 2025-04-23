@@ -10,8 +10,8 @@ namespace Opal
 	public interface IInteractable
 	{
 		public string ID { get; }
-		public MemoryStream Input { get; }
-		public readonly object InputLock { get; }
+		public List<MemoryStream> Inputs { get; }
+		public List<object> InputLocks { get; }
 	}
 	public interface IModule : IInteractable
 	{
