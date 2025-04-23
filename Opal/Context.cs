@@ -31,20 +31,55 @@ namespace Opal
 				lock (_asyncModulesLock) { _asyncModules.Add(asyncModule.ID, asyncModule); }
 			}
 		}
-		public void Send(Packet packet, int stream = 0)
+		public void Send(Packet packet, int stream = -1)
 		{
 			lock (_syncModulesLock)
 			{
 				if (_syncModules.TryGetValue(packet.TargetID, out var module))
 				{
-					module.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
+					if (stream != -1)
+					{
+						lock (module.InputLocks[stream])
+						{
+							module.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
+						}
+					}
+					else
+					{
+						int i = 0;
+						foreach (bool availability in module.Available)
+						{
+							if (availability)
+							{
+								lock (module.InputLocks[i])
+								{
+									module.Inputs[i].Write(MessagePackSerializer.Serialize(packet));
+								}
+								return;
+							}
+							i++;
+						}
+
+						lock (module.InputLocks[0])
+						{
+							module.Inputs[0].Write(MessagePackSerializer.Serialize(packet));
+						}
+					}
 				}
 			}
 			lock (_asyncModulesLock)
 			{
 				if (_asyncModules.TryGetValue(packet.TargetID, out var asyncModule))
 				{
-					asyncModule.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
+					if (stream != -1)
+					{
+						asyncModule.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
+					}
+					else
+					{
+						// Fallback to input 0 for async modules  
+						asyncModule.Inputs[0].Write(MessagePackSerializer.Serialize(packet));
+					}
 				}
 			}
 		}

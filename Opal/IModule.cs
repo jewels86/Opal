@@ -12,6 +12,7 @@ namespace Opal
 		public string ID { get; }
 		public List<MemoryStream> Inputs { get; }
 		public List<object> InputLocks { get; }
+		public List<bool> Available { get; }
 	}
 	public interface IModule : IInteractable
 	{

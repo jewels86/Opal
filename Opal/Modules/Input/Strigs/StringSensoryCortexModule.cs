@@ -1,16 +1,15 @@
-﻿using System;
+﻿using MessagePack;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
-using MessagePack;
 
-namespace Opal.Modules
+namespace Opal.Modules.Input.Strigs
 {
-	public class StringTokenizationModule : IModule
+	public class StringSensoryCortexModule : IModule
 	{
-		public string ID => "string-tokenization";
+		public string ID => "string-sensory-cortex";
 		public List<MemoryStream> Inputs { get; } = [new()];
 		public List<object> InputLocks { get; } = [new()];
 
@@ -19,7 +18,7 @@ namespace Opal.Modules
 		public void Initialize(Context ctx)
 		{
 			ctx.Add(this);
-		} 
+		}
 
 		public void Main(Context ctx)
 		{
@@ -44,8 +43,8 @@ namespace Opal.Modules
 							SenderID = ID,
 							Type = "",
 							PayloadType = "list<string>",
-							Payload = MessagePackSerializer.Serialize(tokens)
-						}); 
+							Payload = new byte[0]
+						});
 					}
 				}
 			}

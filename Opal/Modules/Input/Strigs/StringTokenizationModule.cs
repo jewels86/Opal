@@ -1,0 +1,54 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text;
+using System.Threading.Tasks;
+using MessagePack;
+
+namespace Opal.Modules.Input.Strigs
+{
+	public class StringTokenizationModule : IModule
+	{
+		public string ID => "string-tokenization";
+		public List<MemoryStream> Inputs { get; } = [new()];
+		public List<object> InputLocks { get; } = [new()];
+
+		public List<(string, int)> Connections { get; } = [];
+
+		public void Initialize(Context ctx)
+		{
+			ctx.Add(this);
+		} 
+
+		public void Main(Context ctx)
+		{
+			while (ctx.ShouldNotExit())
+			{
+				if (Inputs[0].CanRead)
+				{
+					Span<byte> input = new();
+					lock (InputLocks[0])
+					{
+						Inputs[0].Read(input);
+					}
+
+					string text = Encoding.UTF8.GetString(input.ToArray());
+					List<string> tokens = [.. text.Split(' ')];
+
+					foreach (var (connection, stream) in Connections)
+					{
+						ctx.Send(new()
+						{
+							TargetID = connection,
+							SenderID = ID,
+							Type = "",
+							PayloadType = "list<string>",
+							Payload = MessagePackSerializer.Serialize(tokens)
+						}); 
+					}
+				}
+			}
+		}
+	}
+}
