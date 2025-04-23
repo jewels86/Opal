@@ -4,12 +4,13 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using MessagePack;
 
 namespace Opal.Modules
 {
-	public class StringProcessingModule : IModule
+	public class StringTokenizationModule : IModule
 	{
-		public string ID => "string-processing";
+		public string ID => "string-tokenization";
 		public List<MemoryStream> Inputs { get; } = [new()];
 		public List<object> InputLocks { get; } = [new()];
 
@@ -41,8 +42,9 @@ namespace Opal.Modules
 						{
 							TargetID = connection,
 							SenderID = ID,
-							Type = "list<string>",
-							Payload = [] //!! REPLACE THIS! SERIALIZE THE LIST SOMEHOW!!
+							Type = "",
+							PayloadType = "list<string>",
+							Payload = MessagePackSerializer.Serialize(tokens)
 						}); 
 					}
 				}

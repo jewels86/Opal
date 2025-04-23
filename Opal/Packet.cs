@@ -17,6 +17,8 @@ namespace Opal
 		[Key(2)]
 		public required string Type { get; set; }
 		[Key(3)]
+		public required string PayloadType { get; set; }
+		[Key(4)]
 		public required byte[] Payload { get; set; }
 	}
 }
