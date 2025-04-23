@@ -22,5 +22,7 @@ namespace Opal
 		public required byte[] Payload { get; set; }
 		[Key(5)]
 		public bool? Success { get; set; } = null;
+		[Key(6)]
+		public Dictionary<string, string> Data { get; set; } = new();
 	}
 }
