@@ -11,7 +11,7 @@ namespace Opal.Utilities
 {
 	public static class ModuleUtilities
 	{
-		public static void CheckForInput(IInteractable self, Action<Packet> func, ref List<Task> tasks)
+		public static void CheckForInput(IInteractable self, Action<Packet> func, ref List<Task> tasks, int milliseconds = 400)
 		{
 			if (self.Input.TryDequeue(out Packet? result))
 			{
@@ -19,6 +19,10 @@ namespace Opal.Utilities
 				{
 					tasks.Add(Task.Run(() => func(result)));
 				}
+			}
+			else
+			{
+				Task.Delay(milliseconds).Wait();
 			}
 		}
 
