@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,9 +11,8 @@ namespace Opal
 	public interface IInteractable
 	{
 		public string ID { get; }
-		public List<MemoryStream> Inputs { get; }
-		public List<object> InputLocks { get; }
-		public List<bool> Available { get; }
+		public ConcurrentQueue<Packet> Input { get; }
+		public ConcurrentQueue<Packet> Output { get; }
 	}
 	public interface IModule : IInteractable
 	{

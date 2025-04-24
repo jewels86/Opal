@@ -12,6 +12,9 @@ namespace Opal
 		private LogDelegate _log = Logging.StandardLog;
 		private readonly object _logLock = new object();
 
+		private int _packetIDCount = 1;
+		private readonly object _packetIDCountLock = new object();
+
 		private Dictionary<string, IModule> _syncModules = new();
 		private Dictionary<string, IAsyncModule> _asyncModules = new();
 		private readonly object _syncModulesLock = new object();
@@ -29,86 +32,6 @@ namespace Opal
 			else if (interactable is IAsyncModule asyncModule)
 			{
 				lock (_asyncModulesLock) { _asyncModules.Add(asyncModule.ID, asyncModule); }
-			}
-		}
-		public void Send(Packet packet, int stream = -1)
-		{
-			lock (_syncModulesLock)
-			{
-				if (_syncModules.TryGetValue(packet.TargetID, out var module))
-				{
-					if (stream != -1)
-					{
-						module.Available[stream] = false;
-						lock (module.InputLocks[stream])
-						{
-							module.Inputs[stream].Write(MessagePackSerializer.Serialize(packet));
-						}
-						module.Available[stream] = true;
-					}
-					else
-					{
-						int i = 0;
-						foreach (bool availability in module.Available)
-						{
-							if (availability)
-							{
-								module.Available[i] = false;
-								lock (module.InputLocks[i])
-								{
-									module.Inputs[i].Write(MessagePackSerializer.Serialize(packet));
-								}
-								module.Available[i] = true;
-								return;
-							}
-							i++;
-						}
-
-						lock (module.InputLocks[0])
-						{
-							module.Available[0] = false;
-							module.Inputs[0].Write(MessagePackSerializer.Serialize(packet));
-							module.Available[0] = true;
-						}
-					}
-				}
-			}
-			lock (_asyncModulesLock)
-			{
-				if (_asyncModules.TryGetValue(packet.TargetID, out var asyncModule))
-				{
-					if (stream != -1)
-					{
-						asyncModule.Available[stream] = false;
-						lock (asyncModule.InputLocks[stream]) { asyncModule.Inputs[stream].Write(MessagePackSerializer.Serialize(packet)); }
-						asyncModule.Available[stream] = true;
-					}
-					else
-					{
-						int i = 0;
-						foreach (bool availability in asyncModule.Available)
-						{
-							if (availability)
-							{
-								asyncModule.Available[i] = false;
-								lock (asyncModule.InputLocks[i])
-								{
-									asyncModule.Inputs[i].Write(MessagePackSerializer.Serialize(packet));
-								}
-								asyncModule.Available[i] = true;
-								return;
-							}
-							i++;
-						}
-
-						lock (asyncModule.InputLocks[0])
-						{
-							asyncModule.Available[0] = false;
-							asyncModule.Inputs[0].Write(MessagePackSerializer.Serialize(packet));
-							asyncModule.Available[0] = true;
-						}
-					}
-				}
 			}
 		}
 

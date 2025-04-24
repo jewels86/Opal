@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -24,5 +25,7 @@ namespace Opal
 		public bool? Success { get; set; } = null;
 		[Key(6)]
 		public Dictionary<string, string> Data { get; set; } = new();
+		[Key(7)]
+		public int PacketID { get; set; } = 0;
 	}
 }
