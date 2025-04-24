@@ -13,6 +13,7 @@ namespace Opal.Modules.Strings
 		public string ID => "strings:string-parsing";
 		public ConcurrentQueue<Packet> Input { get; } = new();
 		public ConcurrentQueue<Packet> Output { get; } = new();
+		public List<string> Stopwords { get; } = new();
 		private static readonly char[] separators = [' ', '.', ',', ';', ':', '!', '?', '-', '_', '(', ')', '[', ']', '{', '}', '\'', '\"', '/', '\\', '|', '\n', '\r', '\t'];
 
 		public void Initialize(Context ctx)
@@ -63,7 +64,8 @@ namespace Opal.Modules.Strings
 		private string[] Tokenize(string input)
 		{
 			return input
-				.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+				.Split(separators, StringSplitOptions.RemoveEmptyEntries)
+				.Where(s => !Stopwords.Contains(s.ToLower())).ToArray();
 		}
 	}
 }

@@ -24,6 +24,9 @@ namespace Testing
 			wordLearningManager.SentenceList.Add("The sun is hot.");
 			wordLearningManager.SentenceList.Add("The sun is bright.");
 
+			stringParsing.Stopwords.Add("the");
+			stringParsing.Stopwords.Add("is");
+
 			wordLearningManager.Initialize(ctx);
 			lexicon.Initialize(ctx);
 			stringParsing.Initialize(ctx);

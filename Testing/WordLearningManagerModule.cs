@@ -65,7 +65,15 @@ namespace Testing
 					ctx.Log(ID, 3, $"Failed to parse sentence: {sentence} (no response)");
 				}
 
-
+				Output.Enqueue(new Packet()
+				{
+					Type = "strings:lexicon->add-sentence",
+					Payload = sentence,
+					PayloadType = "string",
+					SourceID = ID,
+					TargetID = "strings:lexicon"
+				});
+				ctx.Log(ID, 3, $"Adding sentence to lexicon: {sentence}");
 			}
 		}
 	}
