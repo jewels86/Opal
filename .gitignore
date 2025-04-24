@@ -177,3 +177,5 @@ cython_debug/
 /Opal/obj
 /Opal/.vs/ProjectEvaluation
 /Testing/obj
+/Opal/bin/Debug/net9.0
+/Testing/bin/Debug/net9.0
