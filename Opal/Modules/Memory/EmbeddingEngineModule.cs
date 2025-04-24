@@ -1,5 +1,6 @@
 ﻿using MessagePack;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -13,26 +14,27 @@ namespace Opal.Modules.Memory
 	public class EmbeddingNode
 	{
 		[Key(0)]
-		public float[] Vector { get; set; } = new float[128];
+		public int ID { get; set; }
 		[Key(1)]
-		public Dictionary<string, (float[], float)> Associations { get; set; } = new();
+		public float[] Vector { get; set; } = new float[128];
 		[Key(2)]
+		public Dictionary<int, float> Associations { get; set; } = new();
+		[Key(3)]
 		public Dictionary<string, float> Metadata { get; set; } = new();
 	}
 
 	public class EmbeddingEngineModule : IModule
 	{
 		public string ID => "memory:embedding-engine";
-		public List<MemoryStream> Inputs { get; } = [new()];
-		public List<object> InputLocks { get; } = [new()];
-		public List<bool> Available { get; } = [true];
+		public ConcurrentQueue<Packet> Input { get; } = new();
+		public ConcurrentQueue<Packet> Output { get; } = new();
 
-		public string Type { get; } = "null";
 
 		public int EmbeddingSize { get; } = 128;
 		public List<EmbeddingNode> Nodes { get; } = new();
 
 		private Random _random = new();
+		private int _nextNodeID = 1; 
 
 		public void Initialize(Context ctx)
 		{
@@ -44,86 +46,70 @@ namespace Opal.Modules.Memory
 		{
 			ctx.Log(ID, 3, "Starting main loop of EmbeddingEngineModule.");
 
-			Action<int> main = (i) =>
+			Action<Packet> main = (packet) =>
 			{
-				Span<byte> bytes = new();
-				lock (InputLocks[i]) { Inputs[i].Read(bytes); }
-				Packet packet = MessagePackSerializer.Deserialize<Packet>(bytes.ToArray());
-
-				ctx.Log(ID, 3, $"Received packet of type '{packet.Type}' from source '{packet.SourceID}'.");
-
 				if (packet.Type == "memory:embedding-engine->create")
 				{
 					float[] vector = new float[EmbeddingSize];
-					for (int j = 0; j < EmbeddingSize; j++)
+					for (int i = 0; i < EmbeddingSize; i++)
 					{
-						vector[j] = (float)_random.NextDouble();
+						vector[i] = (float)_random.NextDouble();
 					}
-					EmbeddingNode node = new();
-					node.Vector = vector;
-					Nodes.Add(node);
-
-					ctx.Log(ID, 3, $"Created new embedding node with vector hash '{SHAHash(vector)}'.");
-
-					Packet response = new()
+					int newID = _nextNodeID++;
+					Nodes.Add(new EmbeddingNode { ID = newID, Vector = vector });
+					ctx.Log(ID, 3, $"Created new embedding node with ID: {newID}");
+					Output.Enqueue(new Packet
 					{
+						Type = "memory:embedding-engine->create-response",
 						TargetID = packet.SourceID,
 						SourceID = ID,
-						Type = "memory:embedding-engine->create-response",
-						PayloadType = "node",
-						Payload = MessagePackSerializer.Serialize(node)
-					};
-					ctx.Send(response);
+						Payload = newID,
+						PayloadType = "int",
+						PacketID = -packet.PacketID,
+					});
 				}
 				else if (packet.Type == "memory:embedding-engine->associate")
 				{
-					float[] vector = MessagePackSerializer.Deserialize<float[]>(packet.Payload);
-					string vectorHash = SHAHash(vector);
-					EmbeddingNode? node = Nodes.FirstOrDefault(n => SHAHash(n.Vector) == vectorHash);
-
-					if (node == null)
+					if (TypeIs(packet.PayloadType, "(int, Dictionary<int, float>)"))
 					{
-						ctx.Log(ID, 2, $"Failed to associate vector. Node with hash '{vectorHash}' not found.");
-
-						Packet response = new()
+						var payload = (ValueTuple<int, Dictionary<int, float>>)packet.Payload!;
+						int nodeID = payload.Item1;
+						Dictionary<int, float> associations = payload.Item2;
+						EmbeddingNode? node = Nodes.FirstOrDefault(n => n.ID == nodeID);
+						if (node == null)
 						{
+							ctx.Log(ID, 2, $"Node with ID {nodeID} not found.");
+							return;
+						}
+						foreach (var kvp in associations) 
+						{
+							node.Associations[kvp.Key] = kvp.Value;
+						}
+						ctx.Log(ID, 3, $"Associated {associations.Count} vectors with node {nodeID}-{SHAHash(node.Vector)} (hashed SHA256)");
+						ctx.Log(ID, 3, $"Adjusting vector...");
+						float[] averageVector = AverageVectors(Nodes.Where(n => associations.ContainsKey(n.ID)).Select(n => n.Vector).ToArray());
+						averageVector = AverageVectors([node.Vector, averageVector]);
+						float[] normalized = NormalizeVector(averageVector);
+						node.Vector = normalized;
+						ctx.Log(ID, 3, $"New vector for node {nodeID}: {SHAHash(normalized)}");
+						Output.Enqueue(new Packet
+						{
+							Type = "embedding:embedding-engine->associate-response",
 							TargetID = packet.SourceID,
 							SourceID = ID,
-							Type = "memory:embedding-engine->associate-response",
-							PayloadType = "error",
-							Payload = MessagePackSerializer.Serialize("Node not found"),
-							Success = false
-						};
-						ctx.Send(response);
+							Payload = true,
+							PayloadType = "bool",
+							PacketID = -packet.PacketID,
+						});
 					}
 					else
 					{
-						node.Associations[vectorHash] = (vector, float.Parse(packet.Data["weight"]));
-						float[][] vectors = node.Associations.Values.Select(vec => vec.Item1).ToArray();
-						float[] average = AverageVectors(vectors);
-						node.Vector = NormalizeVector(average);
-
-						ctx.Log(ID, 3, $"Associated vector with hash '{vectorHash}' to node. Updated node vector.");
-
-						Packet response = new()
-						{
-							TargetID = packet.SourceID,
-							SourceID = ID,
-							Type = "memory:embedding-engine->associate-response",
-							PayloadType = "node",
-							Payload = MessagePackSerializer.Serialize(node),
-							Success = true
-						};
-						ctx.Send(response);
+						ctx.Log(ID, 2, $"Invalid payload type for associate: {packet.PayloadType} (should be (int, Dictionary<int, float>)");
 					}
-				}
-				else if (packet.Type == "memory:embedding-engine->find-similar")
-				{
-					ctx.Log(ID, 3, "Received 'find-similar' request. (Implementation pending)");
 				}
 				else
 				{
-					ctx.Log(ID, 2, $"Unknown packet type '{packet.Type}' received.");
+					ctx.Log(ID, 2, $"Unknown packet type: {packet.Type}");
 				}
 			};
 
