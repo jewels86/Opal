@@ -21,7 +21,7 @@ namespace Opal.Utilities
 			}
 		}
 
-		public static string SHAHash(float[] vector)
+		public static string SHAHash(double[] vector)
 		{
 			string str = Convert.ToBase64String(SHA256.HashData(MessagePackSerializer.Serialize(vector)));
 			return str;
@@ -38,6 +38,7 @@ namespace Opal.Utilities
 				{
 					return true;
 				}
+				
 			}
 			return false;
 		}
