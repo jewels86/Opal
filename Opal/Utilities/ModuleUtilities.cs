@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Security.Cryptography;
+using MessagePack;
 
 namespace Opal.Utilities
 {
@@ -17,6 +19,12 @@ namespace Opal.Utilities
 					tasks.Add(Task.Run(() => func(i)));
 				}
 			}
+		}
+
+		public static string SHAHash(float[] vector)
+		{
+			string str = Convert.ToBase64String(SHA256.HashData(MessagePackSerializer.Serialize(vector)));
+			return str;
 		}
 	}
 }

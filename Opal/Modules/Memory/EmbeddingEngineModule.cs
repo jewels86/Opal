@@ -15,7 +15,7 @@ namespace Opal.Modules.Memory
 		[Key(0)]
 		public float[] Vector { get; set; } = new float[128];
 		[Key(1)]
-		public Dictionary<float[], float> Associations { get; set; } = new();
+		public Dictionary<string, (float[], float)> Associations { get; set; } = new();
 		[Key(2)]
 		public Dictionary<string, float> Metadata { get; set; } = new();
 	}
@@ -34,12 +34,12 @@ namespace Opal.Modules.Memory
 
 		private Random _random = new();
 
-		public void Initialize(Context ctx) 
+		public void Initialize(Context ctx)
 		{
 			ctx.Add(this);
 		}
 
-		public void Main(Context ctx) 
+		public void Main(Context ctx)
 		{
 			Action<int> main = (i) =>
 			{
@@ -69,7 +69,8 @@ namespace Opal.Modules.Memory
 				else if (packet.Type == "memory:embedding-engine->associate")
 				{
 					float[] vector = MessagePackSerializer.Deserialize<float[]>(packet.Payload);
-					EmbeddingNode? node = Nodes.FirstOrDefault(n => n.Vector.SequenceEqual(vector));
+					string vectorHash = SHAHash(vector); 
+					EmbeddingNode? node = Nodes.FirstOrDefault(n => SHAHash(n.Vector) == vectorHash);
 					if (node == null)
 					{
 						Packet response = new()
@@ -85,8 +86,10 @@ namespace Opal.Modules.Memory
 					}
 					else
 					{
-						node.Associations.Add(vector, float.Parse(packet.Data["weight"]));
-						node.Vector = AverageVectors(new[] { node.Vector }.Concat(node.Associations.Keys).ToArray());
+						node.Associations[vectorHash] = (vector, float.Parse(packet.Data["weight"]));
+						float[][] vectors = node.Associations.Values.Select(vec => vec.Item1).ToArray();
+						float[] average = AverageVectors(vectors);
+						node.Vector = NormalizeVector(average);
 						Packet response = new()
 						{
 							TargetID = packet.SourceID,
@@ -96,14 +99,18 @@ namespace Opal.Modules.Memory
 							Payload = MessagePackSerializer.Serialize(node),
 							Success = true
 						};
-						ctx.Send(response);	
+						ctx.Send(response);
 					}
+				}
+				else if (packet.Type == "memory:embedding-engine->find-similar")
+				{
+
 				}
 			};
 
 			List<Task> tasks = [];
 
-			while (ctx.ShouldNotExit()) 
+			while (ctx.ShouldNotExit())
 			{
 				CheckForInput(this, main, ref tasks);
 			}
@@ -120,6 +127,15 @@ namespace Opal.Modules.Memory
 				average[i] = sum / vectors.Length;
 			}
 			return average;
+		}
+		private float[] NormalizeVector(float[] vector)
+		{
+			float length = MathF.Sqrt(vector.Sum(v => v * v));
+			for (int i = 0; i < vector.Length; i++)
+			{
+				vector[i] /= length;
+			}
+			return vector;
 		}
 	}
 }
