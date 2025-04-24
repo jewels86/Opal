@@ -12,6 +12,7 @@ namespace Opal.Modules.Input.Strigs
 		public string ID => "string-sensory-cortex";
 		public List<MemoryStream> Inputs { get; } = [new()];
 		public List<object> InputLocks { get; } = [new()];
+		public List<bool> Available { get; } = [true];
 
 		public List<(string, int)> Connections { get; } = [];
 
@@ -40,7 +41,7 @@ namespace Opal.Modules.Input.Strigs
 						ctx.Send(new()
 						{
 							TargetID = connection,
-							SenderID = ID,
+							SourceID = ID,
 							Type = "",
 							PayloadType = "list<string>",
 							Payload = new byte[0]

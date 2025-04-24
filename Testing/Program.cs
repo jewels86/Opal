@@ -7,7 +7,13 @@ namespace Testing
 	{
 		static void Main(string[] args)
 		{
-			Console.WriteLine("Hello, World!");
+			Context ctx = new();
+			var embeddings = new Opal.Modules.Memory.EmbeddingEngineModule();
+			var embeddingsTest = new EmbeddingEngineTestModule();
+			embeddings.Initialize(ctx);
+			embeddingsTest.Initialize(ctx);
+
+			ctx.Start();
 		}
 	}
 }

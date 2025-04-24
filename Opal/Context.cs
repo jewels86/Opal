@@ -7,7 +7,7 @@ using MessagePack;
 
 namespace Opal
 {
-	public class Context
+	public partial class Context
 	{
 		private LogDelegate _log = Logging.StandardLog;
 		private readonly object _logLock = new object();

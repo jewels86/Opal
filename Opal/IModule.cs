@@ -22,6 +22,6 @@ namespace Opal
 	public interface IAsyncModule : IInteractable
 	{
 		public void Initialize(Context ctx);
-		public void MainAsync(Context ctx);
+		public Task MainAsync(Context ctx);
 	}
 }

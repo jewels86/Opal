@@ -14,9 +14,9 @@ namespace Opal.Utilities
 		{
 			for (int i = 0; i < self.Inputs.Count; i++)
 			{
-				if (self.Inputs[i].CanRead)
+				if (self.Inputs[i].Length > self.Inputs[i].Position)
 				{
-					tasks.Add(Task.Run(() => func(i)));
+					tasks.Add(Task.Run(() => func(i-1)));
 				}
 			}
 		}

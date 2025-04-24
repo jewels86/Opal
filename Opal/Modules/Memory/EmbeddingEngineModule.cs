@@ -36,16 +36,21 @@ namespace Opal.Modules.Memory
 
 		public void Initialize(Context ctx)
 		{
+			ctx.Log(ID, 3, "Initializing EmbeddingEngineModule.");
 			ctx.Add(this);
 		}
 
 		public void Main(Context ctx)
 		{
+			ctx.Log(ID, 3, "Starting main loop of EmbeddingEngineModule.");
+
 			Action<int> main = (i) =>
 			{
 				Span<byte> bytes = new();
 				lock (InputLocks[i]) { Inputs[i].Read(bytes); }
 				Packet packet = MessagePackSerializer.Deserialize<Packet>(bytes.ToArray());
+
+				ctx.Log(ID, 3, $"Received packet of type '{packet.Type}' from source '{packet.SourceID}'.");
 
 				if (packet.Type == "memory:embedding-engine->create")
 				{
@@ -57,6 +62,9 @@ namespace Opal.Modules.Memory
 					EmbeddingNode node = new();
 					node.Vector = vector;
 					Nodes.Add(node);
+
+					ctx.Log(ID, 3, $"Created new embedding node with vector hash '{SHAHash(vector)}'.");
+
 					Packet response = new()
 					{
 						TargetID = packet.SourceID,
@@ -65,14 +73,18 @@ namespace Opal.Modules.Memory
 						PayloadType = "node",
 						Payload = MessagePackSerializer.Serialize(node)
 					};
+					ctx.Send(response);
 				}
 				else if (packet.Type == "memory:embedding-engine->associate")
 				{
 					float[] vector = MessagePackSerializer.Deserialize<float[]>(packet.Payload);
-					string vectorHash = SHAHash(vector); 
+					string vectorHash = SHAHash(vector);
 					EmbeddingNode? node = Nodes.FirstOrDefault(n => SHAHash(n.Vector) == vectorHash);
+
 					if (node == null)
 					{
+						ctx.Log(ID, 2, $"Failed to associate vector. Node with hash '{vectorHash}' not found.");
+
 						Packet response = new()
 						{
 							TargetID = packet.SourceID,
@@ -90,6 +102,9 @@ namespace Opal.Modules.Memory
 						float[][] vectors = node.Associations.Values.Select(vec => vec.Item1).ToArray();
 						float[] average = AverageVectors(vectors);
 						node.Vector = NormalizeVector(average);
+
+						ctx.Log(ID, 3, $"Associated vector with hash '{vectorHash}' to node. Updated node vector.");
+
 						Packet response = new()
 						{
 							TargetID = packet.SourceID,
@@ -104,7 +119,11 @@ namespace Opal.Modules.Memory
 				}
 				else if (packet.Type == "memory:embedding-engine->find-similar")
 				{
-
+					ctx.Log(ID, 3, "Received 'find-similar' request. (Implementation pending)");
+				}
+				else
+				{
+					ctx.Log(ID, 2, $"Unknown packet type '{packet.Type}' received.");
 				}
 			};
 
@@ -116,6 +135,7 @@ namespace Opal.Modules.Memory
 			}
 
 			Task.WaitAll(tasks.ToArray());
+			ctx.Log(ID, 3, "Exiting main loop of EmbeddingEngineModule.");
 		}
 
 		private float[] AverageVectors(float[][] vectors)
@@ -128,6 +148,7 @@ namespace Opal.Modules.Memory
 			}
 			return average;
 		}
+
 		private float[] NormalizeVector(float[] vector)
 		{
 			float length = MathF.Sqrt(vector.Sum(v => v * v));
@@ -136,6 +157,20 @@ namespace Opal.Modules.Memory
 				vector[i] /= length;
 			}
 			return vector;
+		}
+
+		private float CosineSimilarity(float[] vectorA, float[] vectorB)
+		{
+			float dotProduct = 0;
+			float lengthA = 0;
+			float lengthB = 0;
+			for (int i = 0; i < vectorA.Length; i++)
+			{
+				dotProduct += vectorA[i] * vectorB[i];
+				lengthA += vectorA[i] * vectorA[i];
+				lengthB += vectorB[i] * vectorB[i];
+			}
+			return dotProduct / (MathF.Sqrt(lengthA) * MathF.Sqrt(lengthB));
 		}
 	}
 }

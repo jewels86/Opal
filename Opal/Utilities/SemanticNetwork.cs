@@ -46,7 +46,7 @@ namespace Opal.Utilities
 		[Key(0)]
 		public required T ID { get; set; }
 		[Key(1)]
-		public required List<SemanticNetworkConnectionData<T>> Connections { get; set; };
+		public required List<SemanticNetworkConnectionData<T>> Connections { get; set; }
 	}
 
 	public class SemanticNetworkConnection<T>
