@@ -10,9 +10,13 @@ namespace Opal
 
 	public static class Logging
 	{
+		public static string CurrentTime()
+		{
+			return DateTime.Now.ToString("HH:mm:ss (MM-dd)");
+		}
 		public static void StandardLog(string ID, int level, string content)
 		{
-			Console.WriteLine($"[{ID}] [{level}] -> {content}");
+			Console.WriteLine($"[{ID} - {CurrentTime()}] [{level}] -> {content}");
 		}
 	}
 }

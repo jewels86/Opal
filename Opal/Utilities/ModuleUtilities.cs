@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Security.Cryptography;
 using MessagePack;
+using System.Collections.Concurrent;
 
 namespace Opal.Utilities
 {
@@ -40,6 +41,28 @@ namespace Opal.Utilities
 				}
 				
 			}
+			return false;
+		}
+
+		public static bool TryWaitForInput(int milliseconds, out Packet? packet, ConcurrentQueue<Packet> queue, Func<Packet, bool>? selection = null)
+		{
+			packet = null;
+			var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+			while (stopwatch.ElapsedMilliseconds < milliseconds)
+			{
+				if (queue.TryDequeue(out var dequeuedPacket))
+				{
+					if (selection == null || selection(dequeuedPacket))
+					{
+						packet = dequeuedPacket;
+						return true;
+					}
+				}
+
+				Task.Delay(10).Wait();
+			}
+
 			return false;
 		}
 	}

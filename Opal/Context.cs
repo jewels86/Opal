@@ -11,6 +11,7 @@ namespace Opal
 	{
 		private LogDelegate _log = Logging.StandardLog;
 		private readonly object _logLock = new object();
+		private int _loglevel = 3;
 
 		private int _packetIDCount = 1;
 		private readonly object _packetIDCountLock = new object();
@@ -37,6 +38,7 @@ namespace Opal
 
 		public void Log(string ID, int level, string content)
 		{
+			if (level > _loglevel) return;
 			_log.Invoke(ID, level, content);
 		}
 		public void SetLog(LogDelegate log)
