@@ -9,7 +9,7 @@ using Opal.Utilities;
 
 namespace Opal.Modules.Memory
 {
-	public class SemanticMemoryModule : IModule
+	public class SemanticMemoryModule //: IModule
 	{
 		public string ID => "memory:semantic-memory";
 		public List<MemoryStream> Inputs { get; } = [new()];
@@ -20,7 +20,7 @@ namespace Opal.Modules.Memory
 
 		public void Initialize(Context ctx) 
 		{
-			ctx.Add(this);
+			//ctx.Add(this);
 		}
 
 		public void Main(Context ctx)

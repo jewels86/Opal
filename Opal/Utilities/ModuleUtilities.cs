@@ -10,13 +10,13 @@ namespace Opal.Utilities
 {
 	public static class ModuleUtilities
 	{
-		public static void CheckForInput(IInteractable self, Action<int> func, ref List<Task> tasks)
+		public static void CheckForInput(IInteractable self, Action<Packet> func, ref List<Task> tasks)
 		{
-			for (int i = 0; i < self.Inputs.Count; i++)
+			if (self.Input.TryDequeue(out Packet? result))
 			{
-				if (self.Inputs[i].Length > self.Inputs[i].Position)
+				if (result != null)
 				{
-					tasks.Add(Task.Run(() => func(i-1)));
+					tasks.Add(Task.Run(() => func(result)));
 				}
 			}
 		}
@@ -25,6 +25,21 @@ namespace Opal.Utilities
 		{
 			string str = Convert.ToBase64String(SHA256.HashData(MessagePackSerializer.Serialize(vector)));
 			return str;
+		}
+		public static bool TypeIs(string type, string target)
+		{
+			return TypeIs(type, [target]);
+		}
+		public static bool TypeIs(string type, string[] types)
+		{
+			foreach (var t in types)
+			{
+				if (type.ToLower().Replace(" ", "") == t.ToLower().Replace(" ", ""))
+				{
+					return true;
+				}
+			}
+			return false;
 		}
 	}
 }
