@@ -14,7 +14,7 @@ namespace Opal.Modules
 		public ConcurrentQueue<Packet> Input { get; } = new();
 		public ConcurrentQueue<Packet> Output { get; } = new();
 
-		public Dictionary<string, int> WordToID { get; } = new();
+		public ConcurrentDictionary<string, int> WordToID { get; } = new();
 
 		public void Initialize(Context ctx)
 		{
@@ -50,7 +50,7 @@ namespace Opal.Modules
 								if (packet2 != null && TypeIs(packet2.PayloadType, "int"))
 								{
 									id = (int)packet2.Payload!;
-									WordToID[token] = id;
+									WordToID[token] = id; 
 									ctx.Log(ID, 3, $"Token '{token}' retrieved with ID {id}.");
 								}
 								else
@@ -68,7 +68,6 @@ namespace Opal.Modules
 									return;
 								}
 							}
-
 						}
 						tokenIDs.Add(id);
 					}
