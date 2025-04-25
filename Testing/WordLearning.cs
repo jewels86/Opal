@@ -29,7 +29,8 @@ namespace Testing
 
 			stringParsing.Stopwords.Add("the");
 			stringParsing.Stopwords.Add("is");
-			stringParsing.Stopwords.Add("are");
+			stringParsing.Stopwords.Add("can");
+			//stringParsing.Stopwords.Add("are");
 
 			wordLearningManager.Initialize(ctx);
 			lexicon.Initialize(ctx);
