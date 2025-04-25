@@ -14,6 +14,7 @@ namespace Testing
 		public string ID => "word-learning-manager";
 		public ConcurrentQueue<Packet> Input { get; } = new();
 		public ConcurrentQueue<Packet> Output { get; } = new();
+		public ConcurrentBag<Packet> Responses { get; } = new();
 
 		public List<string> SentenceList { get; } = new();
 
@@ -24,8 +25,19 @@ namespace Testing
 
 		public void Main(Context ctx)
 		{
+			List<Task> tasks = [];
+			Action main = () =>
+			{
+				while (ctx.ShouldNotExit())
+				{
+					CheckForInput(this, p => Responses.Add(p), ref tasks);
+				}
+			};
+			Task mainTask = Task.Run(main);
+
 			Task.Delay(1000).Wait();
 			ctx.Log(ID, 3, "WordLearningManagerModule initialized.");
+			List<string[]> parsed = [];
 			foreach (var sentence in SentenceList)
 			{
 				Output.Enqueue(new Packet()
@@ -37,7 +49,7 @@ namespace Testing
 					TargetID = "strings:string-parsing"
 				});
 				ctx.Log(ID, 3, $"Parsing sentence: {sentence}");
-				if (TryWaitForInput(4000, out Packet? packet, Input, p => p.Type == "strings:string-parsing->parse-response"))
+				if (TryWaitForInput(10000, out Packet? packet, Input, p => p.Type == "strings:string-parsing->parse-response"))
 				{
 					if (packet != null)
 					{
@@ -57,6 +69,17 @@ namespace Testing
 								ctx.Log(ID, 3, $"Adding word to lexicon: {token}");
 							}
 							ctx.Log(ID, 3, $"Parsed sentence: {sentence} -> {string.Join(", ", tokens)}");
+
+							Output.Enqueue(new Packet()
+							{
+								Type = "strings:sentence-lexicon->add-sentence",
+								Payload = tokens,
+								PayloadType = "string[]",
+								SourceID = ID,
+								TargetID = "strings:sentence-lexicon"
+							});
+							ctx.Log(ID, 3, $"Adding sentence to lexicon: {sentence}");
+							parsed.Add(tokens);
 						}
 					}
 				}
@@ -64,17 +87,38 @@ namespace Testing
 				{
 					ctx.Log(ID, 3, $"Failed to parse sentence: {sentence} (no response)");
 				}
-
+			}
+			Task.WaitAll(tasks.ToArray());
+			Task.Delay(6000).Wait();
+			foreach (var response in Responses)
+			{
+				if (response.Type == "strings:lexicon->add-word-response")
+				{
+					ctx.Log(ID, 3, $"Word added to lexicon with index {response.Payload} confirmed");
+				}
+				else if (response.Type == "strings:sentence-lexicon->add-sentence-response")
+				{
+					ctx.Log(ID, 3, $"Sentence added to lexicon with index {response.Payload} confirmed");
+				}
+				else
+				{
+					 ctx.Log(ID, 3, $"Unknown response type: {response.Type}");
+				}
+			}
+			foreach (var p in parsed)
+			{
 				Output.Enqueue(new Packet()
 				{
-					Type = "strings:lexicon->add-sentence",
-					Payload = sentence,
-					PayloadType = "string",
+					Type = "semantic-interpreter->interpret",
+					Payload = p,
+					PayloadType = "string[]",
 					SourceID = ID,
-					TargetID = "strings:lexicon"
+					TargetID = "semantic-interpreter"
 				});
-				ctx.Log(ID, 3, $"Adding sentence to lexicon: {sentence}");
+				ctx.Log(ID, 3, $"Interpreting tokens: {string.Join(", ", p)}");
 			}
 		}
+
+
 	}
 }

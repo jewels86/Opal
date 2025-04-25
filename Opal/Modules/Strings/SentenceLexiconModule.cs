@@ -20,7 +20,7 @@ namespace Opal.Modules.Strings
 						};
 		public ConcurrentQueue<Packet> AwaitedResponses { get; } = new();
 
-		public ConcurrentDictionary<string, int> SentenceToEmbedding { get; } = new();
+		public ConcurrentDictionary<string[], int> SentenceToEmbedding { get; } = new();
 
 		public void Initialize(Context ctx)
 		{
@@ -32,9 +32,9 @@ namespace Opal.Modules.Strings
 			Action<Packet> func = packet =>
 			{
 				if (packet == null) return;
-				if (packet.Type == "strings:sentence-lexicon->add-sentence" && TypeIs(packet.PayloadType, "string"))
+				if (packet.Type == "strings:sentence-lexicon->add-sentence" && TypeIs(packet.PayloadType, "string[]"))
 				{
-					string sentence = (string)packet.Payload!;
+					string[] sentence = (string[])packet.Payload!;
 					ctx.Log(ID, 3, $"Adding sentence to lexicon: {sentence}");
 
 					if (!SentenceToEmbedding.TryAdd(sentence, -1))
@@ -73,7 +73,7 @@ namespace Opal.Modules.Strings
 								TargetID = "memory:embedding-engine",
 								SourceID = ID,
 								Payload = (id, "sentence", sentence),
-								PayloadType = "(int, string, string)"
+								PayloadType = "(int, string, string[])"
 							});
 
 							Output.Enqueue(new Packet()
@@ -99,9 +99,9 @@ namespace Opal.Modules.Strings
 						});
 					}
 				}
-				else if (packet.Type == "strings:sentence-lexicon->get-id" && TypeIs(packet.PayloadType, "string"))
+				else if (packet.Type == "strings:sentence-lexicon->get-id" && TypeIs(packet.PayloadType, "string[]"))
 				{
-					string sentence = (string)packet.Payload!;
+					string[] sentence = (string[])packet.Payload!;
 					if (SentenceToEmbedding.TryGetValue(sentence, out int id))
 					{
 						Output.Enqueue(new Packet()
@@ -130,7 +130,7 @@ namespace Opal.Modules.Strings
 				else if (packet.Type == "strings:sentence-lexicon->get-sentence" && TypeIs(packet.PayloadType, "int"))
 				{
 					int id = (int)packet.Payload!;
-					string? sentence = SentenceToEmbedding.FirstOrDefault(x => x.Value == id).Key;
+					string[]? sentence = SentenceToEmbedding.FirstOrDefault(x => x.Value == id).Key;
 					if (sentence != null)
 					{
 						Output.Enqueue(new Packet()

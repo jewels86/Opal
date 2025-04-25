@@ -174,7 +174,7 @@ namespace Opal.Modules.Strings
 					if (AwaitedResponseTypes.Contains(packet.Type))
 					{
 						AwaitedResponses.Enqueue(packet);
-						ctx.Log(ID, 3, $"Re-queued packet: {packet.Type}");
+						ctx.Log(ID, 3, $"Re-queued packet: {packet.Type} (ID {packet.PacketID})");
 						continue;
 					}
 					Task.Run(() => func(packet));
