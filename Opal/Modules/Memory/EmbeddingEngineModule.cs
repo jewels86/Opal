@@ -230,6 +230,35 @@ namespace Opal.Modules.Memory
 					}
 				}
 				#endregion
+				#region memory:embedding-engine->get-id
+				else if (packet.Type == "memory:embedding-engine->get-id")
+				{
+					if (TypeIs(packet.PayloadType, "string"))
+					{
+						string word = (string)packet.Payload!;
+						EmbeddingNode? node = Nodes.FirstOrDefault(n => n.Metadata.ContainsKey("word") && n.Metadata["word"] == word);
+						if (node == null)
+						{
+							ctx.Log(ID, 2, $"Node with word {word} not found.");
+							return;
+						}
+						ctx.Log(ID, 3, $"Found node with word {word}: {node.ID}");
+						Output.Enqueue(new Packet
+						{
+							Type = "memory:embedding-engine->get-id-response",
+							TargetID = packet.SourceID,
+							SourceID = ID,
+							Payload = node.ID,
+							PayloadType = "int",
+							PacketID = -packet.PacketID,
+						});
+					}
+					else
+					{
+						ctx.Log(ID, 2, $"Invalid payload type for get-id: {packet.PayloadType} (should be string)");
+					}
+				}
+				#endregion
 				else
 				{
 					ctx.Log(ID, 2, $"Unknown packet type: {packet.Type}");

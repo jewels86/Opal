@@ -36,16 +36,39 @@ namespace Opal.Modules
 					{
 						if (!WordToID.TryGetValue(token, out int id))
 						{
-							ctx.Log(ID, 3, $"Token '{token}' not found in lexicon. Failed.");
+							ctx.Log(ID, 3, $"Token '{token}' not found in self lexicon. Attempting to retrieve from embeddings...");
 							Output.Enqueue(new Packet()
 							{
-								Type = "semantic-interpreter->interpret-response",
-								Payload = null,
-								PayloadType = "null",
+								Type = "memory:embedding-engine->get-id",
+								Payload = token,
+								PayloadType = "string",
 								SourceID = ID,
-								TargetID = packet.SourceID,
-								Success = false
+								TargetID = "memory:embedding-engine"
 							});
+							if (TryWaitForInput(4000, out Packet? packet2, Input, p => p.Type == "memory:embedding-engine->get-id-response"))
+							{
+								if (packet2 != null && TypeIs(packet2.PayloadType, "int"))
+								{
+									id = (int)packet2.Payload!;
+									WordToID[token] = id;
+									ctx.Log(ID, 3, $"Token '{token}' retrieved with ID {id}.");
+								}
+								else
+								{
+									Output.Enqueue(new Packet()
+									{
+										Type = "semantic-interpreter->interpret-response",
+										Payload = null,
+										PayloadType = "null",
+										SourceID = ID,
+										TargetID = packet.SourceID,
+										Success = false
+									});
+									ctx.Log(ID, 3, $"Failed to retrieve token '{token}'.");
+									return;
+								}
+							}
+
 						}
 						tokenIDs.Add(id);
 					}

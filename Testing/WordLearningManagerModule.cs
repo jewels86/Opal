@@ -69,16 +69,6 @@ namespace Testing
 								ctx.Log(ID, 3, $"Adding word to lexicon: {token}");
 							}
 							ctx.Log(ID, 3, $"Parsed sentence: {sentence} -> {string.Join(", ", tokens)}");
-
-							Output.Enqueue(new Packet()
-							{
-								Type = "strings:sentence-lexicon->add-sentence",
-								Payload = tokens,
-								PayloadType = "string[]",
-								SourceID = ID,
-								TargetID = "strings:sentence-lexicon"
-							});
-							ctx.Log(ID, 3, $"Adding sentence to lexicon: {sentence}");
 							parsed.Add(tokens);
 						}
 					}
@@ -89,20 +79,24 @@ namespace Testing
 				}
 			}
 			Task.WaitAll(tasks.ToArray());
-			Task.Delay(6000).Wait();
+			Task.Delay(4000).Wait();
 			foreach (var response in Responses)
 			{
 				if (response.Type == "strings:lexicon->add-word-response")
 				{
-					ctx.Log(ID, 3, $"Word added to lexicon with index {response.Payload} confirmed");
-				}
-				else if (response.Type == "strings:sentence-lexicon->add-sentence-response")
-				{
-					ctx.Log(ID, 3, $"Sentence added to lexicon with index {response.Payload} confirmed");
+					if (response.Payload is not null)
+					{
+						ctx.Log(ID, 3, $"Word added to lexicon successfully");
+					}
+					else
+					{
+						ctx.Log(ID, 3, $"Failed to add word to lexicon");
+					}
+					ctx.Log(ID, 3, $"Word with index {response.Payload} confirmed");
 				}
 				else
 				{
-					 ctx.Log(ID, 3, $"Unknown response type: {response.Type}");
+					ctx.Log(ID, 3, $"Unknown response type: {response.Type}");
 				}
 			}
 			foreach (var p in parsed)
@@ -118,7 +112,5 @@ namespace Testing
 				ctx.Log(ID, 3, $"Interpreting tokens: {string.Join(", ", p)}");
 			}
 		}
-
-
 	}
 }
