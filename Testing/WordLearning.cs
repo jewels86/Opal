@@ -20,13 +20,14 @@ namespace Testing
 			var semanticInterpreter = new Opal.Modules.SemanticInterpreterModule();
 
 			//wordLearningManager.SentenceList.Add("The quick brown fox jumps over the lazy dog.");
-			wordLearningManager.SentenceList.Add("The fire burns.");
-			wordLearningManager.SentenceList.Add("The fire is hot.");
-			wordLearningManager.SentenceList.Add("The sun is hot.");
-			wordLearningManager.SentenceList.Add("The sun is bright.");
+			wordLearningManager.SentenceList.Add("Dogs are pets.");
+			wordLearningManager.SentenceList.Add("Cats are pets.");
+			wordLearningManager.SentenceList.Add("Dogs jump high.");
+			//wordLearningManager.SentenceList.Add("Cats");
 
 			stringParsing.Stopwords.Add("the");
 			stringParsing.Stopwords.Add("is");
+			stringParsing.Stopwords.Add("are");
 
 			wordLearningManager.Initialize(ctx);
 			lexicon.Initialize(ctx);

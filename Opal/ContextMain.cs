@@ -47,7 +47,7 @@ namespace Opal
 						{
 							target.Input.Enqueue(packet);
 						}
-						Log("ctx", 4, $"Packet sent from {module.ID} to {packet.TargetID}: {packet.Type} (payload type {packet.PayloadType}");
+						Log("ctx", 4, $"Packet sent from {module.ID} to {packet.TargetID}: {packet.Type} (payload type {packet.PayloadType})");
 					}
 				}
 			}
