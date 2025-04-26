@@ -69,5 +69,26 @@ namespace Opal.Utilities
 
 			return false;
 		}
+		public static List<Packet> WaitForExpectedResponses(int expectedResponses, ConcurrentQueue<Packet> input)
+		{
+			List<Packet> responses = new();
+			int count = 0;
+			while (count < expectedResponses)
+			{
+				if (input.TryDequeue(out Packet? packet))
+				{
+					if (packet != null)
+					{
+						responses.Add(packet);
+						count++;
+					}
+				}
+				else
+				{
+					Task.Delay(100).Wait();
+				}
+			}
+			return responses;
+		}
 	}
 }

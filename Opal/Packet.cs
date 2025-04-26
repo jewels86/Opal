@@ -19,5 +19,20 @@ namespace Opal
 		public bool? Success { get; set; } = null;
 		public Dictionary<string, string> Data { get; set; } = new();
 		public int PacketID { get; set; } = 0;
+
+		public static Packet Create(string targetID, string sourceID, string type, string payloadType, object? payload, bool? success = null, Dictionary<string, string>? data = null)
+		{
+			return new Packet
+			{
+				TargetID = targetID,
+				SourceID = sourceID,
+				Type = type,
+				PayloadType = payloadType,
+				Payload = payload,
+				Success = success,
+				Data = data ?? new Dictionary<string, string>()
+			};
+		}
+		public Packet() { }
 	}
 }

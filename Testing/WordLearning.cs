@@ -18,6 +18,7 @@ namespace Testing
 			var stringParsing = new Opal.Modules.Strings.StringParsingModule();
 			var embeddingEngine = new Opal.Modules.Memory.EmbeddingEngineModule();
 			var semanticInterpreter = new Opal.Modules.SemanticInterpreterModule();
+			var nextWordGeneration = new Opal.Modules.Strings.NextWordGenerationModule();
 
 			//wordLearningManager.SentenceList.Add("The quick brown fox jumps over the lazy dog.");
 			wordLearningManager.SentenceList.Add("Dogs are pets.");
@@ -37,6 +38,7 @@ namespace Testing
 			stringParsing.Initialize(ctx);
 			embeddingEngine.Initialize(ctx);
 			semanticInterpreter.Initialize(ctx);
+			nextWordGeneration.Initialize(ctx);
 
 			ctx.Start();
 		}

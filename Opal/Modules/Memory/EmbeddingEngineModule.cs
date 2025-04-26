@@ -28,10 +28,12 @@ namespace Opal.Modules.Memory
 
 		public int EmbeddingSize { get; } = 128;
 		public int EmbeddingAxisMax { get; } = 4;
-		public List<EmbeddingNode> Nodes { get; } = new();
+		public ConcurrentBag<EmbeddingNode> Nodes { get; } = new();
 
 		private Random _random = new();
 		private int _nextNodeID = 1;
+		private object _nextNodeIDLock = new object();
+
 
 		public void Initialize(Context ctx)
 		{
@@ -53,7 +55,8 @@ namespace Opal.Modules.Memory
 					{
 						vector[i] = _random.NextDouble() * EmbeddingAxisMax;
 					}
-					int newID = _nextNodeID++;
+					int newID;
+					lock (_nextNodeIDLock) { newID = _nextNodeID++; }
 					Nodes.Add(new EmbeddingNode { ID = newID, Vector = vector });
 					ctx.Log(ID, 3, $"Created new embedding node with ID: {newID}");
 					Output.Enqueue(new Packet
@@ -94,12 +97,11 @@ namespace Opal.Modules.Memory
 						ctx.Log(ID, 3, $"New vector for node {nodeID}: {SHAHash(normalized)}");
 						Output.Enqueue(new Packet
 						{
-							Type = "embedding:embedding-engine->associate-response",
+							Type = "memory:embedding-engine->associate-response",
 							TargetID = packet.SourceID,
 							SourceID = ID,
 							Payload = true,
 							PayloadType = "bool",
-							PacketID = -packet.PacketID,
 						});
 					}
 					else

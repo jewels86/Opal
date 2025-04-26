@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using static Opal.Utilities.ModuleUtilities;
@@ -13,6 +14,7 @@ namespace Opal.Modules
 		public string ID => "semantic-interpreter";
 		public ConcurrentQueue<Packet> Input { get; } = new();
 		public ConcurrentQueue<Packet> Output { get; } = new();
+		public ConcurrentQueue<Packet> Responses { get; } = new();
 
 		public ConcurrentDictionary<string, int> WordToID { get; } = new();
 
@@ -26,6 +28,16 @@ namespace Opal.Modules
 			List<Task> tasks = [];
 			Action<Packet> func = (packet) =>
 			{
+				if (packet.Type == "memory:embedding-engine->associate-response")
+				{
+					if (packet.Payload is (int, Dictionary<int, double>))
+					{
+						Responses.Enqueue(packet);
+						ctx.Log(ID, 3, $"Requeued association response: {packet.PacketID} (with payload type {packet.PayloadType}");
+						return;
+					}
+					return;
+				}
 				if (packet.Type == "semantic-interpreter->interpret" && packet.Payload is string[])
 				{
 					ctx.Log(ID, 3, $"Interpreting tokens: {string.Join(", ", (string[])packet.Payload!)}");
@@ -80,6 +92,7 @@ namespace Opal.Modules
 							double strength = 1.0 / Math.Abs(i - j);
 							associations[tokenIDs[j]] = strength;
 						}
+						ctx.Log(ID, 3, $"Associating token ID {tokenIDs[i]} with IDs: {string.Join(", ", associations.Keys)}");
 						Output.Enqueue(new Packet()
 						{
 							Type = "memory:embedding-engine->associate",
@@ -89,12 +102,33 @@ namespace Opal.Modules
 							TargetID = "memory:embedding-engine"
 						});
 					}
+					WaitForExpectedResponses(tokenIDs.Count, Responses);
+					
+					Output.Enqueue(new Packet()
+					{
+						Type = "semantic-interpreter->interpret-response",
+						Payload = tokenIDs,
+						PayloadType = "int[]",
+						SourceID = ID,
+						TargetID = packet.SourceID
+					});
+					ctx.Log(ID, 3, $"Interpreted tokens: {string.Join(", ", tokens)} -> {string.Join(", ", tokenIDs)} (associations created)");
 				}
 			};
 
 			while (ctx.ShouldNotExit())
 			{
-				CheckForInput(this, func, ref tasks);
+				if (Input.TryDequeue(out Packet? result))
+				{
+					if (result != null)
+					{
+						func(result);
+					}
+				}
+				else
+				{
+					Task.Delay(ctx.DeltaTime).Wait();
+				}
 			}
 		}
 	}

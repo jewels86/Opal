@@ -24,6 +24,8 @@ namespace Opal
 		private bool _exit { get; set; } = false;
 		private readonly object _exitLock = new object();
 
+		public int DeltaTime { get; set; } = 400; // delta-t in ms
+
 		public void Add(IInteractable interactable)
 		{
 			if (interactable is IModule module)

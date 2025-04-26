@@ -14,12 +14,11 @@ namespace Opal.Modules.Strings
 		public ConcurrentQueue<Packet> Input { get; } = new();
 		public ConcurrentQueue<Packet> Output { get; } = new();
 		public List<string> AwaitedResponseTypes { get; } = new()
-						{
-							"memory:embedding-engine->create-response",
-							"memory:embedding-engine->add-metadata-response"
-						};
+		{
+			"memory:embedding-engine->create-response",
+			"memory:embedding-engine->add-metadata-response"
+		};
 		public ConcurrentQueue<Packet> AwaitedResponses { get; } = new();
-
 		public ConcurrentDictionary<string, int> WordToEmbedding { get; } = new();
 
 		public void Initialize(Context ctx)
@@ -32,24 +31,30 @@ namespace Opal.Modules.Strings
 			Action<Packet> func = packet =>
 			{
 				if (packet == null) return;
+
 				if (packet.Type == "strings:lexicon->add-word" && TypeIs(packet.PayloadType, "string"))
 				{
 					string word = (string)packet.Payload!;
 					ctx.Log(ID, 3, $"Adding word to lexicon: {word}");
 
-					if (!WordToEmbedding.TryAdd(word, -1))
+					if (WordToEmbedding.TryGetValue(word, out int existingId) && existingId >= 0)
 					{
+						// Word already has an embedding
+						ctx.Log(ID, 3, $"Word '{word}' already exists with embedding ID {existingId}.");
 						Output.Enqueue(new Packet()
 						{
 							Type = "strings:lexicon->add-word-response",
-							Payload = null,
-							PayloadType = "null",
+							Payload = existingId,
+							PayloadType = "int",
 							SourceID = ID,
 							TargetID = packet.SourceID,
-							Success = false
+							Success = true
 						});
 						return;
 					}
+
+					// Reserve the word immediately (even if id not yet known)
+					WordToEmbedding[word] = -1;
 
 					Output.Enqueue(new Packet()
 					{
@@ -60,41 +65,58 @@ namespace Opal.Modules.Strings
 						PayloadType = "null"
 					});
 
-					if (TryWaitForInput(4000, out Packet? packet2, AwaitedResponses, p => p.Type == "memory:embedding-engine->create-response"))
+					if (TryWaitForInput(4000, out Packet? createResponse, AwaitedResponses, p => p.Type == "memory:embedding-engine->create-response"))
 					{
-						if (packet2 != null && TypeIs(packet2.PayloadType, "int"))
+						if (createResponse != null && TypeIs(createResponse.PayloadType, "int"))
 						{
-							int id = (int)packet2.Payload!;
-							WordToEmbedding[word] = id; 
+							int newId = (int)createResponse.Payload!;
+							WordToEmbedding[word] = newId;
 
 							Output.Enqueue(new Packet()
 							{
 								Type = "memory:embedding-engine->add-metadata",
 								TargetID = "memory:embedding-engine",
 								SourceID = ID,
-								Payload = (id, "word", word),
+								Payload = (newId, "word", word),
 								PayloadType = "(int, string, string)"
 							});
 
 							Output.Enqueue(new Packet()
 							{
 								Type = "strings:lexicon->add-word-response",
-								Payload = id,
+								Payload = newId,
 								PayloadType = "int",
 								SourceID = ID,
-								TargetID = packet!.SourceID,
+								TargetID = packet.SourceID,
 								Success = true
 							});
-							return;
 						}
-
+						else
+						{
+							ctx.Log(ID, 3, $"Invalid response when creating embedding for '{word}'.");
+							WordToEmbedding.TryRemove(word, out _); // Roll back
+							Output.Enqueue(new Packet()
+							{
+								Type = "strings:lexicon->add-word-response",
+								Payload = null,
+								PayloadType = "null",
+								SourceID = ID,
+								TargetID = packet.SourceID,
+								Success = false
+							});
+						}
+					}
+					else
+					{
+						ctx.Log(ID, 3, $"Timeout waiting for embedding creation for '{word}'.");
+						WordToEmbedding.TryRemove(word, out _); // Roll back
 						Output.Enqueue(new Packet()
 						{
 							Type = "strings:lexicon->add-word-response",
 							Payload = null,
 							PayloadType = "null",
 							SourceID = ID,
-							TargetID = packet!.SourceID,
+							TargetID = packet.SourceID,
 							Success = false
 						});
 					}
@@ -102,7 +124,7 @@ namespace Opal.Modules.Strings
 				else if (packet.Type == "strings:lexicon->get-id" && TypeIs(packet.PayloadType, "string"))
 				{
 					string word = (string)packet.Payload!;
-					if (WordToEmbedding.TryGetValue(word, out int id))
+					if (WordToEmbedding.TryGetValue(word, out int id) && id >= 0)
 					{
 						Output.Enqueue(new Packet()
 						{
@@ -162,7 +184,7 @@ namespace Opal.Modules.Strings
 				}
 				else
 				{
-					ctx.Log(ID, 3, $"Invalid packet type: {packet.Type}");
+					ctx.Log(ID, 3, $"Unhandled packet type: {packet.Type}");
 				}
 			};
 
@@ -174,7 +196,7 @@ namespace Opal.Modules.Strings
 					if (AwaitedResponseTypes.Contains(packet.Type))
 					{
 						AwaitedResponses.Enqueue(packet);
-						ctx.Log(ID, 3, $"Re-queued packet: {packet.Type} (ID {packet.PacketID})");
+						ctx.Log(ID, 3, $"Queued awaited response: {packet.Type} (ID {packet.PacketID})");
 						continue;
 					}
 					Task.Run(() => func(packet));

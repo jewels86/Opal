@@ -14,7 +14,7 @@ namespace Testing
 		public string ID => "word-learning-manager";
 		public ConcurrentQueue<Packet> Input { get; } = new();
 		public ConcurrentQueue<Packet> Output { get; } = new();
-		public ConcurrentBag<Packet> Responses { get; } = new();
+		public ConcurrentQueue<Packet> Responses { get; } = new();
 
 		public List<string> SentenceList { get; } = new();
 
@@ -30,7 +30,7 @@ namespace Testing
 			{
 				while (ctx.ShouldNotExit())
 				{
-					CheckForInput(this, p => Responses.Add(p), ref tasks);
+					CheckForInput(this, p => Responses.Enqueue(p), ref tasks, ctx.DeltaTime);
 				}
 			};
 			Task mainTask = Task.Run(main);
@@ -99,6 +99,7 @@ namespace Testing
 					ctx.Log(ID, 3, $"Unknown response type: {response.Type}");
 				}
 			}
+			Responses.Clear();
 			foreach (var p in parsed)
 			{
 				Output.Enqueue(new Packet()
@@ -110,6 +111,51 @@ namespace Testing
 					TargetID = "semantic-interpreter"
 				});
 				ctx.Log(ID, 3, $"Interpreting tokens: {string.Join(", ", p)}");
+			}
+			ctx.Log(ID, 3, $"Waiting for semantic interpreter responses...");
+			WaitForExpectedResponses(parsed.Count, Input);
+			Console.Write("[!!!!!!!!!!!!!!!] Enter a phrase to continue from: ");
+			string? input = Console.ReadLine();
+			if (input == null)
+			{
+				ctx.Log(ID, 3, "No input provided. Exiting.");
+				return;
+			}
+			Console.WriteLine($"Enter the max number of words to generate: ");
+			string? maxTokensInput = Console.ReadLine();
+			if (maxTokensInput == null || !int.TryParse(maxTokensInput, out int maxTokens))
+			{
+				ctx.Log(ID, 3, "Invalid input for max tokens. Exiting.");
+				return;
+			}
+			Output.Enqueue(new Packet()
+			{
+				Type = "strings:string-parsing->parse",
+				Payload = input,
+				PayloadType = "string",
+				SourceID = ID,
+				TargetID = "strings:string-parsing"
+			});
+			ctx.Log(ID, 3, $"Parsing sentence: {input}");
+			if (TryWaitForInput(10000, out Packet? parsedPacket, Responses))
+			{
+				if (parsedPacket == null || parsedPacket.Payload == null)
+				{
+					ctx.Log(ID, 3, $"Failed to parse sentence: {input}");
+				}
+				string[] tokens = (string[])parsedPacket!.Payload!;
+
+				Output.Enqueue(new Packet()
+				{
+					Type = "strings:next-word-generation->generate",
+					Payload = (tokens, maxTokens),
+					PayloadType = "(string[], int)",
+					SourceID = ID,
+					TargetID = "strings:next-word-generation"
+				});
+
+				Task.Delay(2000).Wait();
+				//ctx.Exit();
 			}
 		}
 	}
