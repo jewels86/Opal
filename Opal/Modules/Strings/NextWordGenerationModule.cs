@@ -48,7 +48,7 @@ namespace Opal.Modules.Strings
 					Output.Enqueue(Packet.Create(
 						"memory:embedding-engine",
 						ID,
-						"memory:embedding-engine->get-id",
+						"memory:embedding-engine->find-by-metadata-tag",
 						"(string, string)",
 						("word", lastWord)
 					));
@@ -67,7 +67,8 @@ namespace Opal.Modules.Strings
 							));
 							return;
 						}
-						int wordID = (int)embeddingResponse.Payload!;
+						int[] wordIDs = (int[])embeddingResponse.Payload!;
+						int wordID = wordIDs[0];
 						ctx.Log(ID, 3, $"Embedding for '{lastWord}' retrieved with ID {wordID}.");
 						Output.Enqueue(Packet.Create(
 							"memory:embedding-engine",

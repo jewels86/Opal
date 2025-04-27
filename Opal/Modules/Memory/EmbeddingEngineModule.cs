@@ -94,7 +94,7 @@ namespace Opal.Modules.Memory
 						averageVector = AverageVectors(new[] { node.Vector, averageVector });
 						double[] normalized = NormalizeVector(averageVector);
 						node.Vector = normalized;
-						ctx.Log(ID, 3, $"New vector for node {nodeID}: {SHAHash(normalized)}");
+						ctx.Log(ID, 3, $"New vector for node {nodeID}: {SHAHash(normalized)} (SHA256)");
 						Output.Enqueue(new Packet
 						{
 							Type = "memory:embedding-engine->associate-response",
@@ -174,13 +174,13 @@ namespace Opal.Modules.Memory
 				}
 				#endregion
 				#region memory:embedding-engine->find-by-metadata-tag
-				else if (packet.Type == "memory:embedding-engine->find-by-metadata")
+				else if (packet.Type == "memory:embedding-engine->find-by-metadata-tag")
 				{
 					if (TypeIs(packet.PayloadType, "(string, string)"))
 					{
-						var payload = (ValueTuple<string, object>)packet.Payload!;
+						var payload = (ValueTuple<string, string>)packet.Payload!;
 						string tag = payload.Item1;
-						object value = payload.Item2;
+						string value = payload.Item2;
 						List<EmbeddingNode> foundNodes = Nodes.Where(n => n.Metadata.ContainsKey(tag) && n.Metadata[tag].Equals(value)).ToList();
 						ctx.Log(ID, 3, $"Found {foundNodes.Count} nodes with metadata {tag}: {value}");
 						Output.Enqueue(new Packet

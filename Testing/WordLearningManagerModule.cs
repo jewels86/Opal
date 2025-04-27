@@ -61,7 +61,6 @@ namespace Testing
 							string[] tokens = (string[])packet.Payload!;
 							foreach (var token in tokens)
 							{
-								// Check if the word is already added
 								if (_addedWords.Add(token))
 								{
 									Output.Enqueue(new Packet()
@@ -79,7 +78,7 @@ namespace Testing
 									ctx.Log(ID, 3, $"Skipping duplicate word: {token}");
 								}
 							}
-							ctx.Log(ID, 3, $"Parsed sentence: {sentence} -> {string.Join(", ", tokens)}");
+							ctx.Log(ID, 3, $"Began adding to lexicon: {string.Join(", ", tokens)}");
 							parsed.Add(tokens);
 						}
 					}
@@ -125,7 +124,7 @@ namespace Testing
 			}
 			ctx.Log(ID, 3, $"Waiting for semantic interpreter responses...");
 			var inputQueue = Input;
-			inputQueue.Clear();
+			
 			WaitForExpectedResponses(parsed.Count, ref inputQueue);
 			Console.Write("[!!!!!!!!!!!!!!!] Enter a phrase to continue from: ");
 			string? input = Console.ReadLine();

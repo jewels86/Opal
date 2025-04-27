@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,6 +19,9 @@ namespace Opal.Modules
 
 		public ConcurrentDictionary<string, int> WordToID { get; } = new();
 
+		private bool _wait = false;
+		private object _waitLock = new object();
+
 		public void Initialize(Context ctx)
 		{
 			ctx.Add(this);
@@ -28,16 +32,7 @@ namespace Opal.Modules
 			List<Task> tasks = [];
 			Action<Packet> func = (packet) =>
 			{
-				if (packet.Type == "memory:embedding-engine->associate-response")
-				{
-					if (packet.Payload is (int, Dictionary<int, double>))
-					{
-						Responses.Enqueue(packet);
-						ctx.Log(ID, 3, $"Requeued association response: {packet.PacketID} (with payload type {packet.PayloadType}");
-						return;
-					}
-					return;
-				}
+				ctx.Log(ID, 3, $"Received packet: {packet.Type} (payload type {packet.PayloadType})");
 				if (packet.Type == "semantic-interpreter->interpret" && packet.Payload is string[])
 				{
 					ctx.Log(ID, 3, $"Interpreting tokens: {string.Join(", ", (string[])packet.Payload!)}");
@@ -103,7 +98,7 @@ namespace Opal.Modules
 						});
 					}
 					var responses = Responses;
-					responses.Clear();
+					//responses.Clear();
 					WaitForExpectedResponses(tokenIDs.Count, ref responses);
 					
 					Output.Enqueue(new Packet()
@@ -116,15 +111,36 @@ namespace Opal.Modules
 					});
 					ctx.Log(ID, 3, $"Interpreted tokens: {string.Join(", ", tokens)} -> {string.Join(", ", tokenIDs)} (associations created)");
 				}
+				lock (_waitLock) { _wait = false; }
 			};
-
+			Queue<Packet> resultQueue = new();
 			while (ctx.ShouldNotExit())
 			{
+				lock (_waitLock)
+				{
+					if (!_wait)
+					{
+						if (resultQueue.TryDequeue(out Packet? res))
+						{
+							if (res != null)
+							{
+								_wait = true;
+								ctx.Log(ID, 3, $"Processing packet result from queue: {res.Type} (payload type {res.PayloadType})");
+								Task.Run(() => func(res));
+							}
+						}
+					}
+				}
 				if (Input.TryDequeue(out Packet? result))
 				{
 					if (result != null)
 					{
-						func(result);
+						if (result.Type == "memory:embedding-engine->associate-response")
+						{
+							Responses.Enqueue(result);
+							ctx.Log(ID, 3, $"Received association response: {result.Payload}");
+						}
+						else { resultQueue.Enqueue(result); }
 					}
 				}
 				else

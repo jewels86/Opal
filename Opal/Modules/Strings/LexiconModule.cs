@@ -54,70 +54,72 @@ namespace Opal.Modules.Strings
 
 					WordToEmbedding[word] = -1;
 
-					Output.Enqueue(new Packet()
+					for (int retryCount = 0; retryCount < 4; retryCount++)
 					{
-						Type = "memory:embedding-engine->create",
-						TargetID = "memory:embedding-engine",
-						SourceID = ID,
-						Payload = null,
-						PayloadType = "null"
-					});
-
-					if (TryWaitForInput(4000, out Packet? createResponse, AwaitedResponses, p => p.Type == "memory:embedding-engine->create-response"))
-					{
-						if (createResponse != null && TypeIs(createResponse.PayloadType, "int"))
-						{
-							int newId = (int)createResponse.Payload!;
-							WordToEmbedding[word] = newId;
-
-							Output.Enqueue(new Packet()
-							{
-								Type = "memory:embedding-engine->add-metadata",
-								TargetID = "memory:embedding-engine",
-								SourceID = ID,
-								Payload = (newId, "word", word),
-								PayloadType = "(int, string, string)"
-							});
-
-							Output.Enqueue(new Packet()
-							{
-								Type = "strings:lexicon->add-word-response",
-								Payload = newId,
-								PayloadType = "int",
-								SourceID = ID,
-								TargetID = packet.SourceID,
-								Success = true
-							});
-						}
-						else
-						{
-							ctx.Log(ID, 3, $"Invalid response when creating embedding for '{word}'.");
-							WordToEmbedding.TryRemove(word, out _);
-							Output.Enqueue(new Packet()
-							{
-								Type = "strings:lexicon->add-word-response",
-								Payload = null,
-								PayloadType = "null",
-								SourceID = ID,
-								TargetID = packet.SourceID,
-								Success = false
-							});
-						}
-					}
-					else
-					{
-						ctx.Log(ID, 3, $"Timeout waiting for embedding creation for '{word}'.");
-						WordToEmbedding.TryRemove(word, out _);
 						Output.Enqueue(new Packet()
 						{
-							Type = "strings:lexicon->add-word-response",
-							Payload = null,
-							PayloadType = "null",
+							Type = "memory:embedding-engine->create",
+							TargetID = "memory:embedding-engine",
 							SourceID = ID,
-							TargetID = packet.SourceID,
-							Success = false
+							Payload = null,
+							PayloadType = "null"
 						});
+
+						if (TryWaitForInput(4000, out Packet? createResponse, AwaitedResponses, p => p.Type == "memory:embedding-engine->create-response"))
+						{
+							if (createResponse != null && TypeIs(createResponse.PayloadType, "int"))
+							{
+								int newId = (int)createResponse.Payload!;
+								WordToEmbedding[word] = newId;
+
+								Output.Enqueue(new Packet()
+								{
+									Type = "memory:embedding-engine->add-metadata",
+									TargetID = "memory:embedding-engine",
+									SourceID = ID,
+									Payload = (newId, "word", word),
+									PayloadType = "(int, string, string)"
+								});
+								if (TryWaitForInput(4000, out Packet? metadataResponse, AwaitedResponses, p => p.Type == "memory:embedding-engine->add-metadata-response"))
+								{
+									if (metadataResponse != null && metadataResponse.Payload != null)
+									{
+										ctx.Log(ID, 3, $"Word '{word}' added with embedding ID {newId}.");
+									}
+									else
+									{
+										ctx.Log(ID, 3, $"Failed to add metadata for word '{word}'.");
+									}
+								}
+								else
+								{
+									ctx.Log(ID, 3, $"Timeout waiting for metadata response for word '{word}'.");
+								}
+
+								Output.Enqueue(new Packet()
+								{
+									Type = "strings:lexicon->add-word-response",
+									Payload = newId,
+									PayloadType = "int",
+									SourceID = ID,
+									TargetID = packet.SourceID,
+									Success = true
+								});
+								return;
+							}
+						}
 					}
+					ctx.Log(ID, 3, $"Timeout waiting for embedding creation for '{word}'.");
+					WordToEmbedding.TryRemove(word, out _);
+					Output.Enqueue(new Packet()
+					{
+						Type = "strings:lexicon->add-word-response",
+						Payload = null,
+						PayloadType = "null",
+						SourceID = ID,
+						TargetID = packet.SourceID,
+						Success = false
+					});
 				}
 				else if (packet.Type == "strings:lexicon->get-id" && TypeIs(packet.PayloadType, "string"))
 				{

@@ -11,7 +11,6 @@ namespace Opal
 	{
 		private LogDelegate _log = Logging.StandardLog;
 		private readonly object _logLock = new object();
-		private int _loglevel = 3;
 
 		private int _packetIDCount = 1;
 		private readonly object _packetIDCountLock = new object();
@@ -25,6 +24,7 @@ namespace Opal
 		private readonly object _exitLock = new object();
 
 		public int DeltaTime { get; set; } = 400; // delta-t in ms
+		public int LogLevel { get; set; } = 3;
 
 		public void Add(IInteractable interactable)
 		{
@@ -40,7 +40,7 @@ namespace Opal
 
 		public void Log(string ID, int level, string content)
 		{
-			if (level > _loglevel) return;
+			if (level > LogLevel) return;
 			_log.Invoke(ID, level, content);
 		}
 		public void SetLog(LogDelegate log)
