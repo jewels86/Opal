@@ -80,20 +80,26 @@ namespace Opal.Modules.Strings
 									Payload = (newId, "word", word),
 									PayloadType = "(int, string, string)"
 								});
-								if (TryWaitForInput(4000, out Packet? metadataResponse, AwaitedResponses, p => p.Type == "memory:embedding-engine->add-metadata-response"))
+
+								bool metadataResponseReceived = false;
+								while (!metadataResponseReceived)
 								{
-									if (metadataResponse != null && metadataResponse.Payload != null)
+									if (TryWaitForInput(4000, out Packet? metadataResponse, AwaitedResponses, p => p.Type == "memory:embedding-engine->add-metadata-response"))
 									{
-										ctx.Log(ID, 3, $"Word '{word}' added with embedding ID {newId}.");
+										if (metadataResponse != null && metadataResponse.Payload != null)
+										{
+											ctx.Log(ID, 3, $"Word '{word}' added with embedding ID {newId}.");
+											metadataResponseReceived = true;
+										}
+										else
+										{
+											ctx.Log(ID, 3, $"Failed to add metadata for word '{word}'.");
+										}
 									}
 									else
 									{
-										ctx.Log(ID, 3, $"Failed to add metadata for word '{word}'.");
+										ctx.Log(ID, 3, $"Timeout waiting for metadata response for word '{word}'. Retrying...");
 									}
-								}
-								else
-								{
-									ctx.Log(ID, 3, $"Timeout waiting for metadata response for word '{word}'.");
 								}
 
 								Output.Enqueue(new Packet()
@@ -106,6 +112,10 @@ namespace Opal.Modules.Strings
 									Success = true
 								});
 								return;
+							}
+							else
+							{
+								ctx.Log(ID, 3, $"Invalid response from embedding engine: {createResponse?.PayloadType}");
 							}
 						}
 					}

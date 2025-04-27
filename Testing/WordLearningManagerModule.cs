@@ -18,7 +18,6 @@ namespace Testing
 
 		public List<string> SentenceList { get; } = new();
 
-		// Maintain a set of words already added to the lexicon
 		private readonly HashSet<string> _addedWords = new(StringComparer.OrdinalIgnoreCase);
 
 		public void Initialize(Context ctx)
@@ -59,6 +58,7 @@ namespace Testing
 						if (TypeIs(packet.PayloadType, "string[]"))
 						{
 							string[] tokens = (string[])packet.Payload!;
+							ConcurrentQueue<Packet> inQueue = Responses;
 							foreach (var token in tokens)
 							{
 								if (_addedWords.Add(token))
@@ -72,13 +72,15 @@ namespace Testing
 										TargetID = "strings:lexicon"
 									});
 									ctx.Log(ID, 3, $"Adding word to lexicon: {token}");
+									WaitForExpectedResponses(1, ref inQueue);
 								}
 								else
 								{
 									ctx.Log(ID, 3, $"Skipping duplicate word: {token}");
 								}
 							}
-							ctx.Log(ID, 3, $"Began adding to lexicon: {string.Join(", ", tokens)}");
+							ctx.Log(ID, 3, $"Added to lexicon: {string.Join(", ", tokens)}");
+
 							parsed.Add(tokens);
 						}
 					}
