@@ -25,13 +25,12 @@ namespace Testing
 			wordLearningManager.SentenceList.Add("Cats are pets.");
 			wordLearningManager.SentenceList.Add("Dogs can jump high.");
 			wordLearningManager.SentenceList.Add("Cats land on their feet.");
-			//wordLearningManager.SentenceList.Add("Cats");
 			// goals: cats can -> cats can jump high, dogs land -> dogs land on their feet
 
 			stringParsing.Stopwords.Add("the");
 			stringParsing.Stopwords.Add("is");
 			stringParsing.Stopwords.Add("can");
-			//stringParsing.Stopwords.Add("are");
+			stringParsing.Stopwords.Add("are");
 
 			wordLearningManager.Initialize(ctx);
 			lexicon.Initialize(ctx);

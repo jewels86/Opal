@@ -18,6 +18,9 @@ namespace Testing
 
 		public List<string> SentenceList { get; } = new();
 
+		// Maintain a set of words already added to the lexicon
+		private readonly HashSet<string> _addedWords = new(StringComparer.OrdinalIgnoreCase);
+
 		public void Initialize(Context ctx)
 		{
 			ctx.Add(this);
@@ -58,15 +61,23 @@ namespace Testing
 							string[] tokens = (string[])packet.Payload!;
 							foreach (var token in tokens)
 							{
-								Output.Enqueue(new Packet()
+								// Check if the word is already added
+								if (_addedWords.Add(token))
 								{
-									Type = "strings:lexicon->add-word",
-									Payload = token,
-									PayloadType = "string",
-									SourceID = ID,
-									TargetID = "strings:lexicon"
-								});
-								ctx.Log(ID, 3, $"Adding word to lexicon: {token}");
+									Output.Enqueue(new Packet()
+									{
+										Type = "strings:lexicon->add-word",
+										Payload = token,
+										PayloadType = "string",
+										SourceID = ID,
+										TargetID = "strings:lexicon"
+									});
+									ctx.Log(ID, 3, $"Adding word to lexicon: {token}");
+								}
+								else
+								{
+									ctx.Log(ID, 3, $"Skipping duplicate word: {token}");
+								}
 							}
 							ctx.Log(ID, 3, $"Parsed sentence: {sentence} -> {string.Join(", ", tokens)}");
 							parsed.Add(tokens);
@@ -113,7 +124,9 @@ namespace Testing
 				ctx.Log(ID, 3, $"Interpreting tokens: {string.Join(", ", p)}");
 			}
 			ctx.Log(ID, 3, $"Waiting for semantic interpreter responses...");
-			WaitForExpectedResponses(parsed.Count, Input);
+			var inputQueue = Input;
+			inputQueue.Clear();
+			WaitForExpectedResponses(parsed.Count, ref inputQueue);
 			Console.Write("[!!!!!!!!!!!!!!!] Enter a phrase to continue from: ");
 			string? input = Console.ReadLine();
 			if (input == null)

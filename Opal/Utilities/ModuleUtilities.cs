@@ -11,7 +11,7 @@ namespace Opal.Utilities
 {
 	public static class ModuleUtilities
 	{
-		public static void CheckForInput(IInteractable self, Action<Packet> func, ref List<Task> tasks, int milliseconds = 400)
+		public static void CheckForInput(IInteractable self, Action<Packet> func, ref List<Task> tasks, int milliseconds = 100)
 		{
 			if (self.Input.TryDequeue(out Packet? result))
 			{
@@ -69,7 +69,7 @@ namespace Opal.Utilities
 
 			return false;
 		}
-		public static List<Packet> WaitForExpectedResponses(int expectedResponses, ConcurrentQueue<Packet> input)
+		public static List<Packet> WaitForExpectedResponses(int expectedResponses, ref ConcurrentQueue<Packet> input)
 		{
 			List<Packet> responses = new();
 			int count = 0;

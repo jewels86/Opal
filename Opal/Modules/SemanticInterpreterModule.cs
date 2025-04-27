@@ -102,7 +102,9 @@ namespace Opal.Modules
 							TargetID = "memory:embedding-engine"
 						});
 					}
-					WaitForExpectedResponses(tokenIDs.Count, Responses);
+					var responses = Responses;
+					responses.Clear();
+					WaitForExpectedResponses(tokenIDs.Count, ref responses);
 					
 					Output.Enqueue(new Packet()
 					{

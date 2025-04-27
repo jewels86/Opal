@@ -39,7 +39,6 @@ namespace Opal.Modules.Strings
 
 					if (WordToEmbedding.TryGetValue(word, out int existingId) && existingId >= 0)
 					{
-						// Word already has an embedding
 						ctx.Log(ID, 3, $"Word '{word}' already exists with embedding ID {existingId}.");
 						Output.Enqueue(new Packet()
 						{
@@ -53,7 +52,6 @@ namespace Opal.Modules.Strings
 						return;
 					}
 
-					// Reserve the word immediately (even if id not yet known)
 					WordToEmbedding[word] = -1;
 
 					Output.Enqueue(new Packet()
@@ -94,7 +92,7 @@ namespace Opal.Modules.Strings
 						else
 						{
 							ctx.Log(ID, 3, $"Invalid response when creating embedding for '{word}'.");
-							WordToEmbedding.TryRemove(word, out _); // Roll back
+							WordToEmbedding.TryRemove(word, out _);
 							Output.Enqueue(new Packet()
 							{
 								Type = "strings:lexicon->add-word-response",
@@ -109,7 +107,7 @@ namespace Opal.Modules.Strings
 					else
 					{
 						ctx.Log(ID, 3, $"Timeout waiting for embedding creation for '{word}'.");
-						WordToEmbedding.TryRemove(word, out _); // Roll back
+						WordToEmbedding.TryRemove(word, out _);
 						Output.Enqueue(new Packet()
 						{
 							Type = "strings:lexicon->add-word-response",
