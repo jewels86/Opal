@@ -51,6 +51,7 @@ namespace Testing
 					TargetID = "strings:string-parsing"
 				});
 				ctx.Log(ID, 3, $"Parsing sentence: {sentence}");
+				ConcurrentQueue<Packet> inQueue = Responses;
 				if (TryWaitForInput(10000, out Packet? packet, Input, p => p.Type == "strings:string-parsing->parse-response"))
 				{
 					if (packet != null)
@@ -58,7 +59,6 @@ namespace Testing
 						if (TypeIs(packet.PayloadType, "string[]"))
 						{
 							string[] tokens = (string[])packet.Payload!;
-							ConcurrentQueue<Packet> inQueue = Responses;
 							foreach (var token in tokens)
 							{
 								if (_addedWords.Add(token))
@@ -80,6 +80,16 @@ namespace Testing
 								}
 							}
 							ctx.Log(ID, 3, $"Added to lexicon: {string.Join(", ", tokens)}");
+							inQueue.Clear();
+							Output.Enqueue(new Packet()
+							{
+								Type = "strings:lexicon->add-sentence",
+								Payload = tokens,
+								PayloadType = "string[]",
+								SourceID = ID,
+								TargetID = "strings:lexicon"
+							});
+							WaitForExpectedResponses(1, ref inQueue);
 
 							parsed.Add(tokens);
 						}
@@ -122,7 +132,7 @@ namespace Testing
 					SourceID = ID,
 					TargetID = "semantic-interpreter"
 				});
-				ctx.Log(ID, 3, $"Interpreting tokens: {string.Join(", ", p)}");
+				ctx.Log(ID, 3, $"Interpreting sentence: {string.Join(", ", p)}");
 			}
 			ctx.Log(ID, 3, $"Waiting for semantic interpreter responses...");
 			var inputQueue = Input;

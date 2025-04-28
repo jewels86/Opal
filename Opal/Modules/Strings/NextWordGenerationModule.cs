@@ -54,7 +54,8 @@ namespace Opal.Modules.Strings
 					ctx.Log(ID, 3, $"Fetching embeddings...");
 
 					Dictionary<string, int> ids = new();
-					Dictionary<string, float[]> idToVector = new();
+					Dictionary<int, (int, double)[]> similars = [];
+					ConcurrentQueue<Packet> inQueue; 
 
 					foreach (string token in tokens)
 					{
@@ -68,7 +69,7 @@ namespace Opal.Modules.Strings
 								SourceID = ID,
 								TargetID = "memory:embedding-engine"
 							});
-
+							
 							if (TryWaitForInput(4000, out Packet? response, Responses["memory:embedding-engine->get-id-response"], p => p.PayloadType == "int"))
 							{
 								if (response != null && response.Payload is int retrievedId)
@@ -76,6 +77,26 @@ namespace Opal.Modules.Strings
 									id = retrievedId;
 									ids[token] = id;
 									ctx.Log(ID, 3, $"Token '{token}' retrieved with ID {id}.");
+									ctx.Log(ID, 3, $"Finding similar tokens for ID {id}...");
+
+									Output.Enqueue(new Packet()
+									{
+										Type = "memory:embedding-engine->find-similar",
+										Payload = id,
+										PayloadType = "int",
+										SourceID = ID,
+										TargetID = "memory:embedding-engine"
+									});
+									inQueue = Responses["memory:embedding-engine->find-similar-response"];
+									List<Packet> similar = WaitForExpectedResponses(1, ref inQueue);
+									if (similar.Count == 0 || similar[0].Payload is not List<(int, double)>)
+									{
+										ctx.Log(ID, 3, $"Failed to retrieve similar tokens for ID {id}.");
+										return;
+									}
+									Packet p = similar[0];
+									similars[ids[token]] = ((List<(int, double)>)p.Payload!).OrderBy(s => s.Item2).Reverse().ToArray();
+									ctx.Log(ID, 3, $"Similar tokens found for ID {id}: {string.Join(", ", similars[ids[token]].Select(x => $"{x.Item1} ({x.Item2})"))}.");
 								}
 								else
 								{
@@ -86,7 +107,7 @@ namespace Opal.Modules.Strings
 						}
 					}
 
-
+					
 
 					
 				}
@@ -116,6 +137,12 @@ namespace Opal.Modules.Strings
 				{
 					if (inputPacket != null)
 					{
+						if (ResponseTypes.Contains(inputPacket.Type))
+						{
+							Responses[inputPacket.Type].Enqueue(inputPacket);
+							ctx.Log(ID, 3, $"Response received: {inputPacket.Type}, requeued");
+							continue;
+						}
 						resultQueue.Enqueue(inputPacket);
 					}
 				}

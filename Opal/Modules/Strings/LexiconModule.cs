@@ -20,6 +20,7 @@ namespace Opal.Modules.Strings
 		};
 		public ConcurrentQueue<Packet> AwaitedResponses { get; } = new();
 		public ConcurrentDictionary<string, int> WordToEmbedding { get; } = new();
+		public ConcurrentDictionary<int[], int> SentenceToEmbedding { get; } = new(new IntArrayEqualityComparer());
 
 		public void Initialize(Context ctx)
 		{
@@ -32,6 +33,7 @@ namespace Opal.Modules.Strings
 			{
 				if (packet == null) return;
 
+				// Handle adding a word
 				if (packet.Type == "strings:lexicon->add-word" && TypeIs(packet.PayloadType, "string"))
 				{
 					string word = (string)packet.Payload!;
@@ -131,6 +133,123 @@ namespace Opal.Modules.Strings
 						Success = false
 					});
 				}
+
+				// Handle adding a sentence
+				else if (packet.Type == "strings:lexicon->add-sentence" && TypeIs(packet.PayloadType, "string[]"))
+				{ 
+					string[] words = (string[])packet.Payload!;
+					string wordsString = string.Join(", ", words);
+					List<int> wordIds = new();
+
+					ctx.Log(ID, 3, $"Adding sentence to lexicon: {wordsString}");
+
+					foreach (string word in words)
+					{
+						if (!WordToEmbedding.TryGetValue(word, out int wordId))
+						{
+							Output.Enqueue(new Packet()
+							{
+								Type = "memory:embedding-engine->create",
+								TargetID = "memory:embedding-engine",
+								SourceID = ID,
+								Payload = null,
+								PayloadType = "null"
+							});
+
+							if (TryWaitForInput(4000, out Packet? createResponse, AwaitedResponses, p => p.Type == "memory:embedding-engine->create-response"))
+							{
+								if (createResponse != null && TypeIs(createResponse.PayloadType, "int"))
+								{
+									wordId = (int)createResponse.Payload!;
+									WordToEmbedding[word] = wordId;
+
+									Output.Enqueue(new Packet()
+									{
+										Type = "memory:embedding-engine->add-metadata",
+										TargetID = "memory:embedding-engine",
+										SourceID = ID,
+										Payload = (wordId, "word", word),
+										PayloadType = "(int, string, string)"
+									});
+								}
+								else
+								{
+									ctx.Log(ID, 3, $"Failed to create embedding for word '{word}'.");
+									Output.Enqueue(new Packet()
+									{
+										Type = "strings:lexicon->add-sentence-response",
+										Payload = null,
+										PayloadType = "null",
+										SourceID = ID,
+										TargetID = packet.SourceID,
+										Success = false
+									});
+									return;
+								}
+							}
+						}
+						wordIds.Add(wordId);
+					}
+
+					int[] sentenceIdArray = wordIds.ToArray();
+					if (!SentenceToEmbedding.TryGetValue(sentenceIdArray, out int sentenceId))
+					{
+						Output.Enqueue(new Packet()
+						{
+							Type = "memory:embedding-engine->create",
+							TargetID = "memory:embedding-engine",
+							SourceID = ID,
+							Payload = null,
+							PayloadType = "null"
+						});
+
+						if (TryWaitForInput(4000, out Packet? createResponse, AwaitedResponses, p => p.Type == "memory:embedding-engine->create-response"))
+						{
+							if (createResponse != null && TypeIs(createResponse.PayloadType, "int"))
+							{
+								sentenceId = (int)createResponse.Payload!;
+								SentenceToEmbedding[sentenceIdArray] = sentenceId;
+
+								Output.Enqueue(new Packet()
+								{
+									Type = "memory:embedding-engine->add-metadata",
+									TargetID = "memory:embedding-engine",
+									SourceID = ID,
+									Payload = (sentenceId, "sentence", string.Join(", ", sentenceIdArray)),
+									PayloadType = "(int, string, string)"
+								});
+
+								ctx.Log(ID, 3, $"Sentence '{wordsString}' added with embedding ID {sentenceId}.");
+							}
+							else
+							{
+								ctx.Log(ID, 3, $"Failed to create embedding for sentence '{wordsString}'.");
+								Output.Enqueue(new Packet()
+								{
+									Type = "strings:lexicon->add-sentence-response",
+									Payload = null,
+									PayloadType = "null",
+									SourceID = ID,
+									TargetID = packet.SourceID,
+									Success = false
+								});
+								return;
+							}
+						}
+					}
+
+					Output.Enqueue(new Packet()
+					{
+						Type = "strings:lexicon->add-sentence-response",
+						Payload = sentenceId,
+						PayloadType = "int",
+						SourceID = ID,
+						TargetID = packet.SourceID,
+						Success = true
+					});
+				}
+
+				// Handle retrieving a word by ID
 				else if (packet.Type == "strings:lexicon->get-id" && TypeIs(packet.PayloadType, "string"))
 				{
 					string word = (string)packet.Payload!;
@@ -159,16 +278,53 @@ namespace Opal.Modules.Strings
 						});
 					}
 				}
-				else if (packet.Type == "strings:lexicon->get-word" && TypeIs(packet.PayloadType, "int"))
+
+				// Handle retrieving a sentence ID
+				else if (packet.Type == "strings:lexicon->get-sentence-id" && TypeIs(packet.PayloadType, "string"))
 				{
-					int id = (int)packet.Payload!;
-					string? word = WordToEmbedding.FirstOrDefault(x => x.Value == id).Key;
-					if (word != null)
+					string sentence = (string)packet.Payload!;
+					string[] words = sentence.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+					int[] wordIds = words.Select(word => WordToEmbedding.TryGetValue(word, out int id) ? id : -1).ToArray();
+
+					if (SentenceToEmbedding.TryGetValue(wordIds, out int sentenceId))
 					{
 						Output.Enqueue(new Packet()
 						{
-							Type = "strings:lexicon->get-word-response",
-							Payload = word,
+							Type = "strings:lexicon->get-sentence-id-response",
+							Payload = sentenceId,
+							PayloadType = "int",
+							SourceID = ID,
+							TargetID = packet.SourceID,
+							Success = true
+						});
+					}
+					else
+					{
+						Output.Enqueue(new Packet()
+						{
+							Type = "strings:lexicon->get-sentence-id-response",
+							Payload = null,
+							PayloadType = "null",
+							SourceID = ID,
+							TargetID = packet.SourceID,
+							Success = false
+						});
+					}
+				}
+
+				// Handle retrieving a sentence by ID
+				else if (packet.Type == "strings:lexicon->get-sentence" && TypeIs(packet.PayloadType, "int"))
+				{
+					int sentenceId = (int)packet.Payload!;
+					int[]? wordIds = SentenceToEmbedding.FirstOrDefault(x => x.Value == sentenceId).Key;
+
+					if (wordIds != null)
+					{
+						string sentence = string.Join(" ", wordIds.Select(id => WordToEmbedding.FirstOrDefault(x => x.Value == id).Key));
+						Output.Enqueue(new Packet()
+						{
+							Type = "strings:lexicon->get-sentence-response",
+							Payload = sentence,
 							PayloadType = "string",
 							SourceID = ID,
 							TargetID = packet.SourceID,
@@ -179,7 +335,7 @@ namespace Opal.Modules.Strings
 					{
 						Output.Enqueue(new Packet()
 						{
-							Type = "strings:lexicon->get-word-response",
+							Type = "strings:lexicon->get-sentence-response",
 							Payload = null,
 							PayloadType = "null",
 							SourceID = ID,
@@ -188,10 +344,8 @@ namespace Opal.Modules.Strings
 						});
 					}
 				}
-				else if (packet.Type == "memory:embedding-engine->add-metadata-response")
-				{
-					ctx.Log(ID, 3, $"Received metadata response: {packet.Payload}");
-				}
+
+				// Handle unhandled packet types
 				else
 				{
 					ctx.Log(ID, 3, $"Unhandled packet type: {packet.Type}");
