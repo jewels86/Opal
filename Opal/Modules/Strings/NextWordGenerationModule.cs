@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using static Opal.Utilities.ModuleUtilities;
+using MessagePack.Resolvers;
+using System.Numerics;
 
 namespace Opal.Modules.Strings
 {
@@ -13,19 +15,22 @@ namespace Opal.Modules.Strings
 		public string ID => "strings:next-word-generation";
 		public ConcurrentQueue<Packet> Input { get; } = new();
 		public ConcurrentQueue<Packet> Output { get; } = new();
-		public ConcurrentDictionary<string, ConcurrentQueue<Packet>> Responses { get; } = new()
-		{
-			["memory:embedding-engine->get-id-response"] = new ConcurrentQueue<Packet>(),
-			["memory:embedding-engine->find-similar-response"] = new ConcurrentQueue<Packet>(),
-		};
+		public ConcurrentDictionary<string, ConcurrentQueue<Packet>> Responses { get; } = new();
 		public List<string> ResponseTypes { get; } = new()
 						{
 							"memory:embedding-engine->get-id-response",
+							"memory:embedding-engine->find-by=metadata-tag-response",	
+							"memory:embedding-engine->find-similar-response",
 						};
+		public bool CanContinue { get; set; } = true;
+
 
 		public void Initialize(Context ctx)
 		{
 			ctx.Add(this);
+			Responses["memory:embedding-engine->get-id-response"] = new ConcurrentQueue<Packet>();
+			Responses["memory:embedding-engine->find-similar-response"] = new ConcurrentQueue<Packet>();
+			Responses["memory:embedding-engine->find-by=metadata-tag-response"] = new ConcurrentQueue<Packet>();
 		}
 
 		public void Main(Context ctx)
@@ -39,68 +44,22 @@ namespace Opal.Modules.Strings
 					ctx.Log(ID, 3, $"Response received: {packet.Type}, requeued");
 					return;
 				}
+				
 				if (packet.Type == "strings:next-word-generation->generate" && packet.Payload is (string[], int))
 				{
 					(string[] tokens, int maxTokens) = ((string[], int))packet.Payload!;
-					ctx.Log(ID, 3, $"Generating next word for tokens: {string.Join(", ", tokens)}");
-					
-					string lastWord = tokens[^1];
-					Output.Enqueue(Packet.Create(
-						"memory:embedding-engine",
-						ID,
-						"memory:embedding-engine->find-by-metadata-tag",
-						"(string, string)",
-						("word", lastWord)
-					));
-					if (TryWaitForInput(4000, out Packet? embeddingResponse, Responses["memory:embedding-engine->get-id-response"]))
-					{
-						if (embeddingResponse == null || embeddingResponse.Success == false)
-						{
-							ctx.Log(ID, 3, $"Failed to retrieve embedding for '{lastWord}'.");
-							Output.Enqueue(Packet.Create(
-								packet.SourceID,
-								ID,
-								"strings:next-word-generation->generate-response",
-								"null",
-								null,
-								success: false
-							));
-							return;
-						}
-						int[] wordIDs = (int[])embeddingResponse.Payload!;
-						int wordID = wordIDs[0];
-						ctx.Log(ID, 3, $"Embedding for '{lastWord}' retrieved with ID {wordID}.");
-						Output.Enqueue(Packet.Create(
-							"memory:embedding-engine",
-							ID,
-							"memory:embedding-engine->find-similar",
-							"int",
-							wordID
-						));
-						if (TryWaitForInput(4000, out Packet? similarResponse, Responses["memory:embedding-engine->find-similar-response"]))
-						{
-							if (similarResponse == null || similarResponse.Success == false)
-							{
-								ctx.Log(ID, 3, $"Failed to retrieve similar words for ID {wordID}.");
-								Output.Enqueue(Packet.Create(
-									packet.SourceID,
-									ID,
-									"strings:next-word-generation->generate-response",
-									"null",
-									null,
-									success: false
-								));
-								return;
-							}
-							List<string> similarWords = (List<string>)similarResponse.Payload!;
-							ctx.Log(ID, 3, $"Similar words for '{lastWord}': {string.Join(", ", similarWords)} (IDs)");
+					ctx.Log(ID, 3, $"Generating next word for tokens: {string.Join(", ", tokens)} (with max {maxTokens}");
+					ctx.Log(ID, 3, $"Fetching embeddings...");
 
-						}
-						else
-						{
-							ctx.Log(ID, 3, $"Failed to retrieve similar words for ID {wordID}.");
-						}
+					Dictionary<string, int> ids = new();
+					Dictionary<string, float[]> idToVector = new();
+
+
+					foreach (string token in tokens)
+					{
+						
 					}
+					
 				}
 			};
 

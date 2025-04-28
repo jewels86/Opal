@@ -185,7 +185,7 @@ namespace Opal.Modules.Memory
 						ctx.Log(ID, 3, $"Found {foundNodes.Count} nodes with metadata {tag}: {value}");
 						Output.Enqueue(new Packet
 						{
-							Type = "memory:embedding-engine->find-by-metadata-response",
+							Type = "memory:embedding-engine->find-by-metadata-tag-response",
 							TargetID = packet.SourceID,
 							SourceID = ID,
 							Payload = foundNodes,
