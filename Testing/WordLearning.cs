@@ -21,10 +21,10 @@ namespace Testing
 			var nextWordGeneration = new Opal.Modules.Strings.NextWordGenerationModule();
 
 			//wordLearningManager.SentenceList.Add("The quick brown fox jumps over the lazy dog.");
+			wordLearningManager.SentenceList.Add("Cats land on their feet.");
 			wordLearningManager.SentenceList.Add("Dogs are pets.");
 			wordLearningManager.SentenceList.Add("Cats are pets.");
 			wordLearningManager.SentenceList.Add("Dogs can jump high.");
-			wordLearningManager.SentenceList.Add("Cats land on their feet.");
 			// goals: cats can -> cats can jump high, dogs land -> dogs land on their feet
 
 			stringParsing.Stopwords.Add("the");

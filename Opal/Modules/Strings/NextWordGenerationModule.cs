@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using static Opal.Utilities.ModuleUtilities;
 using MessagePack.Resolvers;
 using System.Numerics;
+using Opal.Modules.Memory;
 
 namespace Opal.Modules.Strings
 {
@@ -50,66 +51,75 @@ namespace Opal.Modules.Strings
 				if (packet.Type == "strings:next-word-generation->generate" && packet.Payload is (string[], int))
 				{
 					(string[] tokens, int maxTokens) = ((string[], int))packet.Payload!;
+					if (tokens.Length == 0)
+					{
+						ctx.Log(ID, 3, "No tokens provided for next word generation.");
+						Output.Enqueue(new Packet()
+						{
+							Type = "strings:next-word-generation->generate-response",
+							Payload = null,
+							PayloadType = "null",
+							SourceID = ID,
+							TargetID = "strings:next-word-generation"
+						});
+						return;
+					}
 					ctx.Log(ID, 3, $"Generating next word for tokens: {string.Join(", ", tokens)} (with max {maxTokens})");
 					ctx.Log(ID, 3, $"Fetching embeddings...");
 
-					Dictionary<string, int> ids = new();
-					Dictionary<int, (int, double)[]> similars = [];
-					ConcurrentQueue<Packet> inQueue; 
+					int id;
+					string token = tokens[^1];
+					List<(int, double)> similars = [];
+					ConcurrentQueue<Packet> inQueue;
 
-					foreach (string token in tokens)
+					Output.Enqueue(new Packet()
 					{
-						if (!ids.TryGetValue(token, out int id))
+						Type = "memory:embedding-engine->get-id",
+						Payload = token,
+						PayloadType = "string",
+						SourceID = ID,
+						TargetID = "memory:embedding-engine"
+					});
+
+					if (TryWaitForInput(4000, out Packet? response, Responses["memory:embedding-engine->get-id-response"], p => p.PayloadType == "int"))
+					{
+						if (response != null && response.Payload is int retrievedId)
 						{
+							id = retrievedId;
+							ctx.Log(ID, 3, $"Token '{token}' retrieved with ID {id}.");
+							ctx.Log(ID, 3, $"Finding similar tokens for ID {id}...");
+
 							Output.Enqueue(new Packet()
 							{
-								Type = "memory:embedding-engine->get-id",
-								Payload = token,
-								PayloadType = "string",
+								Type = "memory:embedding-engine->find-similar",
+								Payload = id,
+								PayloadType = "int",
 								SourceID = ID,
 								TargetID = "memory:embedding-engine"
 							});
-							
-							if (TryWaitForInput(4000, out Packet? response, Responses["memory:embedding-engine->get-id-response"], p => p.PayloadType == "int"))
+							inQueue = Responses["memory:embedding-engine->find-similar-response"];
+							List<Packet> similar = WaitForExpectedResponses(1, ref inQueue);
+							if (similar.Count == 0 || similar[0].Payload is not List<(int, double)>)
 							{
-								if (response != null && response.Payload is int retrievedId)
-								{
-									id = retrievedId;
-									ids[token] = id;
-									ctx.Log(ID, 3, $"Token '{token}' retrieved with ID {id}.");
-									ctx.Log(ID, 3, $"Finding similar tokens for ID {id}...");
-
-									Output.Enqueue(new Packet()
-									{
-										Type = "memory:embedding-engine->find-similar",
-										Payload = id,
-										PayloadType = "int",
-										SourceID = ID,
-										TargetID = "memory:embedding-engine"
-									});
-									inQueue = Responses["memory:embedding-engine->find-similar-response"];
-									List<Packet> similar = WaitForExpectedResponses(1, ref inQueue);
-									if (similar.Count == 0 || similar[0].Payload is not List<(int, double)>)
-									{
-										ctx.Log(ID, 3, $"Failed to retrieve similar tokens for ID {id}.");
-										return;
-									}
-									Packet p = similar[0];
-									similars[ids[token]] = ((List<(int, double)>)p.Payload!).OrderBy(s => s.Item2).Reverse().ToArray();
-									ctx.Log(ID, 3, $"Similar tokens found for ID {id}: {string.Join(", ", similars[ids[token]].Select(x => $"{x.Item1} ({x.Item2})"))}.");
-								}
-								else
-								{
-									ctx.Log(ID, 3, $"Failed to retrieve ID for token '{token}'.");
-									return;
-								}
+								ctx.Log(ID, 3, $"Failed to retrieve similar tokens for ID {id}.");
+								return;
 							}
+							Packet p = similar[0];
+							similars.AddRange((List<(int, double)>)p.Payload!);
+							ctx.Log(ID, 3, $"Similar tokens found for ID {id}: {string.Join(", ", similars.Select(x => $"{x.Item1} ({x.Item2})"))}.");
+						}
+						else
+						{
+							ctx.Log(ID, 3, $"Failed to retrieve ID for token '{token}'.");
+							return;
 						}
 					}
 
-					
+					ctx.Log(ID, 3, $"Finding similar sentences...");
+					List<EmbeddingNode> similarSentences = [];
 
 					
+
 				}
 
 				lock (_waitLock) { _wait = false; }

@@ -84,16 +84,49 @@ namespace Opal.Modules.Memory
 							ctx.Log(ID, 2, $"Node with ID {nodeID} not found.");
 							return;
 						}
+
 						foreach (var kvp in associations)
 						{
-							node.Associations[kvp.Key] = kvp.Value;
+							if (node.Associations.ContainsKey(kvp.Key))
+							{
+								node.Associations[kvp.Key] += kvp.Value;
+							}
+							else
+							{
+								node.Associations[kvp.Key] = kvp.Value;
+							}
 						}
+
+						double totalStrength = node.Associations.Values.Sum();
+						foreach (var key in node.Associations.Keys.ToList())
+						{
+							node.Associations[key] /= totalStrength;
+						}
+
 						ctx.Log(ID, 3, $"Associated {associations.Count} vectors with node {nodeID}-{SHAHash(node.Vector)} (hashed SHA256)");
 						ctx.Log(ID, 3, $"Adjusting vector...");
-						double[] averageVector = AverageVectors(Nodes.Where(n => associations.ContainsKey(n.ID)).Select(n => n.Vector).ToArray());
-						averageVector = AverageVectors(new[] { node.Vector, averageVector });
-						double[] normalized = NormalizeVector(averageVector);
+
+						double[] weightedSum = new double[EmbeddingSize];
+						foreach (var kvp in node.Associations)
+						{
+							EmbeddingNode? associatedNode = Nodes.FirstOrDefault(n => n.ID == kvp.Key);
+							if (associatedNode != null)
+							{
+								for (int i = 0; i < EmbeddingSize; i++)
+								{
+									weightedSum[i] += associatedNode.Vector[i] * kvp.Value;
+								}
+							}
+						}
+
+						for (int i = 0; i < EmbeddingSize; i++)
+						{
+							weightedSum[i] += node.Vector[i];
+						}
+
+						double[] normalized = NormalizeVector(weightedSum);
 						node.Vector = normalized;
+
 						ctx.Log(ID, 3, $"New vector for node {nodeID}: {SHAHash(normalized)} (SHA256)");
 						Output.Enqueue(new Packet
 						{
@@ -103,10 +136,6 @@ namespace Opal.Modules.Memory
 							Payload = true,
 							PayloadType = "bool",
 						});
-					}
-					else
-					{
-						ctx.Log(ID, 2, $"Invalid payload type for associate: {packet.PayloadType} (should be (int, Dictionary<int, double>)");
 					}
 				}
 				#endregion
