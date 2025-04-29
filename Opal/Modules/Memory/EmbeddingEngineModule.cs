@@ -290,10 +290,67 @@ namespace Opal.Modules.Memory
 					}
 				}
 				#endregion
+				else if (packet.Type == "memory:embedding-engine->get-by-id")
+				{
+					if (TypeIs(packet.PayloadType, "int"))
+					{
+						int nodeID = (int)packet.Payload!;
+						EmbeddingNode? node = Nodes.FirstOrDefault(n => n.ID == nodeID);
+						if (node == null)
+						{
+							ctx.Log(ID, 2, $"Node with ID {nodeID} not found.");
+							return;
+						}
+						ctx.Log(ID, 3, $"Found node with ID {nodeID}: {SHAHash(node.Vector)} (hashed SHA256)");
+						Output.Enqueue(new Packet
+						{
+							Type = "memory:embedding-engine->get-by-id-response",
+							TargetID = packet.SourceID,
+							SourceID = ID,
+							Payload = node,
+							PayloadType = "EmbeddingNode",
+							PacketID = -packet.PacketID,
+						});
+					}
+					else
+					{
+						ctx.Log(ID, 2, $"Invalid payload type for get-by-id: {packet.PayloadType} (should be int)");
+					}
+				}
+				else if (packet.Type == "memory:embedding-engine->similarity")
+				{
+					if (TypeIs(packet.PayloadType, "(int, int)"))
+					{
+						var payload = (ValueTuple<int, int>)packet.Payload!;
+						int nodeID1 = payload.Item1;
+						int nodeID2 = payload.Item2;
+						EmbeddingNode? node1 = Nodes.FirstOrDefault(n => n.ID == nodeID1);
+						EmbeddingNode? node2 = Nodes.FirstOrDefault(n => n.ID == nodeID2);
+						if (node1 == null || node2 == null)
+						{
+							ctx.Log(ID, 2, $"Node with ID {nodeID1} or {nodeID2} not found.");
+							return;
+						}
+						double similarity = CosineSimilarity(NormalizeVector(node1.Vector), NormalizeVector(node2.Vector));
+						ctx.Log(ID, 3, $"Similarity between {nodeID1} and {nodeID2}: {similarity}");
+						Output.Enqueue(new Packet
+						{
+							Type = "memory:embedding-engine->similarity-response",
+							TargetID = packet.SourceID,
+							SourceID = ID,
+							Payload = similarity,
+							PayloadType = "double",
+							PacketID = -packet.PacketID,
+						});
+					}
+					else
+					{
+						ctx.Log(ID, 2, $"Invalid payload type for similarity: {packet.PayloadType} (should be (int, int))");
+					}
+				}
 				else
 				{
 					ctx.Log(ID, 2, $"Unknown packet type: {packet.Type}");
-
 				}
 			};
 

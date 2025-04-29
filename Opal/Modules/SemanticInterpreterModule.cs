@@ -216,7 +216,7 @@ namespace Opal.Modules
 								{
 									continue;
 								}
-								ctx.Log(ID, 3, $"Processing packet result from queue: {res.Type} (payload type {res.PayloadType})");
+								ctx.Log(ID, 4, $"Processing packet result from queue: {res.Type} (payload type {res.PayloadType})");
 								Task.Run(() => func(res));
 							}
 						}
@@ -229,12 +229,12 @@ namespace Opal.Modules
 						if (result.Type == "memory:embedding-engine->associate-response")
 						{
 							Responses.Enqueue(result);
-							ctx.Log(ID, 3, $"Received association response: {result.Payload}");
+							ctx.Log(ID, 4, $"Received association response: {result.Payload}");
 						}
 						if (result.Type == "memory:embedding-engine->find-by-metadata-tag-response")
 						{
 							Responses.Enqueue(result);
-							ctx.Log(ID, 3, $"Received find-by-metadata-tag response: {result.Payload}");
+							ctx.Log(ID, 4, $"Received find-by-metadata-tag response: {result.Payload}");
 						}
 						else { resultQueue.Enqueue(result); }
 					}

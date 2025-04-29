@@ -39,6 +39,7 @@ namespace Testing
 			semanticInterpreter.Initialize(ctx);
 			nextWordGeneration.Initialize(ctx);
 
+			ctx.LogLevel = 5;
 			ctx.Start();
 		}
 	}

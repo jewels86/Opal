@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using Opal;
 using static Opal.Utilities.ModuleUtilities;
+using Opal.Modules.Memory;
 
 namespace Testing
 {
@@ -168,15 +169,46 @@ namespace Testing
 					ctx.Log(ID, 3, $"Failed to parse sentence: {input}");
 				}
 				string[] tokens = (string[])parsedPacket!.Payload!;
-
+				inputQueue.Clear();
 				Output.Enqueue(new Packet()
 				{
 					Type = "strings:next-word-generation->generate",
-					Payload = (tokens, maxTokens),
-					PayloadType = "(string[], int)",
+					Payload = tokens,
+					PayloadType = "string[]",
 					SourceID = ID,
 					TargetID = "strings:next-word-generation"
 				});
+				Packet res = WaitForExpectedResponses(1, ref inputQueue)[0];
+				if (res == null || res.Payload == null)
+				{
+					ctx.Log(ID, 3, $"Failed to generate next word");
+				}
+				int generated = (int)res!.Payload!;
+				Output.Enqueue(new Packet()
+				{
+					Type = "memory:embedding-engine->get-by-id",
+					Payload = generated,
+					PayloadType = "int",
+					SourceID = ID,
+					TargetID = "memory:embedding-engine"
+				});
+				if (TryWaitForInput(10000, out Packet? wordPacket, Input, p => p.Type == "memory:embedding-engine->get-by-id-response"))
+				{
+					if (wordPacket != null && TypeIs(wordPacket.PayloadType, "EmbeddingNode"))
+					{
+						EmbeddingNode node = (EmbeddingNode)wordPacket.Payload!;
+						string word = node.Metadata["word"];
+						ctx.Log(ID, 3, $"Generated word: {word}");
+					}
+					else
+					{
+						ctx.Log(ID, 3, $"Failed to retrieve generated word");
+					}
+				}
+				else
+				{
+					ctx.Log(ID, 3, $"Failed to retrieve generated word (no response)");
+				}
 
 				Task.Delay(2000).Wait();
 				//ctx.Exit();

@@ -360,7 +360,7 @@ namespace Opal.Modules.Strings
 					if (AwaitedResponseTypes.Contains(packet.Type))
 					{
 						AwaitedResponses.Enqueue(packet);
-						ctx.Log(ID, 3, $"Queued awaited response: {packet.Type} (ID {packet.PacketID})");
+						ctx.Log(ID, 4, $"Queued awaited response: {packet.Type} (ID {packet.PacketID})");
 						continue;
 					}
 					Task.Run(() => func(packet));
