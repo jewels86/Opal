@@ -60,6 +60,7 @@ namespace Testing
 						if (TypeIs(packet.PayloadType, "string[]"))
 						{
 							string[] tokens = (string[])packet.Payload!;
+							tokens = tokens.Prepend("[special-start]").ToArray();
 							foreach (var token in tokens)
 							{
 								if (_addedWords.Add(token))
@@ -153,6 +154,7 @@ namespace Testing
 				ctx.Log(ID, 3, "Invalid input for max tokens. Exiting.");
 				return;
 			}
+
 			Output.Enqueue(new Packet()
 			{
 				Type = "strings:string-parsing->parse",
@@ -162,57 +164,77 @@ namespace Testing
 				TargetID = "strings:string-parsing"
 			});
 			ctx.Log(ID, 3, $"Parsing sentence: {input}");
+
 			if (TryWaitForInput(10000, out Packet? parsedPacket, Responses))
 			{
 				if (parsedPacket == null || parsedPacket.Payload == null)
 				{
 					ctx.Log(ID, 3, $"Failed to parse sentence: {input}");
+					return;
 				}
-				string[] tokens = (string[])parsedPacket!.Payload!;
+
+				string[] tokens = (string[])parsedPacket.Payload!;
 				inputQueue.Clear();
-				Output.Enqueue(new Packet()
+
+				List<string> generatedWords = new(tokens);
+				for (int i = 0; i < maxTokens; i++)
 				{
-					Type = "strings:next-word-generation->generate",
-					Payload = tokens,
-					PayloadType = "string[]",
-					SourceID = ID,
-					TargetID = "strings:next-word-generation"
-				});
-				Packet res = WaitForExpectedResponses(1, ref inputQueue)[0];
-				if (res == null || res.Payload == null)
-				{
-					ctx.Log(ID, 3, $"Failed to generate next word");
-				}
-				int generated = (int)res!.Payload!;
-				Output.Enqueue(new Packet()
-				{
-					Type = "memory:embedding-engine->get-by-id",
-					Payload = generated,
-					PayloadType = "int",
-					SourceID = ID,
-					TargetID = "memory:embedding-engine"
-				});
-				if (TryWaitForInput(10000, out Packet? wordPacket, Input, p => p.Type == "memory:embedding-engine->get-by-id-response"))
-				{
-					if (wordPacket != null && TypeIs(wordPacket.PayloadType, "EmbeddingNode"))
+					Output.Enqueue(new Packet()
 					{
-						EmbeddingNode node = (EmbeddingNode)wordPacket.Payload!;
-						string word = node.Metadata["word"];
-						ctx.Log(ID, 3, $"Generated word: {word}");
+						Type = "strings:next-word-generation->generate",
+						Payload = tokens,
+						PayloadType = "string[]",
+						SourceID = ID,
+						TargetID = "strings:next-word-generation"
+					});
+
+					Packet res = WaitForExpectedResponses(1, ref inputQueue)[0];
+					if (res == null || res.Payload == null)
+					{
+						ctx.Log(ID, 3, $"Failed to generate next word. Stopping generation.");
+						break;
+					}
+
+					int generated = (int)res.Payload!;
+					Output.Enqueue(new Packet()
+					{
+						Type = "memory:embedding-engine->get-by-id",
+						Payload = generated,
+						PayloadType = "int",
+						SourceID = ID,
+						TargetID = "memory:embedding-engine"
+					});
+
+					if (TryWaitForInput(10000, out Packet? wordPacket, Input, p => p.Type == "memory:embedding-engine->get-by-id-response"))
+					{
+						if (wordPacket != null && TypeIs(wordPacket.PayloadType, "EmbeddingNode"))
+						{
+							EmbeddingNode node = (EmbeddingNode)wordPacket.Payload!;
+							string word = node.Metadata["word"];
+							generatedWords.Add(word);
+							ctx.Log(ID, 3, $"Generated word: {word}");
+							tokens = generatedWords.ToArray(); // Update tokens for the next iteration
+						}
+						else
+						{
+							ctx.Log(ID, 3, $"Failed to retrieve generated word. Stopping generation.");
+							break;
+						}
 					}
 					else
 					{
-						ctx.Log(ID, 3, $"Failed to retrieve generated word");
+						ctx.Log(ID, 3, $"Failed to retrieve generated word (no response). Stopping generation.");
+						break;
 					}
 				}
-				else
-				{
-					ctx.Log(ID, 3, $"Failed to retrieve generated word (no response)");
-				}
 
-				Task.Delay(2000).Wait();
-				//ctx.Exit();
+				ctx.Log(ID, 3, $"Generated sequence: {string.Join(" ", generatedWords)}");
 			}
+			else
+			{
+				ctx.Log(ID, 3, $"Failed to parse sentence: {input}");
+			}
+
 		}
 	}
 }

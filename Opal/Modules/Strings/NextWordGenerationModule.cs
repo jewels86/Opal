@@ -135,7 +135,7 @@ namespace Opal.Modules.Strings
 							SourceID = ID,
 							TargetID = "memory:embedding-engine"
 						});
-						ctx.Log(ID, 3, $"Getting ID of {similarID}...");
+						ctx.Log(ID, 3, $"Getting node for {similarID}...");
 						inQueue = Responses["memory:embedding-engine->get-by-id-response"];
 						Packet res = WaitForExpectedResponses(1, ref inQueue)[0];
 						ctx.Log(ID, 3, $"Received response for ID {similarID}.");

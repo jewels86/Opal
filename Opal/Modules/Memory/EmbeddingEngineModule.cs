@@ -8,6 +8,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 using static Opal.Utilities.ModuleUtilities;
+using static Opal.Utilities.EmbeddingUtilities;
 
 namespace Opal.Modules.Memory
 {
@@ -365,72 +366,6 @@ namespace Opal.Modules.Memory
 			ctx.Log(ID, 3, "Exiting main loop of EmbeddingEngineModule.");
 		}
 
-		private double[] AverageVectors(double[][] vectors)
-		{
-			double[] average = new double[EmbeddingSize];
-			for (int i = 0; i < EmbeddingSize; i++)
-			{
-				double sum = vectors.Sum(v => v[i]);
-				average[i] = sum / vectors.Length;
-			}
-			return average;
-		}
-
-		private double[] NormalizeVector(double[] vector)
-		{
-			double length = Math.Sqrt(vector.Sum(v => v * v));
-			for (int i = 0; i < vector.Length; i++)
-			{
-				vector[i] /= length;
-			}
-			return vector;
-		}
-
-		private double CosineSimilarity(double[] vectorA, double[] vectorB)
-		{
-			double dotProduct = 0;
-			double lengthA = 0;
-			double lengthB = 0;
-			for (int i = 0; i < vectorA.Length; i++)
-			{
-				dotProduct += vectorA[i] * vectorB[i];
-				lengthA += vectorA[i] * vectorA[i];
-				lengthB += vectorB[i] * vectorB[i];
-			}
-			if (lengthA == 0 || lengthB == 0)
-			{
-				return 0;
-			}
-			return dotProduct / (Math.Sqrt(lengthA) * Math.Sqrt(lengthB));
-		}
-		private double PearsonCorrelation(double[] vectorA, double[] vectorB)
-		{
-			double sumA = vectorA.Sum();
-			double sumB = vectorB.Sum();
-			double sumASquared = vectorA.Sum(v => v * v);
-			double sumBSquared = vectorB.Sum(v => v * v);
-			double sumProduct = 0;
-			for (int i = 0; i < vectorA.Length; i++)
-			{
-				sumProduct += vectorA[i] * vectorB[i];
-			}
-			int n = vectorA.Length;
-			double numerator = n * sumProduct - sumA * sumB;
-			double denominator = Math.Sqrt((n * sumASquared - sumA * sumA) * (n * sumBSquared - sumB * sumB));
-			if (denominator == 0)
-			{
-				return 0;
-			}
-			return numerator / denominator;
-		}
-		private double EuclideanDistance(double[] vectorA, double[] vectorB)
-		{
-			double sum = 0;
-			for (int i = 0; i < vectorA.Length; i++)
-			{
-				sum += (vectorA[i] - vectorB[i]) * (vectorA[i] - vectorB[i]);
-			}
-			return Math.Sqrt(sum);
-		}
+		
 	}
 }

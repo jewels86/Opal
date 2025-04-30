@@ -25,6 +25,10 @@ namespace Testing
 			wordLearningManager.SentenceList.Add("Dogs are pets.");
 			wordLearningManager.SentenceList.Add("Cats are pets.");
 			wordLearningManager.SentenceList.Add("Dogs can jump high.");
+			wordLearningManager.SentenceList.Add("Cats can jump high.");
+			wordLearningManager.SentenceList.Add("Cats eat food.");
+			wordLearningManager.SentenceList.Add("Dogs eat food.");
+			wordLearningManager.SentenceList.Add("Pets eat food.");
 			// goals: cats can -> cats can jump high, dogs land -> dogs land on their feet
 
 			stringParsing.Stopwords.Add("the");
@@ -39,7 +43,6 @@ namespace Testing
 			semanticInterpreter.Initialize(ctx);
 			nextWordGeneration.Initialize(ctx);
 
-			ctx.LogLevel = 5;
 			ctx.Start();
 		}
 	}

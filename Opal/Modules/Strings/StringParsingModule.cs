@@ -31,6 +31,20 @@ namespace Opal.Modules.Strings
 					if (packet.Type == "strings:string-parsing->parse" && TypeIs(packet.PayloadType, "string"))
 					{
 						ctx.Log(ID, 3, $"Parsing string: {packet.Payload}");
+						if ((string)packet.Payload! == "[special-start]")
+						{
+							ctx.Log(ID, 3, $"Special start detected: {packet.Payload}");
+							Output.Enqueue(new Packet()
+							{
+								Type = "strings:string-parsing->parse-response",
+								Payload = new string[] { "[special-start]" },
+								PayloadType = "string[]",
+								SourceID = ID,
+								TargetID = packet.SourceID,
+								Success = true
+							});
+							continue;
+						}
 						string parsedString = ParseString((string)packet.Payload!);
 						string[] tokenized = Tokenize(parsedString);
 						Output.Enqueue(new Packet()
