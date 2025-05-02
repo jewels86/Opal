@@ -8,6 +8,7 @@ using static Opal.Utilities.ModuleUtilities;
 using MessagePack.Resolvers;
 using System.Numerics;
 using Opal.Modules.Memory;
+using Opal.Utilities;
 
 namespace Opal.Modules.Strings
 {
@@ -158,20 +159,16 @@ namespace Opal.Modules.Strings
 								{
 									Output.Enqueue(new Packet()
 									{
-										Type = "memory:embedding-engine->similarity",
-										Payload = (similarID, word),
-										PayloadType = "(int, int)",
+										Type = "memory:embedding-engine->get-by-id",
+										Payload = word,
+										PayloadType = "int",
 										SourceID = ID,
 										TargetID = "memory:embedding-engine"
 									});
-									inQueue = Responses["memory:embedding-engine->similarity-response"];
-									Packet similarityResponse = WaitForExpectedResponses(1, ref inQueue)[0];
-									if (similarityResponse.Payload is not double)
-									{
-										ctx.Log(ID, 3, $"Failed to retrieve similarity for ID {similarID} and word {word}.");
-										continue;
-									}
-									double similarity = (double)similarityResponse.Payload!;
+									inQueue = Responses["memory:embedding-engine->get-by-id-response"];
+									Packet wordResponse = WaitForExpectedResponses(1, ref inQueue)[0];
+									EmbeddingNode wordNode = (EmbeddingNode)wordResponse.Payload!;
+									double similarity = EmbeddingUtilities.CosineSimilarity(node.Vector, wordNode.Vector);
 									wordSimilarities.Add((word, similarity));
 								}
 								wordSimilarities = wordSimilarities.OrderByDescending(x => x.Item2).ToList();
@@ -209,7 +206,7 @@ namespace Opal.Modules.Strings
 					}
 
 					List<(int, double)> overlap = similars.Intersect(nextWords).ToList();
-					Random random = new Random();
+					Random random = new();
 					var weightedNextWords = nextWords
 						.Select(x => (x.Item1, WeightedScore: x.Item2 * (1 + random.NextDouble() * 0.1)))
 						.OrderByDescending(x => x.WeightedScore)
