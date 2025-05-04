@@ -51,24 +51,6 @@ namespace Opal.Utilities
 				}
 				return dist;
 			}
-
-			public static float HammingSimilarity(ulong hash1, ulong hash2)
-			{
-				ulong xored = hash1 ^ hash2;
-				int differingBits = CountBits(xored);
-				return 1.0f - (differingBits / 64f);
-			}
-
-			public static int CountBits(ulong value)
-			{
-				int count = 0;
-				while (value != 0)
-				{
-					value &= (value - 1);
-					count++;
-				}
-				return count;
-			}
 		}
 	}
 

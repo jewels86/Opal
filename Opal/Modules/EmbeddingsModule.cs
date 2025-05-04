@@ -119,10 +119,8 @@ namespace Opal.Modules
 			ulong oldHashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong oldHashB = HashGenerator.Hash(embeddingB.Vector);
 
-			embeddingA.Vector = Add(Multiply(Subtract(embeddingA.Vector, embeddingB.Vector), R), embeddingA.Vector);
-			embeddingB.Vector = Add(Multiply(Subtract(embeddingB.Vector, embeddingA.Vector), R), embeddingB.Vector);
-			embeddingA.Vector = Normalize(embeddingA.Vector);
-			embeddingB.Vector = Normalize(embeddingB.Vector);
+			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - R), Multiply(embeddingB.Vector, R)));
+			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - R), Multiply(embeddingA.Vector, R)));
 
 			ulong hashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong hashB = HashGenerator.Hash(embeddingB.Vector);
@@ -192,20 +190,14 @@ namespace Opal.Modules
 		#region Similarity
 		public double CosineSimilarity(double[] vectorA, double[] vectorB)
 		{
-			double dotProduct = 0;
-			double lengthA = 0;
-			double lengthB = 0;
-			for (int i = 0; i < vectorA.Length; i++)
-			{
-				dotProduct += vectorA[i] * vectorB[i];
-				lengthA += vectorA[i] * vectorA[i];
-				lengthB += vectorB[i] * vectorB[i];
-			}
-			if (lengthA == 0 || lengthB == 0)
+			double dotProduct = DotProduct(vectorA, vectorB);
+			double magnitudeA = Magnitude(vectorA);
+			double magnitudeB = Magnitude(vectorB);
+			if (magnitudeA == 0 || magnitudeB == 0)
 			{
 				return 0;
 			}
-			return dotProduct / (Math.Sqrt(lengthA) * Math.Sqrt(lengthB));
+			return dotProduct / (magnitudeA * magnitudeB);
 		}
 		public static double PearsonCorrelation(double[] vectorA, double[] vectorB)
 		{
@@ -238,7 +230,7 @@ namespace Opal.Modules
 		}
 		public double QuickSimilarity(ulong hashA, ulong hashB)
 		{
-			return SimHashGenerator<double[]>.HammingSimilarity(hashA, hashB);
+			return SimHashGenerator<double[]>.HammingDistance(hashA, hashB);
 		}
 		public double QuickSimilarity(Embedding<T> embeddingA, Embedding<T> embeddingB)
 		{
@@ -271,14 +263,13 @@ namespace Opal.Modules
 			}
 			return vector.Select(v => v / length).ToArray();
 		}
-		public static double[] Magnitude(double[] vector)
+		public static double Magnitude(double[] vector)
 		{
-			double length = Math.Sqrt(vector.Sum(v => v * v));
-			return vector.Select(v => v / length).ToArray();
+			return Math.Sqrt(vector.Sum(v => v * v));
 		}
-		public static double[] DotProduct(double[] vectorA, double[] vectorB)
+		public static double DotProduct(double[] vectorA, double[] vectorB)
 		{
-			return vectorA.Zip(vectorB, (a, b) => a * b).ToArray();
+			return vectorA.Zip(vectorB, (a, b) => a * b).Sum();
 		}
 		#endregion
 	}
