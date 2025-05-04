@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 
 namespace Opal
 {
@@ -13,6 +14,8 @@ namespace Opal
 		private static object _nextIDLock = new();
 
 		public static ConcurrentDictionary<int, IModule> RegisteredModules { get; } = new();
+
+		public static Action<string, int, string> Log { get; set; } = StandardLog;
 
 		public static int Register(IModule module)
 		{
@@ -44,6 +47,11 @@ namespace Opal
 				return true;
 			}
 			return false;
+		}
+
+		public static void StandardLog(string name, int level, string message)
+		{
+			Console.WriteLine($"[{name}] [{level}] {message}");
 		}
 	}
 }

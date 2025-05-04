@@ -10,31 +10,42 @@ namespace Testing
 		{
 			EmbeddingsModule<string> embeddings = new(16, 256, 256, 0.7);
 
-			// Create a 4x4 grid of embeddings
-			var grid = new Embedding<string>[4, 4];
-			for (int i = 0; i < 4; i++)
+			// Test: Create embeddings
+			var embedding1 = embeddings.CreateEmbedding("Data1");
+			var embedding2 = embeddings.CreateEmbedding("Data2");
+			Console.WriteLine($"Created Embedding1 ID: {embedding1.ID}, Data: {embedding1.Data}");
+			Console.WriteLine($"Created Embedding2 ID: {embedding2.ID}, Data: {embedding2.Data}");
+
+			var similarity = embeddings.CosineSimilarity(embedding1.Vector, embedding2.Vector);
+			Console.WriteLine($"Cosine Similarity between Embedding1 and Embedding2: {similarity}");
+
+			// Test: Retrieve embeddings by ID
+			var retrievedEmbedding = embeddings.GetEmbedding(embedding1.ID);
+			Console.WriteLine($"Retrieved Embedding ID: {retrievedEmbedding?.ID}, Data: {retrievedEmbedding?.Data}");
+
+			// Test: Associate embeddings
+			embeddings.Associate(embedding1, embedding2);
+			Console.WriteLine("Associated Embedding1 and Embedding2.");
+
+			similarity = embeddings.CosineSimilarity(embedding1.Vector, embedding2.Vector);
+			Console.WriteLine($"Cosine Similarity after association: {similarity}");
+
+			// Test: Find similar embeddings
+			var similarEmbeddings = embeddings.FindSimilar(embedding1, max: 5, threshold: 0.5);
+			Console.WriteLine($"Found {similarEmbeddings.Count} similar embeddings for Embedding1: {string.Join(", ", similarEmbeddings)}.");
+
+			foreach (var (id, embedding) in embeddings.EmbeddingIDs)
 			{
-				for (int j = 0; j < 4; j++)
-				{
-					grid[i, j] = embeddings.CreateEmbedding($"cell_{i}_{j}");
-					var hash = embeddings.HashGenerator.Hash(grid[i, j].Vector);
-					Console.WriteLine($"Embedding at ({i},{j}): {hash}");
-				}
+				Console.WriteLine($"Embedding ID: {id}, Data: {embedding.Data}");
 			}
 
-			// Associate some embeddings
-			embeddings.Associate(grid[0, 0], grid[1, 1]);
-			embeddings.Associate(grid[2, 2], grid[3, 3]);
-			embeddings.Associate(grid[0, 3], grid[3, 0]);
+			// Test: Remove embeddings
+			bool removed = embeddings.RemoveEmbedding(embedding1.ID);
+			Console.WriteLine($"Removed Embedding1: {removed}");
 
-			// Display cosine similarity for associated embeddings
-			Console.WriteLine($"similarity (0,0) and (1,1): {embeddings.CosineSimilarity(grid[0, 0].Vector, grid[1, 1].Vector)}");
-			Console.WriteLine($"similarity (2,2) and (3,3): {embeddings.CosineSimilarity(grid[2, 2].Vector, grid[3, 3].Vector)}");
-			Console.WriteLine($"similarity (0,3) and (3,0): {embeddings.CosineSimilarity(grid[0, 3].Vector, grid[3, 0].Vector)}");
-
-			// Fix for CS1501: Use string.Join with two arguments
-			var similarEmbeddings = embeddings.FindSimilar(grid[0, 0], 1);
-			Console.WriteLine($"Found similarity for (0,0): {string.Join(", ", similarEmbeddings)}");
+			// Test: Attempt to retrieve removed embedding
+			var removedEmbedding = embeddings.GetEmbedding(embedding1.ID);
+			Console.WriteLine($"Retrieved Removed Embedding: {removedEmbedding?.ID ?? -1}");
 		}
 	}
 }
