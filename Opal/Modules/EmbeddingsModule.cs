@@ -167,7 +167,7 @@ namespace Opal.Modules
 			EmbeddingIDs[embeddingB.ID] = embeddingB;
 		}
 		#endregion
-		#region Get/Find Embedding(s)
+		#region Get Embedding(s)
 		public Embedding<T>? GetEmbedding(int id)
 		{
 			if (EmbeddingIDs.TryGetValue(id, out var embedding))
@@ -184,6 +184,27 @@ namespace Opal.Modules
 				return bucket.FirstOrDefault(x => HashGenerator.Hash(x.Vector) == hash);
 			}
 			return null;
+		}
+		#endregion
+		#region Find Embedding(s)
+		public (Embedding<T>, double)[] FindSimilar(Embedding<T> embedding, int max = 10, double threshold = 0.7, Func<double[], double[], double>? similarityFunction = null)
+		{
+			ulong hash = HashGenerator.Hash(embedding.Vector);
+			int originalBucketID = _reduce(hash);
+
+			similarityFunction ??= CosineSimilarity;
+
+			int[] sortedBuckets = [.. Embeddings.Keys.OrderBy(x => Math.Abs(x - originalBucketID))];
+			(Embedding<T>, double)[] results = new (Embedding<T>, double)[max];
+
+			foreach (var bucketID in sortedBuckets)
+			{
+				if (Embeddings.TryGetValue(bucketID, out var bucket))
+				{
+					
+				}
+			}
+			return results;
 		}
 		#endregion
 
@@ -235,6 +256,10 @@ namespace Opal.Modules
 		public double QuickSimilarity(Embedding<T> embeddingA, Embedding<T> embeddingB)
 		{
 			return QuickSimilarity(HashGenerator.Hash(embeddingA.Vector), HashGenerator.Hash(embeddingB.Vector));
+		}
+		public double QuickSimilarity(double[] vectorA, double[] vectorB)
+		{
+			return QuickSimilarity(HashGenerator.Hash(vectorA), HashGenerator.Hash(vectorB));
 		}
 		#endregion
 		#region Vector Operations
