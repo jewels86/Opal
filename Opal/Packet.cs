@@ -12,6 +12,7 @@ namespace Opal
 		public Dictionary<string, object?> Payload { get; set; } = [];
 		public int Sender { get; set; } = sender;
 		public int Target { get; set; } = target;
+		public int ResponseTo { get; set; } = -1;
 
 		public void Deconstruct(out Dictionary<string, object?> payload, out int sender)
 		{

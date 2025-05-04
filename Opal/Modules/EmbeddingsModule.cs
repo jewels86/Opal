@@ -8,7 +8,7 @@ using Opal.Utilities.Opal.Utilities;
 
 namespace Opal.Modules
 {
-	public class EmbeddingsModule<T> : IModule
+	public class EmbeddingsModule<T> : IModule where T : notnull
 	{
 		public int ID { get; private set; }
 		public string Name { get; private set; }
@@ -41,11 +41,12 @@ namespace Opal.Modules
 		/// <param name="n">The number of dimensions a single embedding contains.</param>
 		/// <param name="h">The number of hash bits to use when SimHashing.</param>
 		/// <param name="r">The learning rate to use when associating vectors.</param>
+		/// <param name="name">Optional name for the module.</param>
 		/// <param name="reduce">A function that takes a ulong hash and converts it to an int bucket.</param>
-		public EmbeddingsModule(int k, int n, int h, double r, Func<ulong, int>? reduce = null)
+		public EmbeddingsModule(int k, int n, int h, double r, string? name = null, Func<ulong, int>? reduce = null)
 		{
 			ID = Core.Register(this);
-			Name = $"embeddings-{typeof(T).Name.ToLower()}";
+			Name = name ?? $"embeddings-{typeof(T).Name.ToLower()}";
 			K = k;
 			N = n;
 			H = h;
@@ -124,17 +125,26 @@ namespace Opal.Modules
 			}
 			return RemoveEmbedding(value);
 		}
+		public bool RemoveEmbedding(T data)
+		{
+			var embedding = EmbeddingIDs.Values.FirstOrDefault(x => x.Data.Equals(data));
+			if (embedding == null)
+			{
+				return false;
+			}
+			return RemoveEmbedding(embedding);
+		}
 		#endregion
 		#region Associate Embeddings
-		public void Associate(Embedding<T> embeddingA, Embedding<T> embeddingB)
+		public void Associate(Embedding<T> embeddingA, Embedding<T> embeddingB, double strength)
 		{
 			Core.Log(Name, 2, $"Associating embeddings: {embeddingA} and {embeddingB} ({typeof(T).Name})");
 			ulong oldHashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong oldHashB = HashGenerator.Hash(embeddingB.Vector);
 			Core.Log(Name, 3, $"Old vectors: {oldHashA} and {oldHashB}");
 
-			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - R), Multiply(embeddingB.Vector, R)));
-			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - R), Multiply(embeddingA.Vector, R)));
+			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - R), Multiply(embeddingB.Vector, R * strength)));
+			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - R), Multiply(embeddingA.Vector, R * strength)));
 
 			ulong hashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong hashB = HashGenerator.Hash(embeddingB.Vector);
@@ -201,6 +211,10 @@ namespace Opal.Modules
 				return bucket.FirstOrDefault(x => HashGenerator.Hash(x.Vector) == hash);
 			}
 			return null;
+		}
+		public Embedding<T>? GetEmbedding(T data)
+		{
+			return EmbeddingIDs.Values.FirstOrDefault(x => x.Data.Equals(data));
 		}
 		#endregion
 		#region Find Embedding(s)
