@@ -84,42 +84,45 @@ namespace Opal.Modules
 		}
 		public bool RemoveEmbedding(Embedding<T> embedding)
 		{
-			Core.Log(Name, 2, $"Removing embedding: {embedding} ({typeof(T).Name})");
-			if (!EmbeddingIDs.TryRemove(embedding.ID, out var _))
+			Core.Log(Name, 2, $"Removing embedding: {embedding}");
+			int id = embedding.ID;
+			if (!EmbeddingIDs.Values.Contains(embedding))
 			{
-				Core.Log(Name, 3, $"Failed to remove embedding: {embedding} (ID not found)");
+				Core.Log(Name, 3, $"Embedding {embedding} not found in EmbeddingIDs.");
 				return false;
 			}
+			if (!EmbeddingIDs.TryRemove(id, out var _))
+			{ 
+				Core.Log(Name, 3, $"Failed to remove embedding {embedding} from EmbeddingIDs.");
+				return false;
+			}
+			
 			ulong hash = HashGenerator.Hash(embedding.Vector);
 			int bucketID = _reduce(hash);
-			if (!Embeddings.TryGetValue(bucketID, out var bucket))
+			if (Embeddings.TryGetValue(bucketID, out var bucket))
 			{
-				Core.Log(Name, 3, $"Failed to remove embedding: {embedding} (bucket not found)");
-				return false;
-			}
-			lock (bucket)
-			{
-				if (bucket.Contains(embedding))
+				lock (bucket)
 				{
-					bucket.Remove(embedding);
-					if (bucket.Count == 0)
+					if (bucket.Contains(embedding))
 					{
-						Embeddings.TryRemove(bucketID, out var _);
+						bucket.Remove(embedding);
+						if (bucket.Count == 0)
+						{
+							Embeddings.TryRemove(bucketID, out var _);
+						}
 					}
-					Core.Log(Name, 2, $"Removed embedding: {embedding} (with hash {hash})");
-					return true;
 				}
 			}
-			Core.Log(Name, 3, $"Failed to remove embedding: {embedding} (embedding not found in bucket)");
-			return false;
+			Core.Log(Name, 2, $"Removed embedding: {embedding} (with hash {hash})");
+			return true;
 		}
 		public bool RemoveEmbedding(int id)
 		{
-			if (!EmbeddingIDs.TryRemove(id, out var embedding))
+			if (!EmbeddingIDs.TryGetValue(id, out Embedding<T>? value))
 			{
 				return false;
 			}
-			return RemoveEmbedding(embedding);
+			return RemoveEmbedding(value);
 		}
 		#endregion
 		#region Associate Embeddings
@@ -176,6 +179,8 @@ namespace Opal.Modules
 					}
 				}
 			}
+			EmbeddingIDs[embeddingA.ID] = embeddingA;
+			EmbeddingIDs[embeddingB.ID] = embeddingB;
 			Core.Log(Name, 2, $"Associated embeddings: {embeddingA} and {embeddingB} (with hashes {hashA} and {hashB})");
 		}
 		#endregion
