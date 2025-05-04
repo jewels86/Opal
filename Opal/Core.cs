@@ -35,5 +35,15 @@ namespace Opal
 				.Where(x => x.Value.GetType() == typeof(T))
 				.Select(x => x.Key)];
 		}
+
+		public static bool Send(Packet packet)
+		{
+			if (RegisteredModules.TryGetValue(packet.Target, out var module))
+			{
+				module.Receive(packet);
+				return true;
+			}
+			return false;
+		}
 	}
 }

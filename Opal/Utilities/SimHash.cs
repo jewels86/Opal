@@ -6,44 +6,70 @@ using System.Threading.Tasks;
 
 namespace Opal.Utilities
 {
-	public class SimHash<T>(Func<T, int[]> extractor, int hashBits)
+	using System;
+
+	namespace Opal.Utilities
 	{
-		public Func<T, int[]> Extractor { get; } = extractor;
-		public int HashBits { get; } = hashBits;
-
-		public ulong Hash(T item)
+		public class SimHashGenerator<T>(Func<T, double[]> extractor, int hashBits)
 		{
-			int[] features = Extractor(item);
-			int[] vector = new int[HashBits];
+			public Func<T, double[]> Extractor { get; } = extractor;
+			public int HashBits { get; } = hashBits;
 
-			foreach (int feature in features)
+			public ulong Hash(T item)
 			{
+				double[] features = Extractor(item);
+				int[] vector = new int[HashBits];
+
+				foreach (double feature in features)
+				{
+					long bits = BitConverter.DoubleToInt64Bits(feature);
+
+					for (int i = 0; i < HashBits; i++)
+					{
+						int bit = ((bits >> i) & 1) == 1 ? 1 : -1;
+						vector[i] += bit;
+					}
+				}
+
+				ulong hash = 0;
 				for (int i = 0; i < HashBits; i++)
 				{
-					int bit = ((feature >> i) & 1) == 1 ? 1 : -1;
-					vector[i] += bit;
+					if (vector[i] > 0)
+						hash |= (1UL << i);
 				}
+				return hash;
 			}
 
-			ulong hash = 0;
-			for (int i = 0; i < HashBits; i++)
+			public static int HammingDistance(ulong hash1, ulong hash2)
 			{
-				if (vector[i] > 0)
-					hash |= (1UL << i);
+				ulong x = hash1 ^ hash2;
+				int dist = 0;
+				while (x != 0)
+				{
+					dist++;
+					x &= x - 1;
+				}
+				return dist;
 			}
-			return hash;
-		}
 
-		public static int HammingDistance(ulong hash1, ulong hash2)
-		{
-			ulong x = hash1 ^ hash2;
-			int dist = 0;
-			while (x != 0)
+			public static float HammingSimilarity(ulong hash1, ulong hash2)
 			{
-				dist++;
-				x &= x - 1;
+				ulong xored = hash1 ^ hash2;
+				int differingBits = CountBits(xored);
+				return 1.0f - (differingBits / 64f);
 			}
-			return dist;
+
+			public static int CountBits(ulong value)
+			{
+				int count = 0;
+				while (value != 0)
+				{
+					value &= (value - 1);
+					count++;
+				}
+				return count;
+			}
 		}
 	}
+
 }

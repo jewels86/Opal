@@ -13,12 +13,10 @@ namespace Opal
 		public int Sender { get; set; } = sender;
 		public int Target { get; set; } = target;
 
-		public void Deconstruct(out int id, out Dictionary<string, object?> payload, out int sender, out int target)
+		public void Deconstruct(out Dictionary<string, object?> payload, out int sender)
 		{
-			id = ID;
 			payload = Payload;
 			sender = Sender;
-			target = Target;
 		}
 	}
 }
