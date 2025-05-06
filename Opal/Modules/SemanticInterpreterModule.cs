@@ -16,19 +16,24 @@ namespace Opal.Modules
 		public delegate void RemoveStorageNodeDelegate(string word);
 		public delegate double GetSimilarityDelegate(string word1, string word2);
 		public delegate List<(string, double)> GetSimilarWordsDelegate(string word);
+		public delegate void AssociateDelegate(string word1, string word2, double strength);
 
 		public NewStorageNodeDelegate NewStorageNode { get; set; }
 		public RemoveStorageNodeDelegate RemoveStorageNode { get; set; }
 		public GetSimilarityDelegate GetSimilarity { get; set; }
 		public GetSimilarWordsDelegate GetSimilarWords { get; set; }
+		public AssociateDelegate Associate { get; set; }
+
+		public HashSet<string> Added { get; private set; } = [];
 
 		public SemanticInterpreterModule(NewStorageNodeDelegate? newStorageNode = null, RemoveStorageNodeDelegate? removeStorageNode = null, 
-			GetSimilarityDelegate? getSimilarity = null, GetSimilarWordsDelegate? getSimilarWords = null, string? name = null)
+			GetSimilarityDelegate? getSimilarity = null, GetSimilarWordsDelegate? getSimilarWords = null,
+			AssociateDelegate? associate = null, string? name = null)
 		{
 			ID = Core.Register(this);
 			Name = name ?? "semantic-interpreter";
 
-			if (newStorageNode == null && removeStorageNode == null && getSimilarity == null && getSimilarWords == null)
+			if (newStorageNode == null || removeStorageNode == null || getSimilarity == null || getSimilarWords == null || associate == null)
 			{
 				EmbeddingsModule<string> embeddingsModule = new(32, 256, 256, 0.5);
 				Core.Register(embeddingsModule);
@@ -49,6 +54,14 @@ namespace Opal.Modules
 						return new List<(string, double)>();
 					return [.. embeddingsModule.FindSimilar(embedding).Select(x => (x.Item1.Data, x.Item2))];
 				};
+				Associate = (word1, word2, strength) =>
+				{
+					var embedding1 = embeddingsModule.GetEmbedding(word1);
+					var embedding2 = embeddingsModule.GetEmbedding(word2);
+					if (embedding1 == null || embedding2 == null)
+						return;
+					embeddingsModule.Associate(embedding1, embedding2, strength);
+				};
 			}
 			else
 			{
@@ -67,10 +80,12 @@ namespace Opal.Modules
 		public void AddWord(string word)
 		{
 			NewStorageNode(word);
+			Added.Add(word);
 		}
 		public void RemoveWord(string word)
 		{
 			RemoveStorageNode(word);
+			Added.Remove(word);
 		}
 		#endregion
 		#region Similarity
@@ -95,6 +110,31 @@ namespace Opal.Modules
 			return [.. GetSimilarWords(word).Where(x => x.Item2 >= threshold).OrderByDescending(x => x.Item2)];
 		}
 		#endregion
+		#region Interpret
+		public void Interpret(string[] sentence)
+		{
+			Core.Log(Name, 2, "Interpreting sentence: " + string.Join(" ", sentence));
 
+			foreach (var word in sentence)
+			{
+				if (!Added.Contains(word))
+				{
+					Core.Log(Name, 3, "Adding word: " + word);
+					AddWord(word);
+				}
+			}
+
+			for (int i = 0; i < sentence.Length; i++)
+			{
+				for (int j = 0; j < sentence.Length; j++)
+				{
+					if (i == j)
+						continue;
+					Associate(sentence[i], sentence[j], 1/Math.Abs(i-j));
+				}
+			}
+			Core.Log(Name, 2, "Finished interpreting sentence: " + string.Join(" ", sentence));
+		}
+		#endregion
 	}
 }

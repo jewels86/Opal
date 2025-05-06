@@ -8,7 +8,12 @@ namespace Testing
 	{
 		static void Main(string[] args)
 		{
-			
+			SemanticInterpreterModule semanticInterpreter = new();
+			semanticInterpreter.AddWord("hello");
+			semanticInterpreter.AddWord("world");
+
+			semanticInterpreter.Interpret(["hello", "world"]);
+			Console.WriteLine(semanticInterpreter.GetSimilarity("hello", "world"));
 		}
 	}
 }
