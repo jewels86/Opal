@@ -16,6 +16,7 @@ namespace Opal
 		public static ConcurrentDictionary<int, IModule> RegisteredModules { get; } = new();
 
 		public static Action<string, int, string> Log { get; set; } = StandardLog;
+		public static int LogLevel { get; set; } = 2;
 
 		public static int Register(IModule module)
 		{
@@ -25,6 +26,7 @@ namespace Opal
 			return id;
 		}
 
+		#region Getters
 		public static int[] GetModulesByName(string name)
 		{
 			return [.. RegisteredModules
@@ -38,20 +40,22 @@ namespace Opal
 				.Where(x => x.Value.GetType() == typeof(T))
 				.Select(x => x.Key)];
 		}
+		#endregion
 
-		public static bool Send(Packet packet)
-		{
-			if (RegisteredModules.TryGetValue(packet.Target, out var module))
-			{
-				module.Receive(packet);
-				return true;
-			}
-			return false;
-		}
-
+		#region Logging
 		public static void StandardLog(string name, int level, string message)
 		{
+			if (level > LogLevel) return;
 			Console.WriteLine($"[{name}] [{level}] {message}");
+		}
+		#endregion
+
+		public static void Initialize()
+		{
+			foreach (var module in RegisteredModules)
+			{
+				module.Value.Initialize();
+			}
 		}
 	}
 }

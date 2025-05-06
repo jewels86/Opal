@@ -9,7 +9,7 @@ namespace Opal.Utilities
 	public static class StringParsing
 	{
 		public static List<string> Stopwords = [];
-		public static List<string> Separators = [];
+		public static List<string> Separators = [" ", "\n", "."];
 
 		public static string[] Parse(string input)
 		{
@@ -21,5 +21,14 @@ namespace Opal.Utilities
 				.ToArray();
 			return filteredWords;
 		}
+
+		public static List<string> StandardStopwords = [
+			"the", "is", "in", "and", "to", "a", "of", "that", "it", "for",
+			"on", "with", "as", "was", "at", "by", "an", "be", "this", "which",
+			"or", "from", "but", "not", "are", "all", "if", "can", "we", "you",
+		];
+		public static List<string> StandardSeparators = [
+			" ", "\n", "\t", ".", ",", ";", ":", "!", "?", "\"", "'", "(", ")", "[", "]", "{", "}", "<", ">", "/", "\\",
+		];
 	}
 }

@@ -39,5 +39,16 @@ namespace Opal.Configurations
 				return [.. embeddingsModule.FindSimilar(embedding).Select(x => (x.Item1.Data, x.Item2))];
 			};
 		}
+		public static SemanticInterpreterModule.AssociateDelegate GenerateAssociateWithEmbeddings(EmbeddingsModule<string> embeddingsModule)
+		{
+			return (word1, word2, strength) =>
+			{
+				var embedding1 = embeddingsModule.GetEmbedding(word1);
+				var embedding2 = embeddingsModule.GetEmbedding(word2);
+				if (embedding1 == null || embedding2 == null)
+					return;
+				embeddingsModule.Associate(embedding1, embedding2, strength);
+			};
+		}
 	}
 }

@@ -69,6 +69,7 @@ namespace Opal.Modules
 				RemoveStorageNode = removeStorageNode!;
 				GetSimilarity = getSimilarity!;
 				GetSimilarWords = getSimilarWords!;
+				Associate = associate!;
 			}
 		}
 
