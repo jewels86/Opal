@@ -3,6 +3,7 @@ using Opal.Modules;
 using System.Numerics;
 using static Opal.Configurations.SemanticInterpreterConfigurations;
 using Opal;
+using System.Transactions;
 
 namespace Testing
 {
@@ -83,6 +84,23 @@ namespace Testing
 			{
 				string[] words = StringParsing.Parse(sentence);
 				semanticInterpreter.Interpret(words);
+			}
+
+			while (true)
+			{
+				Console.Write("Generate another sentence? (y/nothing)");
+				string? input = Console.ReadLine();
+				if (input == "y")
+				{
+					Console.Write("Enter the max number of words: ");
+					int maxWords = int.Parse(Console.ReadLine()!);
+
+				}
+				else
+				{
+					Console.WriteLine("Exiting...");
+					break;
+				}
 			}
 		}
 	}

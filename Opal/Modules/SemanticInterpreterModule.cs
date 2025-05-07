@@ -114,6 +114,7 @@ namespace Opal.Modules
 		#region Interpret
 		public void Interpret(string[] sentence)
 		{
+			sentence = sentence.Prepend("[special-start]").Append("[special-end]").ToArray();
 			Core.Log(Name, 2, "Interpreting sentence: " + string.Join(" ", sentence));
 
 			foreach (var word in sentence)
