@@ -13,6 +13,9 @@ namespace Opal.Modules
 		public int ID { get; private set; }
 		public string Name { get; private set; }
 
+		/// <summary>The learning rate for the semantic interpreter.</summary>
+		public double L { get; set; } = 0.2;
+
 		public delegate void NewStorageNodeDelegate(string word);
 		public delegate void RemoveStorageNodeDelegate(string word);
 		public delegate double GetSimilarityDelegate(string word1, string word2);
@@ -137,7 +140,7 @@ namespace Opal.Modules
 				{
 					if (i == j)
 						continue;
-					Associate(sentence[i], sentence[j], 1/Math.Abs(i-j));
+					Associate(sentence[i], sentence[j], 1/Math.Abs(i-j) * L);
 				}
 
 				if (i == sentence.Length - 1)
