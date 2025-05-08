@@ -18,11 +18,11 @@ namespace Opal.Modules
 		/// <summary>The number of next words to receive from the semantic interpreter.</summary>  
 		public int M { get; private set; } = 5;
 		/// <summary>The weight of a similar word on the next word generation.</summary>
-		public double S { get; private set; } = 0.6;
+		public double S { get; private set; } = 0.45;
 		/// <summary>The weight of next word frequency on the next word generation.</summary>
-		public double F { get; private set; } = 0.4;
+		public double F { get; private set; } = 0.35;
 		/// <summary>The randomness factor to inject into the next word generation.</summary>
-		public double R { get; private set; } = 0.1;
+		public double R { get; private set; } = 0.2;
 
 		public SemanticInterpreterModule SemanticInterpreterModule { get; private set; }
 
