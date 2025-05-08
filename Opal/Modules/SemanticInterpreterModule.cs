@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -25,6 +26,10 @@ namespace Opal.Modules
 		public AssociateDelegate Associate { get; set; }
 
 		public HashSet<string> Added { get; private set; } = [];
+		public ConcurrentDictionary<string, SortedDictionary<string, int>> WordTransitions { get; private set; } = [];
+
+		private object _addLock = new();
+		private object _sortedDictionaryLock = new();
 
 		public SemanticInterpreterModule(NewStorageNodeDelegate? newStorageNode = null, RemoveStorageNodeDelegate? removeStorageNode = null, 
 			GetSimilarityDelegate? getSimilarity = null, GetSimilarWordsDelegate? getSimilarWords = null,
@@ -81,12 +86,12 @@ namespace Opal.Modules
 		public void AddWord(string word)
 		{
 			NewStorageNode(word);
-			Added.Add(word);
+			lock (_addLock) { Added.Add(word); }
 		}
 		public void RemoveWord(string word)
 		{
 			RemoveStorageNode(word);
-			Added.Remove(word);
+			lock (_addLock) { Added.Remove(word); }
 		}
 		#endregion
 		#region Similarity
@@ -134,8 +139,45 @@ namespace Opal.Modules
 						continue;
 					Associate(sentence[i], sentence[j], 1/Math.Abs(i-j));
 				}
+
+				if (i == sentence.Length - 1)
+					continue;
+				string currentWord = sentence[i];
+				string nextWord = sentence[i + 1];
+
+				WordTransitions.AddOrUpdate(currentWord,
+				_ =>
+				{
+					SortedDictionary<string, int> sortedDictionary = new SortedDictionary<string, int>();
+					lock (_sortedDictionaryLock)
+					{
+						sortedDictionary[nextWord] = 1;
+					}
+					return sortedDictionary;
+				},
+				(_, existingSortedDictionary) =>
+				{
+					lock (_sortedDictionaryLock)
+					{
+						if (existingSortedDictionary.ContainsKey(nextWord))
+							existingSortedDictionary[nextWord]++;
+						else
+							existingSortedDictionary[nextWord] = 1;
+					}
+					return existingSortedDictionary;
+				});
 			}
+
 			Core.Log(Name, 2, "Finished interpreting sentence: " + string.Join(" ", sentence));
+		}
+		#endregion
+		#region Next Word
+		public List<(string, int)> NextWords(string word, int count)
+		{
+			if (!WordTransitions.ContainsKey(word))
+				return [];
+			var sortedDictionary = WordTransitions[word];
+			return [.. sortedDictionary.OrderByDescending(x => x.Value).Take(count).Select(x => (x.Key, x.Value))];
 		}
 		#endregion
 	}

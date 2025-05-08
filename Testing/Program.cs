@@ -19,6 +19,7 @@ namespace Testing
 				GenerateGetSimilarWordsWithEmbeddings(embeddings),
 				GenerateAssociateWithEmbeddings(embeddings)
 			);
+			NextWordGenerationModule nextWordGeneration = new("next-word-generation", semanticInterpreter);
 			StringParsing.Stopwords = StringParsing.StandardStopwords;
 			StringParsing.Separators = StringParsing.StandardSeparators;
 
@@ -88,19 +89,27 @@ namespace Testing
 
 			while (true)
 			{
-				Console.Write("Generate another sentence? (y/nothing)");
+				string[] sentence;
+				Console.Write("Generate a sentence? (y/nothing)");
 				string? input = Console.ReadLine();
 				if (input == "y")
 				{
 					Console.Write("Enter the max number of words: ");
 					int maxWords = int.Parse(Console.ReadLine()!);
 
+					sentence = ["[special-start]"];
+					while (sentence.Length < maxWords || sentence.Last() == "[special-end]")
+					{
+						string nextWord = nextWordGeneration.GenerateNext(sentence);
+						sentence = sentence.Append(nextWord).ToArray();
+					}
 				}
 				else
 				{
 					Console.WriteLine("Exiting...");
 					break;
 				}
+				Console.WriteLine("Generated sentence: " + string.Join(" ", sentence));
 			}
 		}
 	}
