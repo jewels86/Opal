@@ -11,15 +11,26 @@ namespace Opal.Modules.Patterns
 		public int ID { get; private set; }
 		public string Name { get; private set; }
 
-		/// <summary>The threshold multiplier. If the relative frequency of a token exceeds K, it is considered excessive.</summary>
+		/// <summary>
+		/// Controls how much more frequent than average a token must be to be considered excessive.
+		/// </summary>
 		public double K { get; set; }
 
 		private long _totalCount = 0;
 		public long TotalCount => Interlocked.Read(ref _totalCount);
 
-		public double RealK => K;
-
 		private ConcurrentDictionary<T, int> Tokens { get; } = new();
+
+		public double AverageFrequency
+		{
+			get
+			{
+				int tokenCount = Tokens.Count;
+				return tokenCount == 0 ? 0 : (double)TotalCount / tokenCount;
+			}
+		}
+
+		public double Threshold => K * AverageFrequency;
 
 		public ExcessiveUseRecognitionModule(double k, string? name = null)
 		{
@@ -44,7 +55,7 @@ namespace Opal.Modules.Patterns
 		{
 			if (Tokens.TryGetValue(token, out int count))
 			{
-				return TotalCount > 0 && (double)count / TotalCount > K;
+				return count > Threshold;
 			}
 			return false;
 		}
