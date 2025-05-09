@@ -13,6 +13,7 @@ namespace Testing
 		static void Main(string[] args)
 		{
 			List<string> sentences = new();
+
 			if (File.Exists("data1.txt"))
 			{
 				sentences.AddRange(File.ReadAllLines("data1.txt"));
@@ -31,7 +32,7 @@ namespace Testing
 				GenerateAssociateWithEmbeddings(embeddings)
 			);
 			NextWordGenerationModule nextWordGeneration = new("next-word-generation", semanticInterpreter);
-			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.5, "stopword-recognition");
+			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.3, "stopword-recognition");
 			ExcessiveUseRecognitionModule<string> wordStemFilter = new(0.5, "word-stem-filter");
 
 			foreach (string sentence in sentences)

@@ -17,12 +17,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="data1.txt">
+    <Content Include="data1.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="data2.txt">
+    </Content>
+    <Content Include="data2.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
+    </Content>
   </ItemGroup>
 
 </Project>
