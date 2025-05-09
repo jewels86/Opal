@@ -22,6 +22,12 @@ namespace Opal.Utilities
 			return filteredWords;
 		}
 
+		public static string[] Split(string input)
+		{
+			var words = input.Split(Separators.ToArray(), StringSplitOptions.RemoveEmptyEntries);
+			return words;
+		}
+
 		public static List<string> StandardStopwords = [
 			"the", "is", "in", "and", "to", "a", "of", "that", "it", "for",
 			"on", "with", "as", "was", "at", "by", "an", "be", "this", "which",

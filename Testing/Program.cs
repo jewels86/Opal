@@ -33,11 +33,19 @@ namespace Testing
 			NextWordGenerationModule nextWordGeneration = new("next-word-generation", semanticInterpreter);
 			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.5, "stopword-recognition");
 			ExcessiveUseRecognitionModule<string> wordStemFilter = new(0.5, "word-stem-filter");
-			StringParsing.Stopwords = StringParsing.StandardStopwords;
+
+			foreach (string sentence in sentences)
+			{
+				stopwordRecognition.Analyze(StringParsing.Split(sentence));
+			}
+
+			StringParsing.Stopwords = stopwordRecognition.ExcessiveTokens().ToList();
 			StringParsing.Separators = StringParsing.StandardSeparators;
 
-			Core.LogLevel = 3;
+			Core.LogLevel = 2;
 			Core.Initialize();
+
+			Core.Log("program", 1, $"Using stopwords {string.Join(", ", StringParsing.Stopwords)}");
 
 			foreach (string sentence in sentences)
 			{

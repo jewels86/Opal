@@ -8,7 +8,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="data1.txt" />
+    <None Remove="data2.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Opal\Opal.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="data1.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="data2.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Resource>
   </ItemGroup>
 
 </Project>

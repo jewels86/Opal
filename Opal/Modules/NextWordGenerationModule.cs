@@ -20,9 +20,9 @@ namespace Opal.Modules
 		/// <summary>The weight of a similar word on the next word generation.</summary>
 		public double S { get; private set; } = 0.45;
 		/// <summary>The weight of next word frequency on the next word generation.</summary>
-		public double F { get; private set; } = 0.45;
+		public double F { get; private set; } = 0.5;
 		/// <summary>The randomness factor to inject into the next word generation.</summary>
-		public double R { get; private set; } = 0.1;
+		public double R { get; private set; } = 0.05;
 
 		public SemanticInterpreterModule SemanticInterpreterModule { get; private set; }
 

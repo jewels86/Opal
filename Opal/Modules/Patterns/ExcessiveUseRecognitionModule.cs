@@ -64,5 +64,13 @@ namespace Opal.Modules.Patterns
 		{
 			return data.Where(x => !IsExcessive(x)).ToArray();
 		}
+
+		public T[] ExcessiveTokens()
+		{
+			return Tokens
+				.Where(x => x.Value > Threshold)
+				.Select(x => x.Key)
+				.ToArray();
+		}
 	}
 }
