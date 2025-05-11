@@ -22,8 +22,12 @@ namespace Testing
 			{
 				sentences.AddRange(File.ReadAllLines("data2.txt"));
 			}
+			if (File.Exists("data3.txt"))
+			{
+				sentences.AddRange(File.ReadAllLines("data3.txt"));
+			}
 
-			EmbeddingsModule<string> embeddings = new(32, 256, 256, 0.5, "word-embeddings");
+			EmbeddingsModule<string> embeddings = new(32, 256, 256, 0.75, "word-embeddings");
 			SemanticInterpreterModule semanticInterpreter = new(
 				GenerateNewStorageNodeWithEmbeddings(embeddings),
 				GenerateRemoveStorageNodeWithEmbeddings(embeddings),
@@ -32,7 +36,7 @@ namespace Testing
 				GenerateAssociateWithEmbeddings(embeddings)
 			);
 			NextWordGenerationModule nextWordGeneration = new("next-word-generation", semanticInterpreter);
-			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.3, "stopword-recognition");
+			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.2, "stopword-recognition");
 			ExcessiveUseRecognitionModule<string> wordStemFilter = new(0.5, "word-stem-filter");
 
 			foreach (string sentence in sentences)
@@ -40,7 +44,7 @@ namespace Testing
 				stopwordRecognition.Analyze(StringParsing.Split(sentence));
 			}
 
-			StringParsing.Stopwords = stopwordRecognition.ExcessiveTokens().ToList();
+			StringParsing.Stopwords = stopwordRecognition.GetExcessiveTokens().ToList();
 			StringParsing.Separators = StringParsing.StandardSeparators;
 
 			Core.LogLevel = 2;

@@ -140,7 +140,9 @@ namespace Opal.Modules
 				{
 					if (i == j)
 						continue;
-					Associate(sentence[i], sentence[j], 1/Math.Abs(i-j) * L);
+					var distance = 1/(i-j);
+					if (distance < 0) Associate(sentence[i], sentence[j], distance * L * 0.5);
+					else Associate(sentence[j], sentence[i], distance * L);
 				}
 
 				if (i == sentence.Length - 1)
