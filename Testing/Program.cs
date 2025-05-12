@@ -37,7 +37,7 @@ namespace Testing
 			);
 			NextWordGenerationModule nextWordGeneration = new("next-word-generation", semanticInterpreter);
 			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.2, "stopword-recognition");
-			ExcessiveUseRecognitionModule<string> wordStemFilter = new(0.5, "word-stem-filter");
+			ApproximateEqualityRecognitionModule<char> wordStemRecognition = new(0.8, x => x, name: "word-stem-recognition");
 
 			foreach (string sentence in sentences)
 			{
