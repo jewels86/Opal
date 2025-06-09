@@ -17,14 +17,18 @@ namespace Opal.Modules.Patterns
 		public ConcurrentDictionary<T, int> WordCount { get; } = new();
 		public ConcurrentBag<T> ExcessiveTokens { get; } = new();
 		public int TotalSequences { get; private set; } = 0;
+		public Func<T, T> Normalizer { get; set; }
 
 		private object _lock = new();
 
-		public ExcessiveUseRecognitionModule(double k, string? name = null)
+		public List<T[]> Sequences { get; } = new();
+
+		public ExcessiveUseRecognitionModule(double k, Func<T, T>? normalizer = null, string? name = null)
 		{
 			ID = Core.Register(this);
 			Name = name ?? $"excessive-use-{typeof(T).Name.ToLower()}";
 			K = k;
+			Normalizer = normalizer ?? (x => x);
 		}
 
 		public void Initialize() { }
@@ -32,15 +36,32 @@ namespace Opal.Modules.Patterns
 		public void Analyze(T[] sequence)
 		{
 			if (sequence.Length == 0) return;
-			foreach (T word in sequence)
+			lock (_lock)
 			{
-				WordCount.AddOrUpdate(word, 1, (key, value) => value + 1);
-				if (WordCount[word] > TotalSequences * K)
+				Sequences.Add(sequence);
+			}
+		}
+
+		public void FinalizeAnalysis()
+		{
+			WordCount.Clear();
+			ExcessiveTokens.Clear();
+			TotalSequences = Sequences.Count;
+			var normalizedSequences = Sequences.Select(seq => seq.Select(Normalizer).Distinct());
+			foreach (var normalizedWords in normalizedSequences)
+			{
+				foreach (T word in normalizedWords)
 				{
-					ExcessiveTokens.Add(word);
+					WordCount.AddOrUpdate(word, 1, (key, value) => value + 1);
 				}
 			}
-			lock (_lock) { TotalSequences++; }
+			foreach (var kvp in WordCount)
+			{
+				if (kvp.Value >= TotalSequences * K)
+				{
+					ExcessiveTokens.Add(kvp.Key);
+				}
+			}
 		}
 
 		public IEnumerable<T> GetExcessiveTokens()
@@ -50,12 +71,12 @@ namespace Opal.Modules.Patterns
 
 		public bool IsExcessive(T token)
 		{
-			return ExcessiveTokens.Contains(token);
+			return ExcessiveTokens.Contains(Normalizer(token));
 		}
 
 		public T[] Filter(T[] sequence)
 		{
-			return sequence.Where(x => !ExcessiveTokens.Contains(x)).ToArray();
+			return sequence.Select(Normalizer).Where(x => !ExcessiveTokens.Contains(x)).ToArray();
 		}
 
 		public void Clear()
@@ -63,6 +84,7 @@ namespace Opal.Modules.Patterns
 			WordCount.Clear();
 			ExcessiveTokens.Clear();
 			TotalSequences = 0;
+			Sequences.Clear();
 		}
 	}
 }
