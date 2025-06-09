@@ -1,10 +1,8 @@
 ﻿using Opal.Utilities;
 using Opal.Modules;
 using Opal.Modules.Patterns;
-using System.Numerics;
 using static Opal.Configurations.SemanticInterpreterConfigurations;
 using Opal;
-using System.Transactions;
 
 namespace Testing
 {
@@ -36,18 +34,19 @@ namespace Testing
 				GenerateAssociateWithEmbeddings(embeddings)
 			);
 			NextWordGenerationModule nextWordGeneration = new("next-word-generation", semanticInterpreter);
-			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.2, "stopword-recognition");
+			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.1, x => x.ToLower(), "stopword-recognition");
 			ApproximateEqualityRecognitionModule<char> wordStemRecognition = new(0.8, x => x, name: "word-stem-recognition");
 
 			foreach (string sentence in sentences)
 			{
 				stopwordRecognition.Analyze(StringParsing.Split(sentence));
 			}
+			stopwordRecognition.FinalizeAnalysis();
 
-			StringParsing.Stopwords = stopwordRecognition.GetExcessiveTokens().ToList();
+			StringParsing.Stopwords = stopwordRecognition.GetExcessiveTokens().Distinct().ToList();
 			StringParsing.Separators = StringParsing.StandardSeparators;
 
-			Core.LogLevel = 2;
+			Core.LogLevel = 1;
 			Core.Initialize();
 
 			Core.Log("program", 1, $"Using stopwords {string.Join(", ", StringParsing.Stopwords)}");
