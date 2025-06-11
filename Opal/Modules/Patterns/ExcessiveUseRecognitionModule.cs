@@ -6,13 +6,22 @@ using System.Threading;
 
 namespace Opal.Modules.Patterns
 {
-	public class ExcessiveUseRecognitionModule<T> : IModule where T : notnull
+	public enum ExcessiveUseRecognitionModuleMode
+	{
+		Percentage, Threshold
+	}
+	public class ExcessiveUseRecognitionModule<T> : IModule, IAnalyzer<T> where T : notnull
 	{
 		public int ID { get; private set; }
 		public string Name { get; private set; }
-
-		/// <summary>The percentage of sequences the word must appear in to be considered excessive.</summary>
+		
+		/// <summary>
+		/// If `Mode` is set to percentage: The percentage of sequences the word must appear in to be considered excessive.
+		/// If `Mode` is set to threshold: The minimum number of sequences the word must appear in to be considered excessive.
+		/// </summary>
 		public double K { get; set; }
+
+		public ExcessiveUseRecognitionModuleMode Mode { get; set; } = ExcessiveUseRecognitionModuleMode.Percentage;
 
 		public ConcurrentDictionary<T, int> WordCount { get; } = new();
 		public ConcurrentBag<T> ExcessiveTokens { get; } = new();
@@ -33,12 +42,12 @@ namespace Opal.Modules.Patterns
 
 		public void Initialize() { }
 
-		public void Analyze(T[] sequence)
+		public void Analyze(IEnumerable<T> sequence)
 		{
-			if (sequence.Length == 0) return;
+			if (sequence.Any()) return;
 			lock (_lock)
 			{
-				Sequences.Add(sequence);
+				Sequences.Add(sequence.ToArray());
 			}
 		}
 
@@ -57,14 +66,24 @@ namespace Opal.Modules.Patterns
 			}
 			foreach (var kvp in WordCount)
 			{
-				if (kvp.Value >= TotalSequences * K)
+				if (Mode == ExcessiveUseRecognitionModuleMode.Percentage)
 				{
-					ExcessiveTokens.Add(kvp.Key);
+					if (kvp.Value / (double)TotalSequences >= K)
+					{
+						ExcessiveTokens.Add(kvp.Key);
+					}
+				}
+				else if (Mode == ExcessiveUseRecognitionModuleMode.Threshold)
+				{
+					if (kvp.Value >= K)
+					{
+						ExcessiveTokens.Add(kvp.Key);
+					}
 				}
 			}
 		}
 
-		public IEnumerable<T> GetExcessiveTokens()
+		public IEnumerable<T> Results()
 		{
 			return ExcessiveTokens.ToArray();
 		}

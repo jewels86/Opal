@@ -34,7 +34,37 @@ namespace Opal.Utilities
 			"or", "from", "but", "not", "are", "all", "if", "can", "we", "you",
 		];
 		public static List<string> StandardSeparators = [
-			" ", "\n", "\t", ".", ",", ";", ":", "!", "?", "\"", "(", ")", "[", "]", "{", "}", "<", ">", "/", "\\",
+			" ", "\n", "\t", ".", ",", ";", ":", "!", "?", "\"", "(", ")", "[", "]", "{", "}", "<", ">", "/", "\\"
 		];
+		
+		public static string[] ExtractPrefixes(string sequence, int minLength, int maxLength)
+		{
+			List<char[]> results = new List<char[]>();
+			char[] arr = sequence.ToCharArray();
+			for (int i = 0; i < maxLength; i++)
+			{
+				if (i < minLength || i >= sequence.Length) continue;
+				results.Add(sequence.Take(i).ToArray());
+			}
+			return results.Select(x => new string(x)).ToArray();
+		}
+		public static string[] ExtractSuffixes(string sequence, int minLength, int maxLength)
+		{
+			List<char[]> results = new List<char[]>();
+			for (int i = 0; i < maxLength; i++)
+			{
+				if (i < minLength || i >= sequence.Length) continue;
+				results.Add(sequence.Skip(i + 1).ToArray());
+			}
+			return results.Select(x => new string(x)).ToArray();
+		}
+		public static Func<string, string[]> PrefixExtractor(int minLength, int maxLength)
+		{
+			return sequence => ExtractPrefixes(sequence, minLength, maxLength);
+		}
+		public static Func<string, string[]> SuffixExtractor(int minLength, int maxLength)
+		{
+			return sequence => ExtractSuffixes(sequence, minLength, maxLength);
+		}
 	}
 }

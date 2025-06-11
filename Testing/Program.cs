@@ -2,7 +2,6 @@
 using Opal.Modules;
 using Opal.Modules.Patterns;
 using static Opal.Configurations.SemanticInterpreterConfigurations;
-using static Opal.Configurations.ExcessiveSubsequenceConfigurations;
 using Opal;
 
 namespace Testing
@@ -34,32 +33,41 @@ namespace Testing
 				GenerateGetSimilarWordsWithEmbeddings(embeddings),
 				GenerateAssociateWithEmbeddings(embeddings)
 			);
-			NextWordGenerationModule nextWordGeneration = new("next-word-generation", semanticInterpreter);
-			ExcessiveUseRecognitionModule<string> stopwordRecognition = new(0.1, x => x.ToLower(), "stopword-recognition");
+			NextWordGenerationModuleLegacy nextWordGeneration = new("next-word-generation", semanticInterpreter);
+			IrregularFrequencyRecognitionModule<string> stopwordRecognition = new(3, name: "stopword-recognition");
 			ApproximateEqualityRecognitionModule<char> wordStemRecognition = new(0.8, x => x, name: "word-stem-recognition");
-			ExcessiveSubsequenceRecognitionModule<string> prefixRecognition = CreateForCharPrefixes(0.2, 3, "prefix-recognition");
-			ExcessiveSubsequenceRecognitionModule<string
-
+			IrregularFrequencyRecognitionModule<string> prefixRecognition = new(3, name: "prefix-recognition");
+			IrregularFrequencyRecognitionModule<string> suffixRecognition =  new(3, name: "suffix-recognition");
+			var prefixExtractor = StringParsing.PrefixExtractor(2, 5);
+			var suffixExtractor = StringParsing.SuffixExtractor(2, 5);
+			List<string> allWords = [];
+			
 			foreach (string sentence in sentences)
 			{
-				string[] sequence = StringParsing.Split(sentence);
+				string[] sequence = StringParsing.Split(sentence).Select(x => x.ToLower()).ToArray();
 				stopwordRecognition.Analyze(sequence);
-				foreach (string word in sequence)
-				{
-					baseWordRecognition.Analyze(word.ToCharArray());
-				}
+				allWords.AddRange(sequence);
 			}
 			stopwordRecognition.FinalizeAnalysis();
-			baseWordRecognition.FinalizeAnalysis();
 
-			StringParsing.Stopwords = stopwordRecognition.GetExcessiveTokens().Distinct().ToList();
+			foreach (string word in allWords.Distinct())
+			{
+				prefixRecognition.Analyze(prefixExtractor(word));
+				suffixRecognition.Analyze(suffixExtractor(word));
+
+			}
+			prefixRecognition.FinalizeAnalysis();
+			suffixRecognition.FinalizeAnalysis();
+
+			StringParsing.Stopwords = stopwordRecognition.Results().Distinct().ToList();
 			StringParsing.Separators = StringParsing.StandardSeparators;
 
 			Core.LogLevel = 1;
 			Core.Initialize();
 
-			Core.Log("program", 1, $"Using stopwords {string.Join(", ", StringParsing.Stopwords)}");
-			Core.Log("program", 1, $"Found suffixes and prefixes: {string.Join(", ", baseWordRecognition.GetExcessiveTokens())}")
+			Core.Log("program", 1, $"Using stopwords {string.Join(", ", stopwordRecognition.Results())}");
+			Core.Log("program", 1, $"Found suffixes: {string.Join(", ", suffixRecognition.Results().Select(x => new string(x.ToArray())))}");
+			Core.Log("program", 1, $"Found prefixes: {string.Join(", ", prefixRecognition.Results().Select(x => new string(x.ToArray())))}");
 
 			foreach (string sentence in sentences)
 			{

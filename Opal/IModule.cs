@@ -10,6 +10,6 @@ namespace Opal
 	{
 		public int ID { get; }
 		public string Name { get; }
-		public void Initialize();
+		public void Initialize() { }
 	}
 }
