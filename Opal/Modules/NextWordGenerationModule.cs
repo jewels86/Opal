@@ -1,8 +1,9 @@
-﻿namespace Opal.Modules;
+﻿using Opal.Utilities.ANNs;
+
+namespace Opal.Modules;
 
 public class NextWordGenerationModule
 {
     public EmbeddingsModule<string> Embeddings { get; set; }
-    
 
 }
