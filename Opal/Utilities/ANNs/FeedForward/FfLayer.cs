@@ -6,7 +6,7 @@ public class FfLayer : ILayer
     public double[] Biases { get; set; }
     public int InputSize, OutputSize, N;
 
-    public double[] Input, Z, Activation;
+    public double[] Input, Z, Activation = [];
     public Func<double[], double[]> ActivationFunction;
     public Func<double[], double[]> ActivationFunctionDerivative;
 

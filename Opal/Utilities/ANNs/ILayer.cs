@@ -6,6 +6,6 @@ public interface ILayer
     public double[] Backward(double[] gradOutput, double learningRate);
     public void Reset();
     
-    public delegate double[] ActivationFunction(double[] input);
-    public delegate double[] ActivationFunctionDerivative(double[] input); 
+    public delegate double ActivationFunction(double input);
+    public delegate double ActivationFunctionDerivative(double input); 
 }

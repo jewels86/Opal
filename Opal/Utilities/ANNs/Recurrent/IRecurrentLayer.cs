@@ -3,6 +3,6 @@
 public interface IRecurrentLayer : ILayer
 {
     public void ResetState();
-    public double[][] Forward(double[] input, double[][] previousState);
-    public double[][] Backward(double[][] gradOutput, double learningRate);
+    public List<double[]> ForwardSequence(List<double[]> inputSequence);
+    public List<double[]> BackwardSequence(List<double[]> gradOutputs, double learningRate);
 }
