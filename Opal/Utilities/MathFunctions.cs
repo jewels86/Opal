@@ -39,6 +39,11 @@ public static class MathFunctions
     public static double[] SigmoidDerivative(double[] x) => x.Select(SigmoidDerivative).ToArray();
     public static double TanhDerivative(double x) => 1.0 - Math.Pow(Tanh(x), 2);
     public static double[] TanhDerivative(double[] x) => x.Select(TanhDerivative).ToArray();
+    
+    public static double[] ZeroVector(int length)
+    {
+        return new double[length];
+    }
 
     public static double[] Apply(ILayer.ActivationFunction fn, double[] x)
     {
@@ -81,6 +86,32 @@ public static class MathFunctions
         }
         return result;
     }
+    public static void AddOuterProduct(double[,] mat, double[] vec1, double[] vec2)
+    {
+        for (int i = 0; i < vec1.Length; i++)
+        for (int j = 0; j < vec2.Length; j++)
+            mat[i, j] += vec1[i] * vec2[j];
+    }
+
+    public static void AddMatVecMul(double[] result, double[,] mat, double[] vec)
+    {
+        for (int i = 0; i < mat.GetLength(0); i++)
+        for (int j = 0; j < mat.GetLength(1); j++)
+            result[i] += mat[i, j] * vec[j];
+    }
+
+    public static void SubtractInPlace(double[,] param, double[,] grad, double lr)
+    {
+        for (int i = 0; i < param.GetLength(0); i++)
+        for (int j = 0; j < param.GetLength(1); j++)
+            param[i, j] -= lr * grad[i, j];
+    }
+
+    public static void SubtractInPlace(double[] param, double[] grad, double lr)
+    {
+        for (int i = 0; i < param.Length; i++)
+            param[i] -= lr * grad[i];
+    }
     public static double[] Divide(double[] a, double scalar)
     {
         if (scalar == 0) throw new DivideByZeroException("Cannot divide by zero.");
@@ -91,7 +122,34 @@ public static class MathFunctions
         if (a.Length != b.Length) throw new ArgumentException("Vectors must be of the same length.");
         return new double[] { a.Zip(b, (x, y) => x * y).Sum() };
     }
-    
+    public static void DivideInPlace(double[,] mat, double denom)
+    {
+        for (int i = 0; i < mat.GetLength(0); i++)
+        for (int j = 0; j < mat.GetLength(1); j++)
+            mat[i, j] /= denom;
+    }
+    public static void DivideInPlace(double[] vec, double denom)
+    {
+        for (int i = 0; i < vec.Length; i++)
+            vec[i] /= denom;
+    }
+    public static void ClipInPlace(double[,] mat, double min, double max)
+    {
+        for (int i = 0; i < mat.GetLength(0); i++)
+        for (int j = 0; j < mat.GetLength(1); j++)
+            mat[i, j] = Clip(mat[i, j], min, max);
+    }
+    public static void ClipInPlace(double[] vec, double min, double max)
+    {
+        for (int i = 0; i < vec.Length; i++)
+            vec[i] = Clip(vec[i], min, max);
+    }
+    public static double Clip(double value, double min, double max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
     public static double[,] GetBatchSample(double[,,] inputSequence, int batchIdx)
     {
         int time = inputSequence.GetLength(1);
