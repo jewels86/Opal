@@ -251,6 +251,11 @@ namespace Opal.Modules
 			return results;
 		}
 		#endregion
+		
+		# region Static Helpers
+
+		public static Embedding<T> PlaceholderEmbedding(double[] vector) => new(-1, default(T)!, vector);
+		# endregion
 
 		#region Similarity
 		public double CosineSimilarity(double[] vectorA, double[] vectorB)

@@ -50,5 +50,16 @@ namespace Opal.Configurations
 				embeddingsModule.Associate(embedding1, embedding2, strength);
 			};
 		}
+		
+		public static SemanticInterpreterModule GenerateDefaultSemanticInterpreter(EmbeddingsModule<string> embeddingsModule)
+		{
+			return new SemanticInterpreterModule(
+				GenerateNewStorageNodeWithEmbeddings(embeddingsModule),
+				GenerateRemoveStorageNodeWithEmbeddings(embeddingsModule),
+				GenerateGetSimilarityWithEmbeddings(embeddingsModule),
+				GenerateGetSimilarWordsWithEmbeddings(embeddingsModule),
+				GenerateAssociateWithEmbeddings(embeddingsModule)
+			);
+		}
 	}
 }

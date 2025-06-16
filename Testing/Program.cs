@@ -26,14 +26,8 @@ namespace Testing
 			}
 
 			EmbeddingsModule<string> embeddings = new(32, 256, 256, 0.75, "word-embeddings");
-			SemanticInterpreterModule semanticInterpreter = new(
-				GenerateNewStorageNodeWithEmbeddings(embeddings),
-				GenerateRemoveStorageNodeWithEmbeddings(embeddings),
-				GenerateGetSimilarityWithEmbeddings(embeddings),
-				GenerateGetSimilarWordsWithEmbeddings(embeddings),
-				GenerateAssociateWithEmbeddings(embeddings)
-			);
-			NextWordGenerationModuleLegacy nextWordGeneration = new("next-word-generation", semanticInterpreter);
+			SemanticInterpreterModule semanticInterpreter = GenerateDefaultSemanticInterpreter(embeddings);
+			NextWordGenerationModule nextWordGeneration = new("next-word-generation", embeddings, semanticInterpreter);
 			IrregularFrequencyRecognitionModule<string> stopwordRecognition = new(3, name: "stopword-recognition");
 			ApproximateEqualityRecognitionModule<char> wordStemRecognition = new(0.8, x => x, name: "word-stem-recognition");
 			IrregularFrequencyRecognitionModule<string> prefixRecognition = new(3, name: "prefix-recognition");
@@ -41,6 +35,7 @@ namespace Testing
 			var prefixExtractor = StringParsing.PrefixExtractor(2, 5);
 			var suffixExtractor = StringParsing.SuffixExtractor(2, 5);
 			List<string> allWords = [];
+			int n = 4;
 			
 			foreach (string sentence in sentences)
 			{
@@ -62,7 +57,7 @@ namespace Testing
 			StringParsing.Stopwords = stopwordRecognition.Results().Distinct().ToList();
 			StringParsing.Separators = StringParsing.StandardSeparators;
 
-			Core.LogLevel = 1;
+			Core.LogLevel = 2;
 			Core.Initialize();
 
 			Core.Log("program", 1, $"Using stopwords {string.Join(", ", stopwordRecognition.Results())}");
@@ -73,6 +68,21 @@ namespace Testing
 			{
 				string[] words = StringParsing.Parse(sentence);
 				semanticInterpreter.Interpret(words);
+			}
+			
+			int epochs = 10;
+			double learningRate = 0.01;
+
+			foreach (string sentence in sentences)
+			{
+				string[] words = StringParsing.Parse(sentence);
+				if (words.Length <= n) continue;
+				for (int i = 0; i <= words.Length - n - 1; i++)
+				{
+					string[] inputSeq = words.Skip(i).Take(n).ToArray();
+					string[] targetSeq = new[] { words[i + n] };
+					nextWordGeneration.Train(inputSeq, targetSeq, epochs, learningRate);
+				}
 			}
 
 			while (true)

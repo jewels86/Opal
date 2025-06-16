@@ -2,6 +2,8 @@
 
 public class RecurrentNeuralNetwork : IRecurrentNetwork
 {
+    // TODO: Rewrite manually
+    
     public string Name { get; set; }
     public List<IRecurrentLayer> Layers { get; set; }
 

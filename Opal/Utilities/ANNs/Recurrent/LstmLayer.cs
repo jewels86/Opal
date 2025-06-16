@@ -141,6 +141,7 @@ public class LstmLayer
 
     public double[,,] Backward(double[,,] gradOutput, double learningRate)
     {
+        // TODO: Rewrite manually
         int batch = gradOutput.GetLength(0);
         int time = gradOutput.GetLength(1);
         int inputSize = InputSize;
