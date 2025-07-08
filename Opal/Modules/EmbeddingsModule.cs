@@ -248,6 +248,24 @@ namespace Opal.Modules
 				}
 			}
 			Core.Log(Name, 2, $"Found {results.Count} similar embeddings for {embedding} (with hash {hash})");
+			// Fallback: if no results, return the most similar embedding regardless of threshold
+			if (results.Count == 0)
+			{
+				var allCandidates = new List<(Embedding<T>, double)>();
+				foreach (var bucket in Embeddings.Values)
+				{
+					allCandidates.AddRange(
+						bucket.Select(x => (x, similarityFunction(embedding.Vector, x.Vector)))
+						.Where(x => x.Item1.ID != embedding.ID)
+					);
+				}
+				if (allCandidates.Count > 0)
+				{
+					var best = allCandidates.OrderByDescending(x => x.Item2).First();
+					results.Add(best);
+					Core.Log(Name, 2, $"Fallback: Added most similar embedding with similarity {best.Item2}");
+				}
+			}
 			return results;
 		}
 		#endregion

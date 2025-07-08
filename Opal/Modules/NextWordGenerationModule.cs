@@ -1,4 +1,5 @@
 ﻿using Opal.Configurations;
+using Opal.Utilities;
 using Opal.Utilities.ANNs;
 using Opal.Utilities.ANNs.Recurrent;
 
@@ -22,14 +23,16 @@ public class NextWordGenerationModule : IModule
         SemanticInterpreter =
             semanticInterpreter ?? SemanticInterpreterConfigurations.GenerateDefaultSemanticInterpreter(Embeddings);
         int n = Embeddings.N;
-        Lstm.AddLayer(new LstmLayer(n, hiddenSize, batchSize));
+        Lstm.AddLayer(new LstmLayer(n, hiddenSize, batchSize, $"lstm-input-layer ({n}, {hiddenSize}) from {Name} ({ID})"));
         for (int i = 0; i < hiddenLayers; i++)
-            Lstm.AddLayer(new LstmLayer(hiddenSize, hiddenSize, batchSize));
-        Lstm.AddLayer(new LstmLayer(n, n, batchSize));
+            Lstm.AddLayer(new LstmLayer(hiddenSize, hiddenSize, batchSize, $"lstm-hidden-layer {i + 1} ({hiddenSize}, {hiddenSize}) from {Name} ({ID})"));
+        Lstm.AddLayer(new LstmLayer(hiddenSize, n, batchSize, $"lstm-output-layer ({hiddenSize}, {n}) from {Name} ({ID})"));
     }
     
     public void Train(string[] input, string[] target, int epochs = 100, double learningRate = 0.01)
     {
+        Core.Log(Name, (int)Logging.LogLevel.HighDebug, $"Training LSTM with input \'{string.Join(" ", input)}\', target \'{string.Join(" ", target)}\', epochs {epochs}, learning rate {learningRate}");
+        
         if (input.Length == 0 || target.Length == 0)
         {
             Core.Log(Name, 2, "Input or target is empty.");

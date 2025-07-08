@@ -22,7 +22,7 @@ namespace Testing
 			}
 			if (File.Exists("data3.txt"))
 			{
-				sentences.AddRange(File.ReadAllLines("data3.txt"));
+				//sentences.AddRange(File.ReadAllLines("data3.txt"));
 			}
 
 			EmbeddingsModule<string> embeddings = new(32, 256, 256, 0.75, "word-embeddings");
@@ -57,7 +57,7 @@ namespace Testing
 			StringParsing.Stopwords = stopwordRecognition.Results().Distinct().ToList();
 			StringParsing.Separators = StringParsing.StandardSeparators;
 
-			Core.LogLevel = 2;
+			Core.LogLevel = 0;
 			Core.Initialize();
 
 			Core.Log("program", 1, $"Using stopwords {string.Join(", ", stopwordRecognition.Results())}");
@@ -70,13 +70,14 @@ namespace Testing
 				semanticInterpreter.Interpret(words);
 			}
 			
-			int epochs = 10;
-			double learningRate = 0.01;
+			int epochs = 50;
+			double learningRate = 0.05;
 
 			foreach (string sentence in sentences)
 			{
 				string[] words = StringParsing.Parse(sentence);
 				if (words.Length <= n) continue;
+				Core.Log("program", (int)Logging.LogLevel.Info, $"Training with sentence: {sentence}");
 				for (int i = 0; i <= words.Length - n - 1; i++)
 				{
 					string[] inputSeq = words.Skip(i).Take(n).ToArray();

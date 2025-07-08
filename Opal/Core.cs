@@ -5,6 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
+using Opal.Utilities;
+using static Opal.Utilities.Logging;
 
 namespace Opal
 {
@@ -15,7 +17,10 @@ namespace Opal
 
 		public static ConcurrentDictionary<int, IModule> RegisteredModules { get; } = new();
 
-		public static Action<string, int, string> Log { get; set; } = StandardLog;
+		public static Action<string, int, string> LogFunction { get; set; } = StandardLog;
+		public static readonly List<string> LogWhitelist = [];
+		public static readonly List<string> LogBlacklist = [];
+		
 		public static int LogLevel { get; set; } = 2;
 
 		public static int Register(IModule module)
@@ -43,10 +48,14 @@ namespace Opal
 		#endregion
 
 		#region Logging
-		public static void StandardLog(string name, int level, string message)
+		public static void Log(string name, int level, string message)
 		{
-			if (level > LogLevel) return;
-			Console.WriteLine($"[{name}] [{level}] {message}");
+			LogFunction(name, level, message);
+		}
+
+		public static void Log(string name, Logging.LogLevel level, string message)
+		{
+			LogFunction(name, (int)level, message);
 		}
 		#endregion
 

@@ -1,9 +1,12 @@
 ﻿namespace Opal.Utilities.ANNs.Recurrent;
 
 using static MathFunctions;
+using static Logging;
 
 public class LstmLayer
 {
+    public string Tag { get; set; } = "LSTM Layer?";
+    
     public ILayer.ActivationFunction SigmoidFunction { get; set; } = Sigmoid;
     public ILayer.ActivationFunction TanhFunction { get; set; } = Tanh;
     public ILayer.ActivationFunctionDerivative SigmoidDerivativeFunction { get; set; } = SigmoidDerivative;
@@ -47,7 +50,7 @@ public class LstmLayer
     // Add cell state timeline for correct backprop
     private List<double[]> _cellStatesPerTimestep = [];
 
-    public LstmLayer(int inputSize, int hiddenSize, int batchSize)
+    public LstmLayer(int inputSize, int hiddenSize, int batchSize, string? tag = null)
     {
         InputSize = inputSize;
         HiddenSize = hiddenSize;
@@ -71,6 +74,8 @@ public class LstmLayer
         dInputGateBias = new double[HiddenSize];
         dCellStateBias = new double[HiddenSize];
         dOutputGateBias = new double[HiddenSize];
+
+        Tag = tag ?? Tag;
     }
 
     public double[,,] Forward(double[,,] inputSequence, bool reset = true)
@@ -102,19 +107,21 @@ public class LstmLayer
 
         for (int i = 0; i < batch; i++)
         {
+            Core.Log(Tag, (int)LogLevel.Debug, $"Processing batch {i + 1}/{batch}...");
             for (int j = 0; j < time; j++)
             {
+                Core.Log(Tag, (int)LogLevel.Debug, $"Processing timestep {j + 1}/{time} for batch {i + 1}/{batch}...");
                 double[] input = GetInputFromSample(GetBatchSample(inputSequence, i), j);
                 double[] concat = input.Concat(HiddenStates[i]).ToArray();
 
-                double[] forgetGate = Apply(SigmoidFunction, Add(Multiply(ForgetGateWeight, concat), ForgetGateBias));
-                double[] inputGate = Apply(SigmoidFunction, Add(Multiply(InputGateWeight, concat), InputGateBias));
-                double[] cellCandidate = Apply(TanhFunction, Add(Multiply(CellStateWeight, concat), CellStateBias));
+                double[] forgetGate = Apply(SigmoidFunction, Add(Multiply(concat, ForgetGateWeight), ForgetGateBias));
+                double[] inputGate = Apply(SigmoidFunction, Add(Multiply(concat, InputGateWeight), InputGateBias));
+                double[] cellCandidate = Apply(TanhFunction, Add(Multiply(concat, CellStateWeight), CellStateBias));
 
                 double[] newCellState = Add(
                     Multiply(forgetGate, CellStates[i]),
                     Multiply(inputGate, cellCandidate));
-                double[] outputGate = Apply(SigmoidFunction, Add(Multiply(OutputGateWeight, concat), OutputGateBias));
+                double[] outputGate = Apply(SigmoidFunction, Add(Multiply(concat, OutputGateWeight), OutputGateBias));
                 double[] hiddenState = Multiply(outputGate, Apply(TanhFunction, newCellState));
 
                 CellStates[i] = newCellState;

@@ -15,6 +15,17 @@ public class LstmNetwork
 
     public List<double[]> PredictSequence(List<double[]> inputSequence)
     {
+        // Error handling
+        if (inputSequence.Select(x => x.Length).Distinct().Count() != 1)
+        {
+            Core.Log(Name, 2, "Input sequence must have consistent input size.");
+            return [];
+        }
+        if (inputSequence.Count == 0)
+        {
+            Core.Log(Name, 2, "Input sequence is empty.");
+            return [];
+        }
         // Convert inputSequence to [batch, time, inputSize] with batch=1
         int time = inputSequence.Count;
         int inputSize = inputSequence[0].Length;
@@ -50,14 +61,21 @@ public class LstmNetwork
                 var inputSeq = inputSequences[i];
                 var targetSeq = targetSequences[i];
                 var predicted = PredictSequence(inputSeq);
+                // Apply softmax to each prediction
+                for (int t = 0; t < predicted.Count; t++)
+                    predicted[t] = LossFunctions.Softmax(predicted[t]);
 
                 double seqLoss = 0.0;
-                for (int t = 0; t < predicted.Count; t++)
+                int steps = Math.Min(predicted.Count, targetSeq.Count);
+                for (int t = 0; t < steps; t++)
                     seqLoss += LossFunctions.CrossEntropy(predicted[t], targetSeq[t]);
-                totalLoss += seqLoss / predicted.Count;
+                totalLoss += seqLoss / steps;
+                
+                Core.Log(Name, Logging.LogLevel.LowDebug, $"seqLoss for sequence {i + 1}/{inputSequences.Count}: {seqLoss / steps}");
+                Core.Log(Name, Logging.LogLevel.LowDebug, $"steps: {steps}, predicted: {predicted.Count}, target: {targetSeq.Count}, totalLoss: {totalLoss}");
 
                 // Compute gradient for output
-                int time = predicted.Count;
+                int time = steps;
                 int hiddenSize = predicted[0].Length;
                 double[,,] grad = new double[1, time, hiddenSize];
                 for (int t = 0; t < time; t++)

@@ -87,6 +87,20 @@ public static class MathFunctions
         }
         return result;
     }
+    public static double[] Multiply(double[] vector, double[,] matrix)
+    {
+        if (vector.Length != matrix.GetLength(0)) throw new ArgumentException("Vector length must match matrix rows.");
+        double[] result = new double[matrix.GetLength(1)];
+        for (int j = 0; j < matrix.GetLength(1); j++)
+        {
+            result[j] = 0;
+            for (int i = 0; i < matrix.GetLength(0); i++)
+            {
+                result[j] += vector[i] * matrix[i, j];
+            }
+        }
+        return result;
+    }
     public static void AddOuterProduct(double[,] mat, double[] vec1, double[] vec2)
     {
         for (int i = 0; i < vec1.Length; i++)
