@@ -29,14 +29,14 @@ public class NextWordGenerationModule : IModule
         Lstm.AddLayer(new LstmLayer(hiddenSize, n, batchSize, $"lstm-output-layer ({hiddenSize}, {n}) from {Name} ({ID})"));
     }
     
-    public void Train(string[] input, string[] target, int epochs = 100, double learningRate = 0.01)
+    public List<double> Train(string[] input, string[] target, int epochs = 100, double learningRate = 0.01)
     {
         Core.Log(Name, (int)Logging.LogLevel.HighDebug, $"Training LSTM with input \'{string.Join(" ", input)}\', target \'{string.Join(" ", target)}\', epochs {epochs}, learning rate {learningRate}");
         
         if (input.Length == 0 || target.Length == 0)
         {
             Core.Log(Name, 2, "Input or target is empty.");
-            return;
+            return [];
         }
 
         var inputEmbeddings = input
@@ -52,7 +52,7 @@ public class NextWordGenerationModule : IModule
                 .Where(x => x.e == null)
                 .Select(x => x.w);
             Core.Log(Name, 2, $"Input words not found in embeddings: {string.Join(", ", missing)}");
-            return;
+            return [];
         }
         if (targetEmbeddings.Any(e => e == null))
         {
@@ -60,13 +60,13 @@ public class NextWordGenerationModule : IModule
                 .Where(x => x.e == null)
                 .Select(x => x.w);
             Core.Log(Name, 2, $"Target words not found in embeddings: {string.Join(", ", missing)}");
-            return;
+            return [];
         }
 
         var inputSeqs = new List<List<double[]>> { inputEmbeddings.Select(e => e.Vector).ToList() };
         var targetSeqs = new List<List<double[]>> { targetEmbeddings.Select(e => e.Vector).ToList() };
 
-        Lstm.Train(inputSeqs, targetSeqs, epochs, learningRate);
+        return Lstm.Train(inputSeqs, targetSeqs, epochs, learningRate);
     }
     
     public string GenerateNext(string[] input)

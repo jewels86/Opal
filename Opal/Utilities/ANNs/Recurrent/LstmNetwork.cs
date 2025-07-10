@@ -1,4 +1,6 @@
-﻿namespace Opal.Utilities.ANNs.Recurrent;
+﻿using System.IO;
+
+namespace Opal.Utilities.ANNs.Recurrent;
 
 public class LstmNetwork
 {
@@ -51,8 +53,9 @@ public class LstmNetwork
         return result;
     }
 
-    public void Train(List<List<double[]>> inputSequences, List<List<double[]>> targetSequences, int epochs, double learningRate)
+    public List<double> Train(List<List<double[]>> inputSequences, List<List<double[]>> targetSequences, int epochs, double learningRate)
     {
+        var epochLosses = new List<double>();
         for (int epoch = 0; epoch < epochs; epoch++)
         {
             double totalLoss = 0.0;
@@ -86,8 +89,11 @@ public class LstmNetwork
                 for (int l = Layers.Count - 1; l >= 0; l--)
                     grad = Layers[l].Backward(grad, learningRate);
             }
-            Core.Log(Name, 3, $"Epoch {epoch + 1}/{epochs}, Loss: {totalLoss / inputSequences.Count}");
+            double avgLoss = totalLoss / inputSequences.Count;
+            epochLosses.Add(avgLoss);
+            Core.Log(Name, 3, $"Epoch {epoch + 1}/{epochs}, Loss: {avgLoss}");
         }
+        return epochLosses;
     }
 
     public double EvaluateLoss(List<List<double[]>> inputSequences, List<List<double[]>> targetSequences)
@@ -117,11 +123,11 @@ public class LstmNetwork
         return outputSeq.Count > 0 ? outputSeq[0] : Array.Empty<double>();
     }
 
-    public void Train(double[][] inputs, double[][] targets, int epochs, double learningRate)
+    public List<double> Train(double[][] inputs, double[][] targets, int epochs, double learningRate)
     {
         var inputSeqs = inputs.Select(x => new List<double[]> { x }).ToList();
         var targetSeqs = targets.Select(x => new List<double[]> { x }).ToList();
-        Train(inputSeqs, targetSeqs, epochs, learningRate);
+        return Train(inputSeqs, targetSeqs, epochs, learningRate);
     }
 
     public double EvaluateLoss(double[][] inputs, double[][] targets)
@@ -129,5 +135,27 @@ public class LstmNetwork
         var inputSeqs = inputs.Select(x => new List<double[]> { x }).ToList();
         var targetSeqs = targets.Select(x => new List<double[]> { x }).ToList();
         return EvaluateLoss(inputSeqs, targetSeqs);
+    }
+
+    public void Save(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Create, FileAccess.Write);
+        using var writer = new BinaryWriter(fs);
+        writer.Write(Name ?? "");
+        writer.Write(Layers.Count);
+        foreach (var layer in Layers)
+            layer.Save(writer);
+    }
+
+    public static LstmNetwork Load(string path)
+    {
+        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
+        using var reader = new BinaryReader(fs);
+        string name = reader.ReadString();
+        int layerCount = reader.ReadInt32();
+        var net = new LstmNetwork(name);
+        for (int i = 0; i < layerCount; i++)
+            net.Layers.Add(LstmLayer.Load(reader));
+        return net;
     }
 }

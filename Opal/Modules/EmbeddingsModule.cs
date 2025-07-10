@@ -5,6 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;
 using Opal.Utilities.Opal.Utilities;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.IO;
 
 namespace Opal.Modules
 {
@@ -362,6 +365,71 @@ namespace Opal.Modules
 		public static double DotProduct(double[] vectorA, double[] vectorB)
 		{
 			return vectorA.Zip(vectorB, (a, b) => a * b).Sum();
+		}
+		#endregion
+		#region Save/Load Embeddings
+		public void SaveEmbeddingsToFile(string filePath)
+		{
+			using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
+			using var writer = new BinaryWriter(fs);
+			writer.Write(EmbeddingIDs.Count);
+			foreach (var e in EmbeddingIDs.Values)
+			{
+				writer.Write(e.ID);
+				// For T: if it's a primitive or string, write directly; else, use ToString()
+				if (typeof(T) == typeof(string))
+					writer.Write((string)(object)e.Data!);
+				else if (typeof(T).IsPrimitive)
+					writer.Write(Convert.ToString(e.Data) ?? "");
+				else
+					writer.Write(e.Data?.ToString() ?? "");
+				writer.Write(e.Vector.Length);
+				for (int i = 0; i < e.Vector.Length; i++)
+					writer.Write(e.Vector[i]);
+			}
+			Core.Log(Name, 1, $"Saved {EmbeddingIDs.Count} embeddings to {filePath}");
+		}
+		public void LoadEmbeddingsFromFile(string filePath)
+		{
+			if (!File.Exists(filePath))
+			{
+				Core.Log(Name, 1, $"File not found: {filePath}");
+				return;
+			}
+			using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+			using var reader = new BinaryReader(fs);
+			int count = reader.ReadInt32();
+			EmbeddingIDs.Clear();
+			Embeddings.Clear();
+			for (int i = 0; i < count; i++)
+			{
+				int id = reader.ReadInt32();
+				T data;
+				if (typeof(T) == typeof(string))
+					data = (T)(object)reader.ReadString();
+				else if (typeof(T).IsPrimitive)
+					data = (T)Convert.ChangeType(reader.ReadString(), typeof(T));
+				else
+					data = (T)Convert.ChangeType(reader.ReadString(), typeof(T));
+				int len = reader.ReadInt32();
+				double[] vector = new double[len];
+				for (int j = 0; j < len; j++)
+					vector[j] = reader.ReadDouble();
+				var embedding = new Embedding<T>(id, data, vector);
+				EmbeddingIDs[embedding.ID] = embedding;
+				ulong hash = HashGenerator.Hash(embedding.Vector);
+				int bucketID = _reduce(hash);
+				var bucket = Embeddings.GetOrAdd(bucketID, _ => new());
+				lock (bucket) { bucket.Add(embedding); }
+			}
+			Core.Log(Name, 1, $"Loaded {count} embeddings from {filePath}");
+		}
+
+		private class SerializableEmbedding<TData>
+		{
+			public int ID { get; set; }
+			public TData Data { get; set; } = default!;
+			public double[] Vector { get; set; } = default!;
 		}
 		#endregion
 	}

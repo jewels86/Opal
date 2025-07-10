@@ -2,6 +2,8 @@
 
 using static MathFunctions;
 using static Logging;
+using System.IO;
+using static BinaryWriting;
 
 public class LstmLayer
 {
@@ -322,4 +324,41 @@ public class LstmLayer
 
     public double[] GetLastHiddenState(int batchIndex) => HiddenStates[batchIndex];
     public double[] GetLastCellState(int batchIndex) => CellStates[batchIndex];
+
+    public void Save(BinaryWriter writer)
+    {
+        writer.Write(Tag ?? "");
+        writer.Write(InputSize);
+        writer.Write(HiddenSize);
+        writer.Write(BatchSize);
+        // Save weights and biases
+        WriteMatrix(writer, ForgetGateWeight);
+        WriteMatrix(writer, InputGateWeight);
+        WriteMatrix(writer, CellStateWeight);
+        WriteMatrix(writer, OutputGateWeight);
+        WriteVector(writer, ForgetGateBias);
+        WriteVector(writer, InputGateBias);
+        WriteVector(writer, CellStateBias);
+        WriteVector(writer, OutputGateBias);
+    }
+
+    public static LstmLayer Load(BinaryReader reader)
+    {
+        string tag = reader.ReadString();
+        int inputSize = reader.ReadInt32();
+        int hiddenSize = reader.ReadInt32();
+        int batchSize = reader.ReadInt32();
+        var layer = new LstmLayer(inputSize, hiddenSize, batchSize, tag);
+        layer.ForgetGateWeight = ReadMatrix(reader);
+        layer.InputGateWeight = ReadMatrix(reader);
+        layer.CellStateWeight = ReadMatrix(reader);
+        layer.OutputGateWeight = ReadMatrix(reader);
+        layer.ForgetGateBias = ReadVector(reader);
+        layer.InputGateBias = ReadVector(reader);
+        layer.CellStateBias = ReadVector(reader);
+        layer.OutputGateBias = ReadVector(reader);
+        return layer;
+    }
+
+    
 }
