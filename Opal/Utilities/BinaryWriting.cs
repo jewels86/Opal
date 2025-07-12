@@ -9,8 +9,9 @@ public static class BinaryWriting
         writer.Write(rows);
         writer.Write(cols);
         for (int i = 0; i < rows; i++)
-        for (int j = 0; j < cols; j++)
-            writer.Write(matrix[i, j]);
+        {
+            for (int j = 0; j < cols; j++) writer.Write(matrix[i, j]);
+        }
     }
     public static double[,] ReadMatrix(BinaryReader reader)
     {
@@ -18,22 +19,22 @@ public static class BinaryWriting
         int cols = reader.ReadInt32();
         var matrix = new double[rows, cols];
         for (int i = 0; i < rows; i++)
-        for (int j = 0; j < cols; j++)
-            matrix[i, j] = reader.ReadDouble();
+        {
+            for (int j = 0; j < cols; j++) matrix[i, j] = reader.ReadDouble();
+        }
+        
         return matrix;
     }
     public static void WriteVector(BinaryWriter writer, double[] vector)
     {
         writer.Write(vector.Length);
-        for (int i = 0; i < vector.Length; i++)
-            writer.Write(vector[i]);
+        for (int i = 0; i < vector.Length; i++) writer.Write(vector[i]);
     }
     public static double[] ReadVector(BinaryReader reader)
     {
         int len = reader.ReadInt32();
         var v = new double[len];
-        for (int i = 0; i < len; i++)
-            v[i] = reader.ReadDouble();
+        for (int i = 0; i < len; i++) v[i] = reader.ReadDouble();
         return v;
     }
 }

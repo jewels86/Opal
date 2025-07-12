@@ -10,4 +10,8 @@
     <PackageReference Include="ScottPlot" Version="5.0.55" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Modules\Refinement\" />
+  </ItemGroup>
+
 </Project>

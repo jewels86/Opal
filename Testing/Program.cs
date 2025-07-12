@@ -91,8 +91,8 @@ namespace Testing
 			}
 			embeddings.SaveEmbeddingsToFile("embeddings.bin");
 			
-			int epochs = 20;
-			double learningRate = 0.02;
+			int epochs = 70;
+			double learningRate = 0.04;
 			List<double> losses = new();
 
 			foreach (string sentence in sentences)
@@ -108,7 +108,7 @@ namespace Testing
 					losses.Add(loss.Average());
 				}
 			}
-			nextWordGeneration.Lstm.Save("next-word-generation.lstm.bin");
+			nextWordGeneration.Lstm.Save("next-word-generation-2.lstm.bin");
 			var xs = Graphing.SimpleXs(losses.Count);
             Graphing.Save(Graphing.Create([
 	            (xs, losses.ToArray(), "Losses"),
