@@ -102,11 +102,14 @@ public class LstmNetwork
         for (int i = 0; i < inputSequences.Count; i++)
         {
             var predicted = PredictSequence(inputSequences[i]);
+            for (int t = 0; t < predicted.Count; t++) 
+                predicted[t] = LossFunctions.Softmax(predicted[t]);
+            
             var actual = targetSequences[i];
             double seqLoss = 0.0;
-            for (int t = 0; t < predicted.Count; t++)
+            for (int t = 0; t < Math.Min(predicted.Count, actual.Count); t++)
                 seqLoss += LossFunctions.CrossEntropy(predicted[t], actual[t]);
-            totalLoss += seqLoss / predicted.Count;
+            totalLoss += seqLoss / Math.Min(predicted.Count, actual.Count);
         }
         return totalLoss / inputSequences.Count;
     }

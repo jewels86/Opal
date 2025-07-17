@@ -222,7 +222,7 @@ namespace Opal.Modules
 		#endregion
 		#region Find Embedding(s)
 		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, double threshold = 0.7, Func<double[], double[], double>? similarityFunction = null)
-		{
+		{ // TODO
 			Core.Log(Name, 2, $"Finding similar embeddings for: {embedding} ({typeof(T).Name})");
 			ulong hash = HashGenerator.Hash(embedding.Vector);
 			int originalBucketID = _reduce(hash);
