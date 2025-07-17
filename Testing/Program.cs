@@ -45,9 +45,9 @@ namespace Testing
 				Console.WriteLine($"Failed to download or read Alice text: {ex.Message}");
 			}
 
-			EmbeddingsModule<string> embeddings = new(64, 256, 256, 0.75, "word-embeddings");
+			EmbeddingsModule<string> embeddings = new(64, 256, 256, 0.05, "word-embeddings");
 			SemanticInterpreterModule semanticInterpreter = GenerateDefaultSemanticInterpreter(embeddings);
-			NextWordGenerationModule nextWordGeneration = new("next-word-generation", embeddings, semanticInterpreter);
+			NextWordGenerationModule nextWordGeneration = new("next-word-generation", embeddings, semanticInterpreter, hiddenLayers: 3, batchSize: 16);
 			IrregularFrequencyRecognitionModule<string> stopwordRecognition = new(3, name: "stopword-recognition");
 			ApproximateEqualityRecognitionModule<char> wordStemRecognition = new(0.8, x => x, name: "word-stem-recognition");
 			IrregularFrequencyRecognitionModule<string> prefixRecognition = new(3, name: "prefix-recognition");
@@ -55,7 +55,7 @@ namespace Testing
 			var prefixExtractor = StringParsing.PrefixExtractor(2, 5);
 			var suffixExtractor = StringParsing.SuffixExtractor(2, 5);
 			List<string> allWords = [];
-			int n = 4;
+			int n = 6;
 			
 			foreach (string sentence in sentences)
 			{
@@ -91,8 +91,8 @@ namespace Testing
 			}
 			embeddings.SaveEmbeddingsToFile("embeddings.bin");
 			
-			int epochs = 70;
-			double learningRate = 0.04;
+			int epochs = 100;
+			double learningRate = 0.005;
 			List<double> losses = new();
 
 			foreach (string sentence in sentences)
@@ -108,7 +108,7 @@ namespace Testing
 					losses.Add(loss.Average());
 				}
 			}
-			nextWordGeneration.Lstm.Save("next-word-generation-2.lstm.bin");
+			nextWordGeneration.Lstm.Save("next-word-generation-6.lstm.bin");
 			var xs = Graphing.SimpleXs(losses.Count);
             Graphing.Save(Graphing.Create([
 	            (xs, losses.ToArray(), "Losses"),
