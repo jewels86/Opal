@@ -28,8 +28,8 @@ namespace Opal.Modules
 		public GetSimilarWordsDelegate GetSimilarWords { get; set; }
 		public AssociateDelegate Associate { get; set; }
 
-		public HashSet<string> Added { get; private set; } = [];
-		public ConcurrentDictionary<string, SortedDictionary<string, int>> WordTransitions { get; private set; } = [];
+		public HashSet<string> Added { get; set; } = [];
+		public ConcurrentDictionary<string, SortedDictionary<string, int>> WordTransitions { get; set; } = [];
 
 		private object _addLock = new();
 		private object _sortedDictionaryLock = new();

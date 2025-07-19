@@ -215,6 +215,10 @@ namespace Opal.Modules
 			}
 			return null;
 		}
+		public IEnumerable<T> GetAllData()
+		{
+			return EmbeddingIDs.Values.Select(x => x.Data);
+		}
 		public Embedding<T>? GetEmbedding(T data)
 		{
 			return EmbeddingIDs.Values.FirstOrDefault(x => x.Data.Equals(data));

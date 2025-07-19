@@ -63,12 +63,6 @@ public class LstmNetwork
             {
                 var inputSeq = inputSequences[i];
                 var targetSeq = targetSequences[i];
-                if (inputSeq.Count != targetSeq.Count)
-                {
-                    Core.Log(Name, 2, "Input and target sequences must have the same length.");
-                    continue;
-                }
-                
                 var predicted = PredictSequence(inputSeq).Select(x => LossFunctions.Softmax(x)).ToList();
 
                 // Reverse, then iterate through so that for nwg last is the only one considered and for transformations it works anyway
@@ -99,22 +93,6 @@ public class LstmNetwork
         return epochLosses;
     }
 
-    public double EvaluateLoss(List<List<double[]>> inputSequences, List<List<double[]>> targetSequences)
-    {
-        double totalLoss = 0.0;
-        for (int i = 0; i < inputSequences.Count; i++)
-        {
-            var predicted = PredictSequence(inputSequences[i]);
-            for (int t = 0; t < predicted.Count; t++) 
-                predicted[t] = LossFunctions.Softmax(predicted[t]);
-            
-            var actual = targetSequences[i];
-            double seqLoss = LossFunctions.CrossEntropy(predicted.Last(), actual[0]);
-            totalLoss += seqLoss;
-        }
-        return totalLoss / inputSequences.Count;
-    }
-
     public void Reset()
     {
         foreach (var layer in Layers)
@@ -132,13 +110,6 @@ public class LstmNetwork
         var inputSeqs = inputs.Select(x => new List<double[]> { x }).ToList();
         var targetSeqs = targets.Select(x => new List<double[]> { x }).ToList();
         return Train(inputSeqs, targetSeqs, epochs, learningRate);
-    }
-
-    public double EvaluateLoss(double[][] inputs, double[][] targets)
-    {
-        var inputSeqs = inputs.Select(x => new List<double[]> { x }).ToList();
-        var targetSeqs = targets.Select(x => new List<double[]> { x }).ToList();
-        return EvaluateLoss(inputSeqs, targetSeqs);
     }
 
     public void Save(string path)
@@ -161,5 +132,11 @@ public class LstmNetwork
         for (int i = 0; i < layerCount; i++)
             net.Layers.Add(LstmLayer.Load(reader));
         return net;
+    }
+
+    public void From(LstmNetwork lstm)
+    {
+        Name = lstm.Name;
+        Layers = lstm.Layers;
     }
 }
