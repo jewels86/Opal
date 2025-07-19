@@ -103,12 +103,12 @@ namespace Testing
 				for (int i = 0; i <= words.Length - n - 1; i++)
 				{
 					string[] inputSeq = words.Skip(i).Take(n).ToArray();
-					string[] targetSeq = new[] { words[i + n] };
+					string[] targetSeq = [words[i + n]];
 					var loss = nextWordGeneration.Train(inputSeq, targetSeq, epochs, learningRate);
 					losses.Add(loss.Average());
 				}
 			}
-			nextWordGeneration.Lstm.Save("next-word-generation-6.lstm.bin");
+			nextWordGeneration.Lstm.Save("next-word-generation-7.lstm.bin");
 			var xs = Graphing.SimpleXs(losses.Count);
             Graphing.Save(Graphing.Create([
 	            (xs, losses.ToArray(), "Losses"),

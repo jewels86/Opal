@@ -6,7 +6,7 @@ using Opal.Utilities.ANNs.Recurrent;
 namespace Opal.Modules;
 
 public class NextWordGenerationModule : IModule
-{
+{ // TODO: Convert to NextWordGenerationModule<T>
     public EmbeddingsModule<string> Embeddings { get; set; }
     public SemanticInterpreterModule SemanticInterpreter { get; private set; }
     public LstmNetwork Lstm { get; private set; } = new("next-word-generation-lstm");
@@ -29,6 +29,14 @@ public class NextWordGenerationModule : IModule
         Lstm.AddLayer(new LstmLayer(hiddenSize, n, batchSize, $"lstm-output-layer ({hiddenSize}, {n}) from {Name} ({ID})"));
     }
     
+    /// <summary>
+    /// Trains the LSTM used for next word generation.
+    /// </summary>
+    /// <param name="input">The input words as an array ("the quick brown")</param>
+    /// <param name="target">The target or actual words as an array ("the quick brown fox")</param>
+    /// <param name="epochs"></param>
+    /// <param name="learningRate"></param>
+    /// <returns></returns>
     public List<double> Train(string[] input, string[] target, int epochs = 100, double learningRate = 0.01)
     {
         Core.Log(Name, (int)Logging.LogLevel.HighDebug, $"Training LSTM with input \'{string.Join(" ", input)}\', target \'{string.Join(" ", target)}\', epochs {epochs}, learning rate {learningRate}");

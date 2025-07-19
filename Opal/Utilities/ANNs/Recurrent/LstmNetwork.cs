@@ -63,35 +63,38 @@ public class LstmNetwork
             {
                 var inputSeq = inputSequences[i];
                 var targetSeq = targetSequences[i];
-                var predicted = PredictSequence(inputSeq);
-                // Apply softmax to each prediction
-                for (int t = 0; t < predicted.Count; t++)
-                    predicted[t] = LossFunctions.Softmax(predicted[t]);
+                if (inputSeq.Count != targetSeq.Count)
+                {
+                    Core.Log(Name, 2, "Input and target sequences must have the same length.");
+                    continue;
+                }
+                
+                var predicted = PredictSequence(inputSeq).Select(x => LossFunctions.Softmax(x)).ToList();
+
+                // Reverse, then iterate through so that for nwg last is the only one considered and for transformations it works anyway
+                var reversedPredicted = ((IEnumerable<double[]>)predicted).Reverse().ToList();
+                var reversedTarget = ((IEnumerable<double[]>)targetSeq).Reverse().ToList();
 
                 double seqLoss = 0.0;
-                int steps = Math.Min(predicted.Count, targetSeq.Count);
-                for (int t = 0; t < steps; t++)
-                    seqLoss += LossFunctions.CrossEntropy(predicted[t], targetSeq[t]);
+                int steps = Math.Min(reversedPredicted.Count, reversedTarget.Count);
+                for (int t = 0; t < steps; t++) 
+                    seqLoss += LossFunctions.CrossEntropy(reversedPredicted[t], reversedTarget[t]);
                 totalLoss += seqLoss / steps;
-                
-                Core.Log(Name, Logging.LogLevel.LowDebug, $"seqLoss for sequence {i + 1}/{inputSequences.Count}: {seqLoss / steps}");
-                Core.Log(Name, Logging.LogLevel.LowDebug, $"steps: {steps}, predicted: {predicted.Count}, target: {targetSeq.Count}, totalLoss: {totalLoss}");
 
-                // Compute gradient for output
                 int time = steps;
-                int hiddenSize = predicted[0].Length;
+                int hiddenSize = reversedPredicted[0].Length;
                 double[,,] grad = new double[1, time, hiddenSize];
                 for (int t = 0; t < time; t++)
+                {
                     for (int h = 0; h < hiddenSize; h++)
-                        grad[0, t, h] = predicted[t][h] - targetSeq[t][h];
-
-                // Backpropagate through layers in reverse
+                        grad[0, t, h] = reversedPredicted[t][h] - reversedTarget[t][h];
+                }
                 for (int l = Layers.Count - 1; l >= 0; l--)
                     grad = Layers[l].Backward(grad, learningRate);
             }
-            double avgLoss = totalLoss / inputSequences.Count;
-            epochLosses.Add(avgLoss);
-            Core.Log(Name, 3, $"Epoch {epoch + 1}/{epochs}, Loss: {avgLoss}");
+            double averageLoss = totalLoss / inputSequences.Count;
+            epochLosses.Add(averageLoss);
+            Core.Log(Name, Logging.LogLevel.HighDebug, $"Epoch {epoch + 1}/{epochs}, Loss: {averageLoss}");
         }
         return epochLosses;
     }
@@ -106,10 +109,8 @@ public class LstmNetwork
                 predicted[t] = LossFunctions.Softmax(predicted[t]);
             
             var actual = targetSequences[i];
-            double seqLoss = 0.0;
-            for (int t = 0; t < Math.Min(predicted.Count, actual.Count); t++)
-                seqLoss += LossFunctions.CrossEntropy(predicted[t], actual[t]);
-            totalLoss += seqLoss / Math.Min(predicted.Count, actual.Count);
+            double seqLoss = LossFunctions.CrossEntropy(predicted.Last(), actual[0]);
+            totalLoss += seqLoss;
         }
         return totalLoss / inputSequences.Count;
     }
@@ -122,8 +123,8 @@ public class LstmNetwork
 
     public double[] Predict(double[] input)
     {
-        var outputSeq = PredictSequence(new List<double[]> { input });
-        return outputSeq.Count > 0 ? outputSeq[0] : Array.Empty<double>();
+        var outputSeq = PredictSequence([input]);
+        return outputSeq.Count > 0 ? outputSeq[0] : [];
     }
 
     public List<double> Train(double[][] inputs, double[][] targets, int epochs, double learningRate)
