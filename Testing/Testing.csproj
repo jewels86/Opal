@@ -23,10 +23,25 @@
     <Content Include="data2.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <None Remove="data3.txt" />
+    <Content Include="data3.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Spectre.Console" Version="0.50.1-preview.0.21" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="affixes.txt" />
+    <Content Include="affixes.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <None Remove="stopwords.txt" />
+    <Content Include="stopwords.txt">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

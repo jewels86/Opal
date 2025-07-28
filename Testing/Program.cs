@@ -24,40 +24,35 @@ namespace Testing
 			//sentences.AddRange(ReadFileLines("data2.txt"));
 			//sentences.AddRange(ReadFileLines("data3.txt"));
 			foreach (var url in urls) sentences.AddRange(ReadUrlLines(url));
+			
+			List<string> prefixes = [];
+			List<string> suffixes = [];
+			List<string> stopwords = ReadFileLines("stopwords.txt").ToList();
+			
+			foreach (var affix in ReadFileLines("affixes.txt"))
+			{
+				if (affix.StartsWith("-")) prefixes.Add(affix.Substring(1).Trim());
+				else if (affix.EndsWith("-")) suffixes.Add(affix.Substring(0, affix.Length - 1).Trim());
+			}
 
 			EmbeddingsModule<string> embeddings = new(64, 256, 256, 0.05, "word-embeddings");
 			SemanticInterpreterModule semanticInterpreter = GenerateDefaultSemanticInterpreter(embeddings);
 			NextWordGenerationModule nextWordGeneration = new("next-word-generation", embeddings, semanticInterpreter, hiddenLayers: 3, batchSize: 16);
-			IrregularFrequencyRecognitionModule<string> stopwordRecognition = new(int.MaxValue, name: "stopword-recognition"); // TODO: stopword, prefix, and suffix recognition need to be replaced by a network
-			ApproximateEqualityRecognitionModule<char> wordStemRecognition = new(0.8, x => x, name: "word-stem-recognition");
-			IrregularFrequencyRecognitionModule<string> prefixRecognition = new(int.MaxValue, name: "prefix-recognition");
-			IrregularFrequencyRecognitionModule<string> suffixRecognition =  new(int.MaxValue, name: "suffix-recognition");
-			var prefixExtractor = StringParsing.PrefixExtractor(2, 5);
-			var suffixExtractor = StringParsing.SuffixExtractor(2, 5);
-			List<string> allWords = [];
 			int n = 6;
 
 			bool newEmbeddings = AnsiConsole.Prompt(new ConfirmationPrompt("Create new embeddings?"));
-			
-			foreach (string sentence in sentences)
-			{
-				string[] sequence = StringParsing.Split(sentence).Select(x => x.ToLower()).ToArray();
-				stopwordRecognition.Analyze(sequence);
-				allWords.AddRange(sequence);
-			}
-			stopwordRecognition.FinalizeAnalysis();
 
-			AnalyzeSuffixesAndPrefixes(prefixRecognition, suffixRecognition, prefixExtractor, suffixExtractor, allWords);
-
-			StringParsing.Stopwords = stopwordRecognition.Results().Distinct().ToList();
+			StringParsing.Stopwords = stopwords;
 			StringParsing.Separators = StringParsing.StandardSeparators;
+			StringParsing.Prefixes = prefixes;
+			StringParsing.Suffixes = suffixes;
 			
 			Core.LogLevel = 0;
 			Core.Initialize();
 
-			Core.Log("program", Logging.LogLevel.Info, $"Using stopwords {string.Join(", ", stopwordRecognition.Results())}");
-			Core.Log("program", Logging.LogLevel.Info, $"Found suffixes: {string.Join(", ", suffixRecognition.Results().Select(x => new string(x.ToArray())))}");
-			Core.Log("program", Logging.LogLevel.Info, $"Found prefixes: {string.Join(", ", prefixRecognition.Results().Select(x => new string(x.ToArray())))}");
+			Core.Log("program", Logging.LogLevel.Info, $"Using stopwords {string.Join(", ", stopwords)}");
+			Core.Log("program", Logging.LogLevel.Info, $"Using suffixes: {string.Join(", ", suffixes)}");
+			Core.Log("program", Logging.LogLevel.Info, $"Using prefixes: {string.Join(", ", prefixes)}");
 
 			if (newEmbeddings)
 			{

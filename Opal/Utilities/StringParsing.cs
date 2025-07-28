@@ -18,6 +18,19 @@ namespace Opal.Utilities
 			var filteredWords = words
 				.Where(word => !Stopwords.Contains(word.ToLower()))
 				.Select(word => word.ToLower())
+				.Select(word => word.Trim())
+				.Select(word =>
+				{
+					foreach (var prefix in Prefixes)
+					{
+						if (word.StartsWith(prefix)) word = word.Substring(prefix.Length);
+					}
+					foreach (var suffix in Suffixes)
+					{
+						if (word.EndsWith(suffix)) word = word.Substring(0, word.Length - suffix.Length);
+					}
+					return word;
+				})
 				.ToArray();
 			return filteredWords;
 		}
@@ -37,34 +50,7 @@ namespace Opal.Utilities
 			" ", "\n", "\t", ".", ",", ";", ":", "!", "?", "\"", "(", ")", "[", "]", "{", "}", "<", ">", "/", "\\"
 		];
 		
-		public static string[] ExtractPrefixes(string sequence, int minLength, int maxLength)
-		{
-			List<char[]> results = new List<char[]>();
-			char[] arr = sequence.ToCharArray();
-			for (int i = 0; i < maxLength; i++)
-			{
-				if (i < minLength || i >= sequence.Length) continue;
-				results.Add(sequence.Take(i).ToArray());
-			}
-			return results.Select(x => new string(x)).ToArray();
-		}
-		public static string[] ExtractSuffixes(string sequence, int minLength, int maxLength)
-		{
-			List<char[]> results = new List<char[]>();
-			for (int i = 0; i < maxLength; i++)
-			{
-				if (i < minLength || i >= sequence.Length) continue;
-				results.Add(sequence.Skip(i + 1).ToArray());
-			}
-			return results.Select(x => new string(x)).ToArray();
-		}
-		public static Func<string, string[]> PrefixExtractor(int minLength, int maxLength)
-		{
-			return sequence => ExtractPrefixes(sequence, minLength, maxLength);
-		}
-		public static Func<string, string[]> SuffixExtractor(int minLength, int maxLength)
-		{
-			return sequence => ExtractSuffixes(sequence, minLength, maxLength);
-		}
+		public static List<string> Prefixes = [];
+		public static List<string> Suffixes = [];
 	}
 }

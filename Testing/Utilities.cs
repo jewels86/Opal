@@ -50,19 +50,7 @@ public static class Utilities
     }
     #endregion
     #region Parsing and String Data Handling
-
-    public static void AnalyzeSuffixesAndPrefixes(IrregularFrequencyRecognitionModule<string> prefixRecognition,
-        IrregularFrequencyRecognitionModule<string> suffixRecognition, Func<string, string[]> prefixExtractor,
-        Func<string, string[]> suffixExtractor, List<string> allWords)
-    {
-        foreach (string word in allWords.Distinct())
-        {
-            prefixRecognition.Analyze(prefixExtractor(word));
-            suffixRecognition.Analyze(suffixExtractor(word));
-        }
-        prefixRecognition.FinalizeAnalysis();
-        suffixRecognition.FinalizeAnalysis();
-    }
+    
     public static void TrainSemanticInterpreter(SemanticInterpreterModule semanticInterpreter, List<string> sentences)
     {
         foreach (string sentence in sentences)
