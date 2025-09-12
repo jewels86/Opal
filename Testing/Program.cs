@@ -111,25 +111,25 @@ namespace Testing
 			{
 				var choice = AnsiConsole.Prompt(
 					new MultiSelectionPrompt<string>()
-						.Title("What would you like to do?")
+						.Title("Would you like to: ")
 						.AddChoices([
-							"[1] Generate a sentence with [special-start] and [special-end] tokens",
-							"[2] Generate a sentence of a specific length with specific input",
-							"[3] Generate a sentence with specific input and [special-end] token",
-							"[E] Exit"
+							"Use Special Start (1)",
+							"Use Special Length (2)",
+							"Use Special End (3)",
+							"Exit (E)"
 						])
 				);
 				
-				if (choice.Contains("[E]"))
+				if (choice.Contains("(E)"))
 				{
 					Core.Log("program", Logging.LogLevel.Info, "Exiting program.");
 					break;
 				}
 				else
 				{
-					bool specialStart = choice.Contains("[1]");
-					bool specialLength = choice.Contains("[2]");
-					bool specialEnd = choice.Contains("[3]") || choice.Contains("[1]");
+					bool specialStart = choice.Contains("(1)");
+					bool specialLength = choice.Contains("(2)");
+					bool specialEnd = choice.Contains("(3)");
 					string input = specialStart
 						? "special-start"
 						: AnsiConsole.Prompt(new TextPrompt<string>("Enter input sentence: "));
