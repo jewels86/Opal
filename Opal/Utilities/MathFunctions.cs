@@ -40,7 +40,14 @@ public static class MathFunctions
     public static double[] SigmoidDerivative(double[] x) => x.Select(SigmoidDerivative).ToArray();
     public static double TanhDerivative(double x) => 1.0 - Math.Pow(Tanh(x), 2);
     public static double[] TanhDerivative(double[] x) => x.Select(TanhDerivative).ToArray();
-    
+
+    public static double[] Softmax(double[] x)
+    {
+        double max = x.Max();
+        double scale = x.Select(v => Math.Exp(v - max)).Sum();
+        return x.Select(v => Math.Exp(v - max) / scale).ToArray();
+    }
+
     public static double[] ZeroVector(int length)
     {
         return new double[length];
@@ -182,5 +189,14 @@ public static class MathFunctions
         for (int i = 0; i < inputSize; i++)
             input[i] = sample[timeStep, i];
         return input;
+    }
+
+    public static double[,] ToMatrix2D(List<double[]> vectors)
+    {
+        double[,] matrix = new double[vectors.Count, vectors[0].Length];
+        for (int i = 0; i < vectors.Count; i++)
+        for (int j = 0; j < vectors[0].Length; j++)
+                matrix[i, j] = vectors[i][j];
+        return matrix;
     }
 }

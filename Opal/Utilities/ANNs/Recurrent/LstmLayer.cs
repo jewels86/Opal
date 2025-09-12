@@ -7,7 +7,7 @@ using static BinaryWriting;
 
 public class LstmLayer
 {
-    public string Tag { get; set; } = "LSTM Layer?";
+    public string Tag { get; set; } = "LSTM Layer?"; // question: why the question mark?
     
     public ILayer.ActivationFunction SigmoidFunction { get; set; } = Sigmoid;
     public ILayer.ActivationFunction TanhFunction { get; set; } = Tanh;
