@@ -199,4 +199,17 @@ public static class MathFunctions
                 matrix[i, j] = vectors[i][j];
         return matrix;
     }
+
+    public static List<double[]> ToVectorList(double[,] matrix)
+    {
+        var list = new List<double[]>();
+        for (int i = 0; i < matrix.GetLength(0); i++)
+        {
+            var row = new double[matrix.GetLength(1)];
+            for (int j = 0; j < matrix.GetLength(1); j++)
+                row[j] = matrix[i, j];
+            list.Add(row);
+        }
+        return list;
+    }
 }

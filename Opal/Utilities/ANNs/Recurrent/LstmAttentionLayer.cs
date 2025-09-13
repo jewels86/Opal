@@ -52,6 +52,16 @@ public abstract class LstmAttentionLayer
         InputGateBias = new double[HiddenSize];
         CellGateBias = new double[HiddenSize];
         OutputGateBias = new double[HiddenSize];
+        
+        DecoderForgetGateWeight = RandomMatrix(outputSize + hiddenSize + hiddenSize, hiddenSize);
+        DecoderInputGateWeight = RandomMatrix(outputSize + hiddenSize + hiddenSize, hiddenSize);
+        DecoderCellGateWeight = RandomMatrix(outputSize + hiddenSize + hiddenSize, hiddenSize);
+        DecoderOutputGateWeight = RandomMatrix(outputSize + hiddenSize + hiddenSize, hiddenSize);
+        
+        DecoderForgetGateBias = new double[HiddenSize];
+        DecoderInputGateBias = new double[HiddenSize];
+        DecoderCellGateBias = new double[HiddenSize];
+        DecoderOutputGateBias = new double[HiddenSize];
     }
 
     public (double[] hidden, double[] cell) Encoder(double[] input, double[] prevHidden, double[] prevCell)
@@ -144,5 +154,37 @@ public abstract class LstmAttentionLayer
         return ToMatrix2D(hiddenStates);
     }
     
+    public double[,] Forward(double[,] input, double[,] output)
+    {
+        double[,] encoderHiddenStates = Encoder(input);
+        double[,] decoderHiddenStates = Decoder(output, encoderHiddenStates);
+        return decoderHiddenStates;
+    }
+    
     // TODO: Abstract method for training attention
+
+    public abstract void ResetAttention();
+    public abstract void SaveAttention(BinaryWriter writer);
+    public abstract void LoadAttention(BinaryReader reader);
+
+    public void Reset()
+    {
+        ForgetGateWeight = RandomMatrix(InputSize + HiddenSize, HiddenSize);
+        InputGateWeight = RandomMatrix(InputSize + HiddenSize, HiddenSize);
+        CellGateWeight = RandomMatrix(InputSize + HiddenSize, HiddenSize);
+        OutputGateWeight = RandomMatrix(InputSize + HiddenSize, HiddenSize);
+        ForgetGateBias = new double[HiddenSize];
+        InputGateBias = new double[HiddenSize];
+        CellGateBias = new double[HiddenSize];
+        OutputGateBias = new double[HiddenSize];
+        DecoderForgetGateWeight = RandomMatrix(OutputSize + HiddenSize + HiddenSize, HiddenSize);
+        DecoderInputGateWeight = RandomMatrix(OutputSize + HiddenSize + HiddenSize, HiddenSize);
+        DecoderCellGateWeight = RandomMatrix(OutputSize + HiddenSize + HiddenSize, HiddenSize);
+        DecoderOutputGateWeight = RandomMatrix(OutputSize + HiddenSize + HiddenSize, HiddenSize);
+        DecoderForgetGateBias = new double[HiddenSize];
+        DecoderInputGateBias = new double[HiddenSize];
+        DecoderCellGateBias = new double[HiddenSize];
+        DecoderOutputGateBias = new double[HiddenSize];
+        ResetAttention();
+    }
 }
