@@ -310,36 +310,36 @@ namespace Opal.Modules
 		#region Vector Operations
 		public static double[] Add(double[] vectorA, double[] vectorB)
 		{
-			return vectorA.Zip(vectorB, (a, b) => a + b).ToArray();
+			return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => a + b).ToArray();
 		}
 		public static double[] Subtract(double[] vectorA, double[] vectorB)
 		{
-			return vectorA.Zip(vectorB, (a, b) => a - b).ToArray();
+			return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => a - b).ToArray();
 		}
 		public static double[] Multiply(double[] vector, double scalar)
 		{
-			return vector.Select(v => v * scalar).ToArray();
+			return vector.AsParallel().Select(v => v * scalar).ToArray();
 		}
 		public static double[] Average(double[] vectorA, double[] vectorB)
 		{
-			return vectorA.Zip(vectorB, (a, b) => (a + b) / 2).ToArray();
+			return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => (a + b) / 2).ToArray();
 		}
 		public static double[] Normalize(double[] vector)
 		{
-			double length = Math.Sqrt(vector.Sum(v => v * v));
+			double length = Math.Sqrt(vector.AsParallel().Sum(v => v * v));
 			if (length == 0)
 			{
 				return vector;
 			}
-			return vector.Select(v => v / length).ToArray();
+			return vector.AsParallel().Select(v => v / length).ToArray();
 		}
 		public static double Magnitude(double[] vector)
 		{
-			return Math.Sqrt(vector.Sum(v => v * v));
+			return Math.Sqrt(vector.AsParallel().Sum(v => v * v));
 		}
 		public static double DotProduct(double[] vectorA, double[] vectorB)
 		{
-			return vectorA.Zip(vectorB, (a, b) => a * b).Sum();
+			return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => a * b).Sum();
 		}
 		#endregion
 		#region Save/Load Embeddings
