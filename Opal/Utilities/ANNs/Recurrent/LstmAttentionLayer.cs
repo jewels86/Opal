@@ -29,11 +29,8 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
     public double[] DecoderCellGateBias { get; set; }
     public double[] DecoderOutputGateBias { get; set; }
     
-    public delegate double[] AlignmentDelegate(double[] encoderHiddenState, double[] decoderHiddenState, bool cache);
-    
     public Func<double[], double[]> TanhActivation { get; set; } = Tanh;
     public Func<double[], double[]> SigmoidActivation { get; set; } = Sigmoid;
-    public abstract AlignmentDelegate AlignmentFunction { get; set; }
     public int InputSize { get; set; }
     public int HiddenSize { get; set; }
     public int OutputSize { get; set; }
@@ -68,22 +65,18 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
         BackpropCache = new T();
     }
 
-    public delegate void CacheEncoderDelegate(double[] forget, double[] inputGate, double[] cellCandidate, double[] cell, double[] outputGate, double[] hidden);
+    public delegate void CacheEncoderDelegate(double[] forget, double[] inputGate, double[] cellCandidate, double[] outputGate);
     public (double[] hidden, double[] cell) Encoder(double[] input, double[] prevHidden, double[] prevCell, CacheEncoderDelegate? cache = null)
     {
         double[] combined = input.Concat(prevHidden).ToArray();
-        
         double[] forget = SigmoidActivation(Add(Multiply(ForgetGateWeight, combined), ForgetGateBias));
         double[] inputGate = SigmoidActivation(Add(Multiply(InputGateWeight, combined), InputGateBias));
         double[] cellCandidate = TanhActivation(Add(Multiply(CellGateWeight, combined), CellGateBias));
-            
         double[] cell = Add(Multiply(forget, prevCell), Multiply(inputGate, cellCandidate));
         double[] outputGate = SigmoidActivation(Add(Multiply(OutputGateWeight, combined), OutputGateBias));
         double[] hidden = Multiply(outputGate, TanhActivation(cell));
-        
         if (cache is not null)
-            cache(forget, inputGate, cellCandidate, cell, outputGate, hidden);
-            
+            cache(forget, inputGate, cellCandidate, outputGate);
         return (hidden, cell);
     }
 
@@ -91,7 +84,6 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
     {
         List<double[]> hiddenStates = [new double[HiddenSize]];
         List<double[]> cellStates = [new double[HiddenSize]];
-        
         CacheEncoderDelegate? cacheFunc = null;
         List<double[]>? forgetGates = null;
         List<double[]>? inputGates = null;
@@ -99,11 +91,11 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
         List<double[]>? outputGates = null;
         if (cache)
         {
-            forgetGates = [new double[HiddenSize]];
-            inputGates = [new double[HiddenSize]];
-            cellCandidates = [new double[HiddenSize]];
-            outputGates = [new double[HiddenSize]];
-            cacheFunc = (forget, inputGate, cellCandidate, cell, outputGate, hidden) =>
+            forgetGates = [];
+            inputGates = [];
+            cellCandidates = [];
+            outputGates = [];
+            cacheFunc = (forget, inputGate, cellCandidate, outputGate) =>
             {
                 forgetGates.Add(forget);
                 inputGates.Add(inputGate);
@@ -111,7 +103,6 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
                 outputGates.Add(outputGate);
             };
         }
-        
         int timeSteps = x.GetLength(0);
         for (int t = 0; t < timeSteps; t++)
         {
@@ -120,7 +111,6 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
             hiddenStates.Add(hidden);
             cellStates.Add(cell);
         }
-
         if (cache)
         {
             BackpropCache.EncoderInputs = x;
@@ -131,21 +121,18 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
             BackpropCache.EncoderCellCandidates = ToMatrix2D(cellCandidates!);
             BackpropCache.EncoderOutputGates = ToMatrix2D(outputGates!);
         }
-
         return ToMatrix2D(hiddenStates);
     }
 
-    public double[] Attention(double[,] h, double[] prevState, bool cache = true, int timeStep = -1)
+    public delegate void CacheAttentionDelegate(double[] scores, double[] context);
+    public double[] Attention(double[,] h, double[] prevState, CacheAttentionDelegate? cache = null)
     {
         int timeSteps = h.GetLength(0);
         int hiddenSize = h.GetLength(1);
-
         double[] scores = new double[timeSteps];
         for (int j = 0; j < timeSteps; j++)
-            scores[j] = AlignmentFunction(GetInputFromSample(h, j), prevState, cache).Sum();
-
+            scores[j] = Alignment(GetInputFromSample(h, j), prevState).Sum();
         double[] attentionWeights = Softmax(scores);
-
         double[] context = new double[hiddenSize];
         for (int j = 0; j < timeSteps; j++)
         {
@@ -153,43 +140,81 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
             for (int k = 0; k < hiddenSize; k++)
                 context[k] += attentionWeights[j] * hJ[k];
         }
-        // maybe dont have them cache it with a bool; we can do a delegate instead so they don't need the timestep
-        
+        if (cache is not null)
+            cache(scores, context);
         return context;
     }
 
-    public (double[] hidden, double[] cell) Decoder(double[] prevOutput, double[] context, double[] prevHidden, double[] prevCell)
+    public delegate void CacheDecoderDelegate(double[] forget, double[] inputGate, double[] cellCandidate, double[] outputGate);
+    public (double[] hidden, double[] cell) Decoder(double[] prevOutput, double[] context, double[] prevHidden, double[] prevCell, CacheDecoderDelegate? cache = null)
     {
         double[] combined = prevOutput.Concat(context).Concat(prevHidden).ToArray();
-
         double[] forget = SigmoidActivation(Add(Multiply(DecoderForgetGateWeight, combined), DecoderForgetGateBias));
         double[] inputGate = SigmoidActivation(Add(Multiply(DecoderInputGateWeight, combined), DecoderInputGateBias));
         double[] cellCandidate = TanhActivation(Add(Multiply(DecoderCellGateWeight, combined), DecoderCellGateBias));
-
         double[] cell = Add(Multiply(forget, prevCell), Multiply(inputGate, cellCandidate));
         double[] outputGate = SigmoidActivation(Add(Multiply(DecoderOutputGateWeight, combined), DecoderOutputGateBias));
         double[] hidden = Multiply(outputGate, TanhActivation(cell));
-
+        if (cache is not null)
+            cache(forget, inputGate, cellCandidate, outputGate);
         return (hidden, cell);
     }
-    
-    public double[,] Decoder(double[,] y, double[,] encoderHiddenStates)
+
+    public double[,] Decoder(double[,] y, double[,] encoderHiddenStates, bool cache = true)
     {
         List<double[]> hiddenStates = [new double[HiddenSize]];
         List<double[]> cellStates = [new double[HiddenSize]];
-
+        List<double[]>? forgetGates = null;
+        List<double[]>? inputGates = null;
+        List<double[]>? cellCandidates = null;
+        List<double[]>? outputGates = null;
+        List<double[]>? attentionScores = null;
+        List<double[]>? attentionContexts = null;
+        CacheDecoderDelegate? cacheFunc = null;
+        CacheAttentionDelegate? attentionCacheFunc = null;
+        if (cache)
+        {
+            forgetGates = [];
+            inputGates = [];
+            cellCandidates = [];
+            outputGates = [];
+            attentionScores = [];
+            attentionContexts = [];
+            cacheFunc = (forget, inputGate, cellCandidate, outputGate) =>
+            {
+                forgetGates.Add(forget);
+                inputGates.Add(inputGate);
+                cellCandidates.Add(cellCandidate);
+                outputGates.Add(outputGate);
+            };
+            attentionCacheFunc = (scores, context) =>
+            {
+                attentionScores.Add(scores);
+                attentionContexts.Add(context);
+            };
+        }
         int timeSteps = y.GetLength(0);
         for (int t = 0; t < timeSteps; t++)
         {
             double[] prevOutput = GetInputFromSample(y, t);
             double[] prevHidden = hiddenStates.Last();
             double[] prevCell = cellStates.Last();
-
-            double[] context = Attention(encoderHiddenStates, prevHidden);
-
-            var (hidden, cell) = Decoder(prevOutput, context, prevHidden, prevCell);
+            double[] context = Attention(encoderHiddenStates, prevHidden, attentionCacheFunc);
+            var (hidden, cell) = Decoder(prevOutput, context, prevHidden, prevCell, cacheFunc);
             hiddenStates.Add(hidden);
             cellStates.Add(cell);
+        }
+        if (cache)
+        {
+            BackpropCache.DecoderInputs = y;
+            BackpropCache.DecoderHiddenStates = ToMatrix2D(hiddenStates);
+            BackpropCache.DecoderCellStates = ToMatrix2D(cellStates);
+            BackpropCache.DecoderForgetGates = ToMatrix2D(forgetGates!);
+            BackpropCache.DecoderInputGates = ToMatrix2D(inputGates!);
+            BackpropCache.DecoderCellCandidates = ToMatrix2D(cellCandidates!);
+            BackpropCache.DecoderOutputGates = ToMatrix2D(outputGates!);
+            BackpropCache.AttentionScores = ToMatrix2D(attentionScores!);
+            BackpropCache.AttentionContextVectors = ToMatrix2D(attentionContexts!);
         }
 
         return ToMatrix2D(hiddenStates);
@@ -207,6 +232,7 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
     public abstract void ResetAttention();
     public abstract void SaveAttention(BinaryWriter writer);
     public abstract void LoadAttention(BinaryReader reader);
+    public abstract double[] Alignment(double[] encoderHidden, double[] decoderHidden);
 
     public void Reset()
     {
