@@ -76,7 +76,7 @@ internal static class Program
         int hiddenSize = AnsiConsole.Ask("What hidden size should the LSTM use?", 128);
         int layers = AnsiConsole.Ask("How many LSTM layers should be used?", 2);
 
-        lstm.AddLayer(new LstmDotAttentionLayer(embeddings.N, hiddenSize, hiddenSize));
+        lstm.AddLayer(new LstmDotAttentionLayer(embeddings.EmbeddingSize, hiddenSize, hiddenSize));
         for (int i = 0; i < layers; i++) lstm.AddLayer(new LstmDotAttentionLayer(hiddenSize, hiddenSize, hiddenSize));
         lstm.AddLayer(new LstmDotAttentionLayer(hiddenSize, hiddenSize, 1));
 
@@ -93,7 +93,7 @@ internal static class Program
             {
                 string[] inputSeq = words.Skip(i).Take(n).ToArray();
                 string[] targetSeq = [words[i + n]];
-                inputSequences.Add(inputSeq.Select(w => embeddings.GetEmbedding(w)?.Vector ?? new double[embeddings.N])
+                inputSequences.Add(inputSeq.Select(w => embeddings.GetEmbedding(w)?.Vector ?? new double[embeddings.EmbeddingSize])
                     .ToList());
                 outputSequences.Add([]);
                 double[] targetVec = new double[1];

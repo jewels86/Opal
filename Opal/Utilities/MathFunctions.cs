@@ -274,4 +274,30 @@ public static class MathFunctions
                 result[i, j] = mat[i, j] * scalar;
         return result;
     }
+    
+    public static double[] RandomVector(int length)
+    {
+        return Enumerable.Range(0, length).Select(_ => Random.Shared.NextDouble() * 2 - 1).ToArray();
+    }
+    public static double[] Average(double[] vectorA, double[] vectorB)
+    {
+        return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => (a + b) / 2).ToArray();
+    }
+    public static double[] Normalize(double[] vector)
+    {
+        double length = Math.Sqrt(vector.AsParallel().Sum(v => v * v));
+        if (length == 0)
+        {
+            return vector;
+        }
+        return vector.AsParallel().Select(v => v / length).ToArray();
+    }
+    public static double Magnitude(double[] vector)
+    {
+        return Math.Sqrt(vector.AsParallel().Sum(v => v * v));
+    }
+    public static double DotProduct(double[] vectorA, double[] vectorB)
+    {
+        return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => a * b).Sum();
+    }
 }

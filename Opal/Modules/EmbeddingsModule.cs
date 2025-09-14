@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.IO;
 using Opal.Utilities;
+using static Opal.Utilities.MathFunctions;
 
 namespace Opal.Modules
 {
@@ -18,18 +19,20 @@ namespace Opal.Modules
 		public string Name { get; private set; }
 
 		/// <summary>The number of buckets as a power of two.</summary>
-		public int K { get; private set; }
+		public int TotalBuckets { get; private set; }
 		/// <summary>The number of dimensions a single embedding contains.</summary>
-		public int N { get; private set; }
+		public int EmbeddingSize { get; private set; }
 		/// <summary>The number of hash bits to use when SimHashing.</summary>
-		public int H { get; private set; }
+		public int HashBits { get; private set; }
 		/// <summary>The learning rate to use when associating vectors.</summary>
-		public double R { get; private set; }
+		public double LearningRate { get; private set; }
 		/// <summary>The embeddings stored in the module (bucketID, embedding[]).</summary>
-		public ConcurrentDictionary<int, List<Embedding<T>>> Embeddings { get; private set; } = [];
+		public ConcurrentDictionary<int, ConcurrentBag<Embedding<T>>> Embeddings { get; } = [];
 		/// <summary>The embeddings stored in the module (id, embedding).</summary>
-		public ConcurrentDictionary<int, Embedding<T>> EmbeddingIDs { get; private set; } = [];
-		public SimHashGenerator<double[]> HashGenerator { get; private set; }
+		public ConcurrentDictionary<int, Embedding<T>> EmbeddingIDs { get; } = [];
+		public SimHashGenerator<double[]> HashGenerator { get; }
+
+		public bool Log { get; set; } = false;
 
 		private Func<ulong, int> _reduce;
 
@@ -41,96 +44,45 @@ namespace Opal.Modules
 		/// <summary>
 		/// Creates a new EmbeddingsModule.
 		/// </summary>
-		/// <param name="k">The number of buckets as a power of two.</param>
-		/// <param name="n">The number of dimensions a single embedding contains.</param>
-		/// <param name="h">The number of hash bits to use when SimHashing.</param>
-		/// <param name="r">The learning rate to use when associating vectors.</param>
+		/// <param name="totalBuckets">The number of buckets as a power of two.</param>
+		/// <param name="embeddingSize">The number of dimensions a single embedding contains.</param>
+		/// <param name="hashBits">The number of hash bits to use when SimHashing.</param>
+		/// <param name="learningRate">The learning rate to use when associating vectors.</param>
 		/// <param name="name">Optional name for the module.</param>
 		/// <param name="reduce">A function that takes a ulong hash and converts it to an int bucket.</param>
-		public EmbeddingsModule(int k, int n, int h, double r, string? name = null, Func<ulong, int>? reduce = null)
+		public EmbeddingsModule(int totalBuckets, int embeddingSize, int hashBits, double learningRate, string? name = null, Func<ulong, int>? reduce = null)
 		{
 			ID = Core.Register(this);
 			Name = name ?? $"embeddings-{typeof(T).Name.ToLower()}";
-			K = k;
-			N = n;
-			H = h;
-			R = r;
-			HashGenerator = new(x => x, H);
-			_reduce = reduce ?? (x => (int)(x & (ulong)(K - 1)));
+			TotalBuckets = totalBuckets;
+			EmbeddingSize = embeddingSize;
+			HashBits = hashBits;
+			LearningRate = learningRate;
+			HashGenerator = new(x => x, HashBits);
+			_reduce = reduce ?? (x => (int)(x & (ulong)(TotalBuckets - 1)));
 		}
 
 		public void Initialize() { }
 
-		#region Add/Remove Embedding
+		#region Add Embeddings
 		public Embedding<T> CreateEmbedding(T data)
 		{
-			Core.Log(Name, Logging.LogLevel.HighDebug, $"Creating embedding for data: {data} ({typeof(T).Name})");
+			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Creating embedding for data: {data} ({typeof(T).Name})");
 
-			double[] vector = Enumerable.Range(0, N).Select(_ => _random.NextDouble() * 2 - 1).ToArray();
-			vector = EmbeddingsModule<T>.Normalize(vector);
+			double[] vector = RandomVector(EmbeddingSize);
+			vector = Normalize(vector);
 			ulong hash = HashGenerator.Hash(vector);
-			int bucketID = _reduce(hash);
+			int bucketId = _reduce(hash);
 			int id;
-			lock (_nextIDLock) { id = _nextID++; }
+			lock (_nextIDLock) { id = _nextID++; } // TODO: can we use GUIDs instead?
 			Embedding<T> embedding = new(id, data, vector);
 
-			var bucket = Embeddings.GetOrAdd(bucketID, _ => new());
-			lock (bucket) { bucket.Add(embedding); }
+			var bucket = Embeddings.GetOrAdd(bucketId, _ => new());
+			bucket.Add(embedding);
 			EmbeddingIDs[id] = embedding;
 
-			Core.Log(Name, Logging.LogLevel.HighDebug, $"Created embedding: {embedding} (with hash {hash})");
+			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Created embedding: {embedding} (with hash {hash})");
 			return embedding;
-		}
-		public bool RemoveEmbedding(Embedding<T> embedding)
-		{
-			Core.Log(Name, Logging.LogLevel.HighDebug, $"Removing embedding: {embedding}");
-			int id = embedding.ID;
-			if (!EmbeddingIDs.Values.Contains(embedding))
-			{
-				Core.Log(Name, Logging.LogLevel.HighWarning, $"Embedding {embedding} not found in EmbeddingIDs.");
-				return false;
-			}
-			if (!EmbeddingIDs.TryRemove(id, out var _))
-			{ 
-				Core.Log(Name, Logging.LogLevel.HighWarning, $"Failed to remove embedding {embedding} from EmbeddingIDs.");
-				return false;
-			}
-			
-			ulong hash = HashGenerator.Hash(embedding.Vector);
-			int bucketID = _reduce(hash);
-			if (Embeddings.TryGetValue(bucketID, out var bucket))
-			{
-				lock (bucket)
-				{
-					if (bucket.Contains(embedding))
-					{
-						bucket.Remove(embedding);
-						if (bucket.Count == 0)
-						{
-							Embeddings.TryRemove(bucketID, out var _);
-						}
-					}
-				}
-			}
-			Core.Log(Name, Logging.LogLevel.HighDebug, $"Removed embedding: {embedding} (with hash {hash})");
-			return true;
-		}
-		public bool RemoveEmbedding(int id)
-		{
-			if (!EmbeddingIDs.TryGetValue(id, out Embedding<T>? value))
-			{
-				return false;
-			}
-			return RemoveEmbedding(value);
-		}
-		public bool RemoveEmbedding(T data)
-		{
-			var embedding = EmbeddingIDs.Values.AsParallel().FirstOrDefault(x => x.Data.Equals(data));
-			if (embedding == null)
-			{
-				return false;
-			}
-			return RemoveEmbedding(embedding);
 		}
 		#endregion
 		#region Associate Embeddings
@@ -141,25 +93,25 @@ namespace Opal.Modules
 			ulong oldHashB = HashGenerator.Hash(embeddingB.Vector);
 			Core.Log(Name, Logging.LogLevel.HighDebug, $"Old vectors: {oldHashA} and {oldHashB}");
 
-			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - R), Multiply(embeddingB.Vector, R * strength)));
-			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - R), Multiply(embeddingA.Vector, R * strength)));
+			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - LearningRate), Multiply(embeddingB.Vector, LearningRate * strength)));
+			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - LearningRate), Multiply(embeddingA.Vector, LearningRate * strength)));
 
 			ulong hashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong hashB = HashGenerator.Hash(embeddingB.Vector);
-			int bucketIDA = _reduce(hashA);
-			int bucketIDB = _reduce(hashB);
+			int bucketIdA = _reduce(hashA);
+			int bucketIdB = _reduce(hashB);
 
-			Core.Log(Name, Logging.LogLevel.HighDebug, $"New vectors: {hashA} and {hashB} (belonging to buckets {bucketIDA} and {bucketIDB} respectively)");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"New vectors: {hashA} and {hashB} (belonging to buckets {bucketIdA} and {bucketIdB} respectively)");
 
-			var bucketA = Embeddings.GetOrAdd(bucketIDA, _ => new());
-			var bucketB = Embeddings.GetOrAdd(bucketIDB, _ => new());
+			var bucketA = Embeddings.GetOrAdd(bucketIdA, _ => new());
+			var bucketB = Embeddings.GetOrAdd(bucketIdB, _ => new());
 			lock (bucketA) { bucketA.Add(embeddingA); }
 			lock (bucketB) { bucketB.Add(embeddingB); }
 
-			int oldBucketIDA = _reduce(oldHashA);
-			int oldBucketIDB = _reduce(oldHashB);
+			int oldBucketIdA = _reduce(oldHashA);
+			int oldBucketIdB = _reduce(oldHashB);
 
-			if (Embeddings.TryGetValue(oldBucketIDA, out var oldBucketA))
+			if (Embeddings.TryGetValue(oldBucketIdA, out var oldBucketA))
 			{
 				lock (oldBucketA)
 				{
@@ -168,12 +120,12 @@ namespace Opal.Modules
 						oldBucketA.Remove(embeddingA);
 						if (oldBucketA.Count == 0)
 						{
-							Embeddings.TryRemove(oldBucketIDA, out var _);
+							Embeddings.TryRemove(oldBucketIdA, out var _);
 						}
 					}
 				}
 			}
-			if (Embeddings.TryGetValue(oldBucketIDB, out var oldBucketB))
+			if (Embeddings.TryGetValue(oldBucketIdB, out var oldBucketB))
 			{
 				lock (oldBucketB)
 				{
@@ -182,7 +134,7 @@ namespace Opal.Modules
 						oldBucketB.Remove(embeddingB);
 						if (oldBucketB.Count == 0)
 						{
-							Embeddings.TryRemove(oldBucketIDB, out var _);
+							Embeddings.TryRemove(oldBucketIdB, out var _);
 						}
 					}
 				}
@@ -307,51 +259,16 @@ namespace Opal.Modules
 			return QuickSimilarity(HashGenerator.Hash(vectorA), HashGenerator.Hash(vectorB));
 		}
 		#endregion
-		#region Vector Operations
-		public static double[] Add(double[] vectorA, double[] vectorB)
-		{
-			return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => a + b).ToArray();
-		}
-		public static double[] Subtract(double[] vectorA, double[] vectorB)
-		{
-			return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => a - b).ToArray();
-		}
-		public static double[] Multiply(double[] vector, double scalar)
-		{
-			return vector.AsParallel().Select(v => v * scalar).ToArray();
-		}
-		public static double[] Average(double[] vectorA, double[] vectorB)
-		{
-			return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => (a + b) / 2).ToArray();
-		}
-		public static double[] Normalize(double[] vector)
-		{
-			double length = Math.Sqrt(vector.AsParallel().Sum(v => v * v));
-			if (length == 0)
-			{
-				return vector;
-			}
-			return vector.AsParallel().Select(v => v / length).ToArray();
-		}
-		public static double Magnitude(double[] vector)
-		{
-			return Math.Sqrt(vector.AsParallel().Sum(v => v * v));
-		}
-		public static double DotProduct(double[] vectorA, double[] vectorB)
-		{
-			return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => a * b).Sum();
-		}
-		#endregion
 		#region Save/Load Embeddings
 		public void SaveEmbeddingsToFile(string filePath)
 		{
 			using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
 			using var writer = new BinaryWriter(fs);
 			writer.Write(EmbeddingIDs.Count);
-			writer.Write(K);
-			writer.Write(N);
-			writer.Write(H);
-			writer.Write(R);
+			writer.Write(TotalBuckets);
+			writer.Write(EmbeddingSize);
+			writer.Write(HashBits);
+			writer.Write(LearningRate);
 			foreach (var e in EmbeddingIDs.Values)
 			{
 				writer.Write(e.ID);
@@ -378,10 +295,10 @@ namespace Opal.Modules
 			using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
 			using var reader = new BinaryReader(fs);
 			int count = reader.ReadInt32();
-			K = reader.ReadInt32();
-			N = reader.ReadInt32();
-			H = reader.ReadInt32();
-			R = reader.ReadDouble();
+			TotalBuckets = reader.ReadInt32();
+			EmbeddingSize = reader.ReadInt32();
+			HashBits = reader.ReadInt32();
+			LearningRate = reader.ReadDouble();
 			EmbeddingIDs.Clear();
 			Embeddings.Clear();
 			for (int i = 0; i < count; i++)

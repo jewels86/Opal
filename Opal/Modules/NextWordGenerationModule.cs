@@ -23,7 +23,7 @@ public class NextWordGenerationModule : IModule
         Embeddings = embeddings ?? new(32, 128, 64, 0.1, "next-word-generation-embeddings");
         SemanticInterpreter =
             semanticInterpreter ?? SemanticInterpreterConfigurations.GenerateDefaultSemanticInterpreter(Embeddings);
-        int n = Embeddings.N;
+        int n = Embeddings.EmbeddingSize;
         Lstm.AddLayer(new LstmLayer(n, hiddenSize, batchSize, $"lstm-input-layer ({n}, {hiddenSize}) from {Name} ({ID})"));
         for (int i = 0; i < hiddenLayers; i++)
             Lstm.AddLayer(new LstmLayer(hiddenSize, hiddenSize, batchSize, $"lstm-hidden-layer {i + 1} ({hiddenSize}, {hiddenSize}) from {Name} ({ID})"));
