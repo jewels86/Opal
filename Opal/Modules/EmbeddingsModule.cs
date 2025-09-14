@@ -8,6 +8,7 @@ using Opal.Utilities.Opal.Utilities;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.IO;
+using Opal.Utilities;
 
 namespace Opal.Modules
 {
@@ -69,7 +70,7 @@ namespace Opal.Modules
 		#region Add/Remove Embedding
 		public Embedding<T> CreateEmbedding(T data)
 		{
-			Core.Log(Name, 2, $"Creating embedding for data: {data} ({typeof(T).Name})");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Creating embedding for data: {data} ({typeof(T).Name})");
 
 			double[] vector = Enumerable.Range(0, N).Select(_ => _random.NextDouble() * 2 - 1).ToArray();
 			vector = EmbeddingsModule<T>.Normalize(vector);
@@ -83,21 +84,21 @@ namespace Opal.Modules
 			lock (bucket) { bucket.Add(embedding); }
 			EmbeddingIDs[id] = embedding;
 
-			Core.Log(Name, 2, $"Created embedding: {embedding} (with hash {hash})");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Created embedding: {embedding} (with hash {hash})");
 			return embedding;
 		}
 		public bool RemoveEmbedding(Embedding<T> embedding)
 		{
-			Core.Log(Name, 2, $"Removing embedding: {embedding}");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Removing embedding: {embedding}");
 			int id = embedding.ID;
 			if (!EmbeddingIDs.Values.Contains(embedding))
 			{
-				Core.Log(Name, 3, $"Embedding {embedding} not found in EmbeddingIDs.");
+				Core.Log(Name, Logging.LogLevel.HighWarning, $"Embedding {embedding} not found in EmbeddingIDs.");
 				return false;
 			}
 			if (!EmbeddingIDs.TryRemove(id, out var _))
 			{ 
-				Core.Log(Name, 3, $"Failed to remove embedding {embedding} from EmbeddingIDs.");
+				Core.Log(Name, Logging.LogLevel.HighWarning, $"Failed to remove embedding {embedding} from EmbeddingIDs.");
 				return false;
 			}
 			
@@ -117,7 +118,7 @@ namespace Opal.Modules
 					}
 				}
 			}
-			Core.Log(Name, 2, $"Removed embedding: {embedding} (with hash {hash})");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Removed embedding: {embedding} (with hash {hash})");
 			return true;
 		}
 		public bool RemoveEmbedding(int id)
@@ -130,7 +131,7 @@ namespace Opal.Modules
 		}
 		public bool RemoveEmbedding(T data)
 		{
-			var embedding = EmbeddingIDs.Values.FirstOrDefault(x => x.Data.Equals(data));
+			var embedding = EmbeddingIDs.Values.AsParallel().FirstOrDefault(x => x.Data.Equals(data));
 			if (embedding == null)
 			{
 				return false;
@@ -141,10 +142,10 @@ namespace Opal.Modules
 		#region Associate Embeddings
 		public void Associate(Embedding<T> embeddingA, Embedding<T> embeddingB, double strength)
 		{
-			Core.Log(Name, 2, $"Associating embeddings: {embeddingA} and {embeddingB} ({typeof(T).Name})");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Associating embeddings: {embeddingA} and {embeddingB} ({typeof(T).Name})");
 			ulong oldHashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong oldHashB = HashGenerator.Hash(embeddingB.Vector);
-			Core.Log(Name, 3, $"Old vectors: {oldHashA} and {oldHashB}");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Old vectors: {oldHashA} and {oldHashB}");
 
 			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - R), Multiply(embeddingB.Vector, R * strength)));
 			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - R), Multiply(embeddingA.Vector, R * strength)));
@@ -154,7 +155,7 @@ namespace Opal.Modules
 			int bucketIDA = _reduce(hashA);
 			int bucketIDB = _reduce(hashB);
 
-			Core.Log(Name, 3, $"New vectors: {hashA} and {hashB} (belonging to buckets {bucketIDA} and {bucketIDB} respectively)");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"New vectors: {hashA} and {hashB} (belonging to buckets {bucketIDA} and {bucketIDB} respectively)");
 
 			var bucketA = Embeddings.GetOrAdd(bucketIDA, _ => new());
 			var bucketB = Embeddings.GetOrAdd(bucketIDB, _ => new());
@@ -194,7 +195,7 @@ namespace Opal.Modules
 			}
 			EmbeddingIDs[embeddingA.ID] = embeddingA;
 			EmbeddingIDs[embeddingB.ID] = embeddingB;
-			Core.Log(Name, 2, $"Associated embeddings: {embeddingA} and {embeddingB} (with hashes {hashA} and {hashB})");
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Associated embeddings: {embeddingA} and {embeddingB} (with hashes {hashA} and {hashB})");
 		}
 		#endregion
 		#region Get Embedding(s)
@@ -211,68 +212,44 @@ namespace Opal.Modules
 			int bucketID = _reduce(hash);
 			if (Embeddings.TryGetValue(bucketID, out var bucket))
 			{
-				return bucket.FirstOrDefault(x => HashGenerator.Hash(x.Vector) == hash);
+				return bucket.AsParallel().FirstOrDefault(x => HashGenerator.Hash(x.Vector) == hash);
 			}
 			return null;
 		}
 		public IEnumerable<T> GetAllData()
 		{
-			return EmbeddingIDs.Values.Select(x => x.Data);
+			return EmbeddingIDs.Values.AsParallel().Select(x => x.Data);
 		}
 		public Embedding<T>? GetEmbedding(T data)
 		{
-			return EmbeddingIDs.Values.FirstOrDefault(x => x.Data.Equals(data));
+			return EmbeddingIDs.Values.AsParallel().FirstOrDefault(x => x.Data.Equals(data));
 		}
 		#endregion
 		#region Find Embedding(s)
-		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, double threshold = 0.7, Func<double[], double[], double>? similarityFunction = null)
-		{ // TODO
-			Core.Log(Name, 2, $"Finding similar embeddings for: {embedding} ({typeof(T).Name})");
+		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, Func<double[], double[], double>? similarityFunction = null)
+		{
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Finding closest embeddings for: {embedding} ({typeof(T).Name})");
 			ulong hash = HashGenerator.Hash(embedding.Vector);
 			int originalBucketID = _reduce(hash);
 
 			similarityFunction ??= CosineSimilarity;
 
 			int[] sortedBuckets = [.. Embeddings.Keys.OrderBy(x => Math.Abs(x - originalBucketID))];
-			List<(Embedding<T>, double)> results = [];
+			var allCandidates = new List<(Embedding<T>, double)>();
 
 			foreach (var bucketID in sortedBuckets)
 			{
 				if (Embeddings.TryGetValue(bucketID, out var bucket))
 				{
-					bucket.Select(x => (x, similarityFunction(embedding.Vector, x.Vector)))
-						.Where(x => x.Item1.ID != embedding.ID)
-						.Where(x => x.Item2 >= threshold)
-						.OrderByDescending(x => x.Item2)
-						.Take(max - results.Count)
-						.ToList()
-						.ForEach(results.Add);
-					if (results.Count >= max)
-					{
-						results = results.OrderByDescending(x => x.Item2).Take(max).ToList();
-						break;
-					}
-				}
-			}
-			Core.Log(Name, 2, $"Found {results.Count} similar embeddings for {embedding} (with hash {hash})");
-			// Fallback: if no results, return the most similar embedding regardless of threshold
-			if (results.Count == 0)
-			{
-				var allCandidates = new List<(Embedding<T>, double)>();
-				foreach (var bucket in Embeddings.Values)
-				{
 					allCandidates.AddRange(
-						bucket.Select(x => (x, similarityFunction(embedding.Vector, x.Vector)))
+						bucket.AsParallel().Select(x => (x, similarityFunction(embedding.Vector, x.Vector)))
 						.Where(x => x.Item1.ID != embedding.ID)
 					);
 				}
-				if (allCandidates.Count > 0)
-				{
-					var best = allCandidates.OrderByDescending(x => x.Item2).First();
-					results.Add(best);
-					Core.Log(Name, 2, $"Fallback: Added most similar embedding with similarity {best.Item2}");
-				}
 			}
+
+			var results = allCandidates.OrderByDescending(x => x.Item2).Take(max).ToList();
+			Core.Log(Name, Logging.LogLevel.HighDebug, $"Found {results.Count} closest embeddings for {embedding} (with hash {hash})");
 			return results;
 		}
 		#endregion
@@ -395,13 +372,13 @@ namespace Opal.Modules
 				for (int i = 0; i < e.Vector.Length; i++)
 					writer.Write(e.Vector[i]);
 			}
-			Core.Log(Name, 1, $"Saved {EmbeddingIDs.Count} embeddings to {filePath}");
+			Core.Log(Name, Logging.LogLevel.LowInfo, $"Saved {EmbeddingIDs.Count} embeddings to {filePath}");
 		}
 		public void LoadEmbeddingsFromFile(string filePath)
 		{
 			if (!File.Exists(filePath))
 			{
-				Core.Log(Name, 1, $"File not found: {filePath}");
+				Core.Log(Name, Logging.LogLevel.LowWarning, $"File not found: {filePath}");
 				return;
 			}
 			using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
@@ -434,7 +411,7 @@ namespace Opal.Modules
 				var bucket = Embeddings.GetOrAdd(bucketID, _ => new());
 				lock (bucket) { bucket.Add(embedding); }
 			}
-			Core.Log(Name, 1, $"Loaded {count} embeddings from {filePath}");
+			Core.Log(Name, Logging.LogLevel.LowInfo, $"Loaded {count} embeddings from {filePath}");
 		}
 
 		private class SerializableEmbedding<TData>
