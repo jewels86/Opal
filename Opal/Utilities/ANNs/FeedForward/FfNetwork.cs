@@ -1,11 +1,11 @@
 ﻿namespace Opal.Utilities.ANNs;
 
-public class FfNeuralNetwork : INueralNetwork
+public class FfNetwork : INueralNetwork
 {
     public List<FfLayer> Layers { get; set; }
     public string Name { get; set; }
     
-    public FfNeuralNetwork(string name)
+    public FfNetwork(string name)
     {
         Name = name;
         Layers = [];

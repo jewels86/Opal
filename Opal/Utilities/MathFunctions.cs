@@ -24,11 +24,11 @@ public static class MathFunctions
 
     public static double[,] RandomMatrix(int rows, int cols)
     {
-        return InitializeMatrix(rows, cols, (i, j) => Random.Shared.NextDouble() * 2 - 1);
+        return InitializeMatrix(rows, cols, (_, _) => Random.Shared.NextDouble() * 2 - 1);
     }
     public static double[,] ZeroMatrix(int rows, int cols)
     {
-        return InitializeMatrix(rows, cols, (i, j) => 0.0);
+        return InitializeMatrix(rows, cols, (_, _) => 0.0);
     }
     
     public static double Sigmoid(double x) => 1.0 / (1.0 + Math.Exp(-x));
@@ -63,21 +63,21 @@ public static class MathFunctions
     public static double[] Add(double[] a, double[] b)
     {
         if (a.Length != b.Length) throw new ArgumentException("Vectors must be of the same length.");
-        return a.Zip(b, (x, y) => x + y).ToArray();
+        return a.AsParallel().Zip(b.AsParallel(), (x, y) => x + y).ToArray();
     }
     public static double[] Subtract(double[] a, double[] b)
     {
         if (a.Length != b.Length) throw new ArgumentException("Vectors must be of the same length.");
-        return a.Zip(b, (x, y) => x - y).ToArray();
+        return a.AsParallel().Zip(b.AsParallel(), (x, y) => x - y).ToArray();
     }
     public static double[] Multiply(double[] a, double[] b)
     {
         if (a.Length != b.Length) throw new ArgumentException("Vectors must be of the same length.");
-        return a.Zip(b, (x, y) => x * y).ToArray();
+        return a.AsParallel().Zip(b.AsParallel(), (x, y) => x * y).ToArray();
     }
     public static double[] Multiply(double[] a, double scalar)
     {
-        return a.Select(x => x * scalar).ToArray();
+        return a.AsParallel().Select(x => x * scalar).ToArray();
     }
 
     public static double[] Multiply(double[,] matrix, double[] vector)
@@ -142,7 +142,7 @@ public static class MathFunctions
     public static double[] Dot(double[] a, double[] b) 
     {
         if (a.Length != b.Length) throw new ArgumentException("Vectors must be of the same length.");
-        return new double[] { a.Zip(b, (x, y) => x * y).Sum() };
+        return [a.Zip(b, (x, y) => x * y).Sum()];
     }
     public static void DivideInPlace(double[,] mat, double denom)
     {
@@ -193,23 +193,25 @@ public static class MathFunctions
 
     public static double[,] ToMatrix2D(List<double[]> vectors)
     {
-        double[,] matrix = new double[vectors.Count, vectors[0].Length];
-        for (int i = 0; i < vectors.Count; i++)
-        for (int j = 0; j < vectors[0].Length; j++)
-                matrix[i, j] = vectors[i][j];
+        if (vectors == null || vectors.Count == 0)
+            throw new ArgumentException("Input list cannot be null or empty.");
+        int rowCount = vectors.Count;
+        int colCount = vectors[0].Length;
+        double[,] matrix = new double[rowCount, colCount];
+        vectors.AsParallel().Select((vec, i) => new { vec, i }).ForAll(item =>
+        {
+            for (int j = 0; j < colCount; j++)
+                matrix[item.i, j] = item.vec[j];
+        });
         return matrix;
     }
 
     public static List<double[]> ToVectorList(double[,] matrix)
     {
-        var list = new List<double[]>();
-        for (int i = 0; i < matrix.GetLength(0); i++)
-        {
-            var row = new double[matrix.GetLength(1)];
-            for (int j = 0; j < matrix.GetLength(1); j++)
-                row[j] = matrix[i, j];
-            list.Add(row);
-        }
-        return list;
+        int rowCount = matrix.GetLength(0);
+        int colCount = matrix.GetLength(1);
+        return Enumerable.Range(0, rowCount).AsParallel()
+            .Select(i => Enumerable.Range(0, colCount).Select(j => matrix[i, j]).ToArray())
+            .ToList();
     }
 }

@@ -1,13 +1,13 @@
 ﻿namespace Opal.Utilities.ANNs.Recurrent;
 
 using static MathFunctions;
-using static Logging;
 using System.IO;
-using static BinaryWriting;
 
-public abstract class LstmAttentionLayer
+public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache, new()
 {
-    public string Tag { get; set; } = "LSTM Attention Layer";
+    public string Tag { get; private set; } = "LSTM Attention Layer";
+    
+    public T BackpropCache { get; set; }
     
     public double[,] ForgetGateWeight { get; set; }
     public double[,] InputGateWeight { get; set; }
@@ -29,9 +29,11 @@ public abstract class LstmAttentionLayer
     public double[] DecoderCellGateBias { get; set; }
     public double[] DecoderOutputGateBias { get; set; }
     
+    public delegate double[] AlignmentDelegate(double[] encoderHiddenState, double[] decoderHiddenState, bool cache);
+    
     public Func<double[], double[]> TanhActivation { get; set; } = Tanh;
     public Func<double[], double[]> SigmoidActivation { get; set; } = Sigmoid;
-    public abstract Func<double[], double[], double[]> AlignmentFunction { get; set; }
+    public abstract AlignmentDelegate AlignmentFunction { get; set; }
     public int InputSize { get; set; }
     public int HiddenSize { get; set; }
     public int OutputSize { get; set; }
@@ -62,9 +64,12 @@ public abstract class LstmAttentionLayer
         DecoderInputGateBias = new double[HiddenSize];
         DecoderCellGateBias = new double[HiddenSize];
         DecoderOutputGateBias = new double[HiddenSize];
+
+        BackpropCache = new T();
     }
 
-    public (double[] hidden, double[] cell) Encoder(double[] input, double[] prevHidden, double[] prevCell)
+    public delegate void CacheEncoderDelegate(double[] forget, double[] inputGate, double[] cellCandidate, double[] cell, double[] outputGate, double[] hidden);
+    public (double[] hidden, double[] cell) Encoder(double[] input, double[] prevHidden, double[] prevCell, CacheEncoderDelegate? cache = null)
     {
         double[] combined = input.Concat(prevHidden).ToArray();
         
@@ -75,45 +80,81 @@ public abstract class LstmAttentionLayer
         double[] cell = Add(Multiply(forget, prevCell), Multiply(inputGate, cellCandidate));
         double[] outputGate = SigmoidActivation(Add(Multiply(OutputGateWeight, combined), OutputGateBias));
         double[] hidden = Multiply(outputGate, TanhActivation(cell));
+        
+        if (cache is not null)
+            cache(forget, inputGate, cellCandidate, cell, outputGate, hidden);
             
         return (hidden, cell);
     }
 
-    public double[,] Encoder(double[,] x)
+    public double[,] Encoder(double[,] x, bool cache = true)
     {
         List<double[]> hiddenStates = [new double[HiddenSize]];
         List<double[]> cellStates = [new double[HiddenSize]];
+        
+        CacheEncoderDelegate? cacheFunc = null;
+        List<double[]>? forgetGates = null;
+        List<double[]>? inputGates = null;
+        List<double[]>? cellCandidates = null;
+        List<double[]>? outputGates = null;
+        if (cache)
+        {
+            forgetGates = [new double[HiddenSize]];
+            inputGates = [new double[HiddenSize]];
+            cellCandidates = [new double[HiddenSize]];
+            outputGates = [new double[HiddenSize]];
+            cacheFunc = (forget, inputGate, cellCandidate, cell, outputGate, hidden) =>
+            {
+                forgetGates.Add(forget);
+                inputGates.Add(inputGate);
+                cellCandidates.Add(cellCandidate);
+                outputGates.Add(outputGate);
+            };
+        }
         
         int timeSteps = x.GetLength(0);
         for (int t = 0; t < timeSteps; t++)
         {
             double[] input = GetInputFromSample(x, t);
-            var (hidden, cell) = Encoder(input, hiddenStates.Last(), cellStates.Last());
+            var (hidden, cell) = Encoder(input, hiddenStates.Last(), cellStates.Last(), cacheFunc);
             hiddenStates.Add(hidden);
             cellStates.Add(cell);
+        }
+
+        if (cache)
+        {
+            BackpropCache.EncoderInputs = x;
+            BackpropCache.EncoderHiddenStates = ToMatrix2D(hiddenStates);
+            BackpropCache.EncoderCellStates = ToMatrix2D(cellStates);
+            BackpropCache.EncoderForgetGates = ToMatrix2D(forgetGates!);
+            BackpropCache.EncoderInputGates = ToMatrix2D(inputGates!);
+            BackpropCache.EncoderCellCandidates = ToMatrix2D(cellCandidates!);
+            BackpropCache.EncoderOutputGates = ToMatrix2D(outputGates!);
         }
 
         return ToMatrix2D(hiddenStates);
     }
 
-    public double[] Attention(double[,] h, double[] prevState)
+    public double[] Attention(double[,] h, double[] prevState, bool cache = true, int timeStep = -1)
     {
         int timeSteps = h.GetLength(0);
         int hiddenSize = h.GetLength(1);
 
         double[] scores = new double[timeSteps];
         for (int j = 0; j < timeSteps; j++)
-            scores[j] = AlignmentFunction(GetInputFromSample(h, j), prevState).Sum();
+            scores[j] = AlignmentFunction(GetInputFromSample(h, j), prevState, cache).Sum();
 
         double[] attentionWeights = Softmax(scores);
 
         double[] context = new double[hiddenSize];
         for (int j = 0; j < timeSteps; j++)
         {
-            double[] h_j = GetInputFromSample(h, j);
+            double[] hJ = GetInputFromSample(h, j);
             for (int k = 0; k < hiddenSize; k++)
-                context[k] += attentionWeights[j] * h_j[k];
+                context[k] += attentionWeights[j] * hJ[k];
         }
+        // maybe dont have them cache it with a bool; we can do a delegate instead so they don't need the timestep
+        
         return context;
     }
 
@@ -187,4 +228,26 @@ public abstract class LstmAttentionLayer
         DecoderOutputGateBias = new double[HiddenSize];
         ResetAttention();
     }
+}
+
+public abstract class LstmAttentionBackpropCache
+{
+    public double[,] EncoderInputs { get; set; } = new double[0, 0];
+    public double[,] EncoderHiddenStates { get; set; } = new double[0, 0];
+    public double[,] EncoderCellStates { get; set; } = new double[0, 0];
+    public double[,] EncoderForgetGates { get; set; } = new double[0, 0];
+    public double[,] EncoderInputGates { get; set; } = new double[0, 0];
+    public double[,] EncoderCellCandidates { get; set; } = new double[0, 0];
+    public double[,] EncoderOutputGates { get; set; } = new double[0, 0];
+        
+    public double[,] AttentionScores { get; set; } = new double[0, 0];
+    public double[,] AttentionContextVectors { get; set; } = new double[0, 0];
+        
+    public double[,] DecoderInputs { get; set; } = new double[0, 0];
+    public double[,] DecoderHiddenStates { get; set; } = new double[0, 0];
+    public double[,] DecoderCellStates { get; set; } = new double[0, 0];
+    public double[,] DecoderForgetGates { get; set; } = new double[0, 0];
+    public double[,] DecoderInputGates { get; set; } = new double[0, 0];
+    public double[,] DecoderCellCandidates { get; set; } = new double[0, 0];
+    public double[,] DecoderOutputGates { get; set; } = new double[0, 0];
 }
