@@ -1,11 +1,9 @@
-﻿namespace Opal.Utilities.ANNs.Recurrent;
+﻿namespace Opal.Utilities.ANNs.Lstm;
 
-using System.IO;
-
-public class LstmAttentionNetwork
+public class LstmAttentionNetwork<T> where T : LstmAttentionBackpropCache, new()
 {
     public string Name { get; set; }
-    public List<LstmAttentionLayer> Layers { get; set; }
+    public List<LstmAttentionLayer<T>> Layers { get; set; }
 
     public LstmAttentionNetwork(string name)
     {
@@ -13,7 +11,7 @@ public class LstmAttentionNetwork
         Layers = [];
     }
 
-    public void AddLayer(LstmAttentionLayer layer) => Layers.Add(layer);
+    public void AddLayer(LstmAttentionLayer<T> layer) => Layers.Add(layer);
 
     public List<double[]> PredictSequence(List<double[]> inputSequence, List<double[]> outputSequence)
     {
@@ -60,23 +58,5 @@ public class LstmAttentionNetwork
         }
     }
 
-    public static LstmAttentionNetwork Load(string path)
-    {
-        using var fs = new FileStream(path, FileMode.Open, FileAccess.Read);
-        using var reader = new BinaryReader(fs);
-        string name = reader.ReadString();
-        int layerCount = reader.ReadInt32();
-        var net = new LstmAttentionNetwork(name);
-        for (int i = 0; i < layerCount; i++)
-        {
-            // Implement layer loading if needed
-        }
-        return net;
-    }
-
-    public void From(LstmAttentionNetwork other)
-    {
-        Name = other.Name;
-        Layers = other.Layers;
-    }
+    
 }

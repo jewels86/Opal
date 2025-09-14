@@ -1,6 +1,4 @@
-﻿using System.IO;
-
-namespace Opal.Utilities.ANNs.Recurrent;
+﻿namespace Opal.Utilities.ANNs.Lstm;
 
 public class LstmNetwork
 {

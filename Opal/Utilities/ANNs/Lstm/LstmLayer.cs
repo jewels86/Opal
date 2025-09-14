@@ -1,8 +1,7 @@
-﻿namespace Opal.Utilities.ANNs.Recurrent;
+﻿namespace Opal.Utilities.ANNs.Lstm;
 
 using static MathFunctions;
 using static Logging;
-using System.IO;
 using static BinaryWriting;
 
 public class LstmLayer

@@ -1,6 +1,7 @@
 ﻿using Opal.Configurations;
 using Opal.Utilities;
 using Opal.Utilities.ANNs;
+using Opal.Utilities.ANNs.Lstm;
 using Opal.Utilities.ANNs.Recurrent;
 
 namespace Opal.Modules;

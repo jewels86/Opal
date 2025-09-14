@@ -5,6 +5,7 @@ using static Opal.Configurations.SemanticInterpreterConfigurations;
 using Opal;
 using System.Net.Http;
 using System.Net;
+using Opal.Utilities.ANNs.Lstm;
 using Opal.Utilities.ANNs.Recurrent;
 using Spectre.Console;
 using static Testing.Utilities;

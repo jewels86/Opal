@@ -134,6 +134,18 @@ public static class MathFunctions
         for (int i = 0; i < param.Length; i++)
             param[i] -= lr * grad[i];
     }
+    public static void SubtractInPlace(double[,] param, double[,] grad)
+    {
+        for (int i = 0; i < param.GetLength(0); i++)
+        for (int j = 0; j < param.GetLength(1); j++)
+            param[i, j] -= grad[i, j];
+    }
+
+    public static void SubtractInPlace(double[] param, double[] grad)
+    {
+        for (int i = 0; i < param.Length; i++)
+            param[i] -= grad[i];
+    }
     public static double[] Divide(double[] a, double scalar)
     {
         if (scalar == 0) throw new DivideByZeroException("Cannot divide by zero.");
@@ -213,5 +225,53 @@ public static class MathFunctions
         return Enumerable.Range(0, rowCount).AsParallel()
             .Select(i => Enumerable.Range(0, colCount).Select(j => matrix[i, j]).ToArray())
             .ToList();
+    }
+
+    public static double[,] OuterProduct(double[] a, double[] b)
+    {
+        int rows = a.Length;
+        int cols = b.Length;
+        double[,] result = new double[rows, cols];
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                result[i, j] = a[i] * b[j];
+        return result;
+    }
+
+    public static void AddToMatrix(double[,] a, double[,] b)
+    {
+        int rows = a.GetLength(0);
+        int cols = a.GetLength(1);
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                a[i, j] += b[i, j];
+    }
+
+    public static void AddToVector(double[] a, double[] b)
+    {
+        int len = a.Length;
+        for (int i = 0; i < len; i++)
+            a[i] += b[i];
+    }
+
+    public static double[] Multiply(double[] a, double[] b, double[] c)
+    {
+        if (a.Length != b.Length || b.Length != c.Length)
+            throw new ArgumentException("Vectors must be of the same length.");
+        double[] result = new double[a.Length];
+        for (int i = 0; i < a.Length; i++)
+            result[i] = a[i] * b[i] * c[i];
+        return result;
+    }
+
+    public static double[,] Multiply(double[,] mat, double scalar)
+    {
+        int rows = mat.GetLength(0);
+        int cols = mat.GetLength(1);
+        double[,] result = new double[rows, cols];
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                result[i, j] = mat[i, j] * scalar;
+        return result;
     }
 }

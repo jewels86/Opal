@@ -1,7 +1,6 @@
-﻿namespace Opal.Utilities.ANNs.Recurrent;
+﻿namespace Opal.Utilities.ANNs.Lstm;
 
 using static MathFunctions;
-using System.IO;
 
 public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache, new()
 {
@@ -9,6 +8,7 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
     
     public T BackpropCache { get; set; }
     
+    #region Parameters and Functions
     public double[,] ForgetGateWeight { get; set; }
     public double[,] InputGateWeight { get; set; }
     public double[,] CellGateWeight { get; set; }
@@ -31,6 +31,10 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
     
     public Func<double[], double[]> TanhActivation { get; set; } = Tanh;
     public Func<double[], double[]> SigmoidActivation { get; set; } = Sigmoid;
+    public Func<double[], double[]> DTanh { get; set; } = TanhDerivative;
+    public Func<double[], double[]> DSigmoid { get; set; } = SigmoidDerivative;
+    #endregion
+    
     public int InputSize { get; set; }
     public int HiddenSize { get; set; }
     public int OutputSize { get; set; }
@@ -65,6 +69,8 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
         BackpropCache = new T();
     }
 
+    #region Encoder, Attention, and Decoder
+    #region Encoder
     public delegate void CacheEncoderDelegate(double[] forget, double[] inputGate, double[] cellCandidate, double[] outputGate);
     public (double[] hidden, double[] cell) Encoder(double[] input, double[] prevHidden, double[] prevCell, CacheEncoderDelegate? cache = null)
     {
@@ -123,7 +129,9 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
         }
         return ToMatrix2D(hiddenStates);
     }
+    #endregion
 
+    #region Attention
     public delegate void CacheAttentionDelegate(double[] scores, double[] context);
     public double[] Attention(double[,] h, double[] prevState, CacheAttentionDelegate? cache = null, Action<object>? alignmentCacheAction = null)
     {
@@ -144,7 +152,9 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
             cache(scores, context);
         return context;
     }
+    #endregion
 
+    #region Decoder
     public delegate void CacheDecoderDelegate(double[] forget, double[] inputGate, double[] cellCandidate, double[] outputGate);
     public (double[] hidden, double[] cell) Decoder(double[] prevOutput, double[] context, double[] prevHidden, double[] prevCell, CacheDecoderDelegate? cache = null)
     {
@@ -221,6 +231,8 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
 
         return ToMatrix2D(hiddenStates);
     }
+    #endregion
+    #endregion
     
     public double[,] Forward(double[,] input, double[,] output)
     {
@@ -228,8 +240,234 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
         double[,] decoderHiddenStates = Decoder(output, encoderHiddenStates);
         return decoderHiddenStates;
     }
+
+    #region Backwards
+    public void DecoderBackward(double[,] gradOutputs, double learningRate)
+    {
+        int timeSteps = BackpropCache.DecoderHiddenStates.GetLength(0) - 1;
+        int hiddenSize = HiddenSize;
+
+        double[,] dWf = new double[DecoderForgetGateWeight.GetLength(0), DecoderForgetGateWeight.GetLength(1)];
+        double[,] dWi = new double[DecoderInputGateWeight.GetLength(0), DecoderInputGateWeight.GetLength(1)];
+        double[,] dWc = new double[DecoderCellGateWeight.GetLength(0), DecoderCellGateWeight.GetLength(1)];
+        double[,] dWo = new double[DecoderOutputGateWeight.GetLength(0), DecoderOutputGateWeight.GetLength(1)];
+        double[] dBf = new double[hiddenSize];
+        double[] dBi = new double[hiddenSize];
+        double[] dBc = new double[hiddenSize];
+        double[] dBo = new double[hiddenSize];
+
+        double[] dNextHidden = new double[hiddenSize];
+        double[] dNextCell = new double[hiddenSize];
+
+        for (int t = timeSteps; t >= 1; t--)
+        {
+            double[] hidden = GetInputFromSample(BackpropCache.DecoderHiddenStates, t);
+            double[] cell = GetInputFromSample(BackpropCache.DecoderCellStates, t);
+            double[] prevCell = GetInputFromSample(BackpropCache.DecoderCellStates, t - 1);
+            double[] forget = GetInputFromSample(BackpropCache.DecoderForgetGates, t);
+            double[] inputGate = GetInputFromSample(BackpropCache.DecoderInputGates, t);
+            double[] cellCandidate = GetInputFromSample(BackpropCache.DecoderCellCandidates, t);
+            double[] outputGate = GetInputFromSample(BackpropCache.DecoderOutputGates, t);
+
+            double[] dHidden = Add(GetInputFromSample(gradOutputs, t - 1), dNextHidden);
+
+            double[] tanhCell = Tanh(cell);
+            double[] dOutputGate = Multiply(dHidden, tanhCell);
+            double[] dOutputGatePre = Multiply(dOutputGate, DSigmoid(outputGate));
+
+            double[] dCell = Add(Multiply(dHidden, outputGate, DTanh(cell)), dNextCell);
+
+            double[] dInputGate = Multiply(dCell, cellCandidate);
+            double[] dInputGatePre = Multiply(dInputGate, DSigmoid(inputGate));
+
+            double[] dCellCandidate = Multiply(dCell, inputGate);
+            double[] dCellCandidatePre = Multiply(dCellCandidate, DTanh(cellCandidate));
+
+            double[] dForgetGate = Multiply(dCell, prevCell);
+            double[] dForgetGatePre = Multiply(dForgetGate, DSigmoid(forget));
+
+            double[] combined = GetInputFromSample(BackpropCache.DecoderInputs, t - 1)
+                .Concat(GetInputFromSample(BackpropCache.AttentionContextVectors, t - 1))
+                .Concat(GetInputFromSample(BackpropCache.DecoderHiddenStates, t - 1)).ToArray();
+
+            AddToMatrix(dWf, OuterProduct(dForgetGatePre, combined));
+            AddToMatrix(dWi, OuterProduct(dInputGatePre, combined));
+            AddToMatrix(dWc, OuterProduct(dCellCandidatePre, combined));
+            AddToMatrix(dWo, OuterProduct(dOutputGatePre, combined));
+            AddToVector(dBf, dForgetGatePre);
+            AddToVector(dBi, dInputGatePre);
+            AddToVector(dBc, dCellCandidatePre);
+            AddToVector(dBo, dOutputGatePre);
+
+            dNextCell = Multiply(dCell, forget);
+
+            int offset = BackpropCache.DecoderInputs.GetLength(1) + BackpropCache.AttentionContextVectors.GetLength(1);
+            int prevHiddenSize = hiddenSize;
+            dNextHidden = new double[hiddenSize];
+
+            for (int h = 0; h < hiddenSize; h++)
+            {
+                for (int k = 0; k < prevHiddenSize; k++)
+                {
+                    dNextHidden[k] +=
+                        dForgetGatePre[h] * DecoderForgetGateWeight[offset + k, h] +
+                        dInputGatePre[h] * DecoderInputGateWeight[offset + k, h] +
+                        dCellCandidatePre[h] * DecoderCellGateWeight[offset + k, h] +
+                        dOutputGatePre[h] * DecoderOutputGateWeight[offset + k, h];
+                }
+            }
+        }
+
+        SubtractInPlace(DecoderForgetGateWeight, Multiply(dWf, learningRate));
+        SubtractInPlace(DecoderInputGateWeight, Multiply(dWi, learningRate));
+        SubtractInPlace(DecoderCellGateWeight, Multiply(dWc, learningRate));
+        SubtractInPlace(DecoderOutputGateWeight, Multiply(dWo, learningRate));
+        SubtractInPlace(DecoderForgetGateBias, Multiply(dBf, learningRate));
+        SubtractInPlace(DecoderInputGateBias, Multiply(dBi, learningRate));
+        SubtractInPlace(DecoderCellGateBias, Multiply(dBc, learningRate));
+        SubtractInPlace(DecoderOutputGateBias, Multiply(dBo, learningRate));
+    }
+
+    public double[,] AttentionBackward(double[,] gradOutputs, double learningRate)
+    {
+        int timeSteps = BackpropCache.AttentionContextVectors.GetLength(0);
+        int hiddenSize = BackpropCache.AttentionContextVectors.GetLength(1);
+
+        double[,] gradEncoderHidden = new double[BackpropCache.EncoderHiddenStates.GetLength(0), BackpropCache.EncoderHiddenStates.GetLength(1)];
+
+        for (int t = 0; t < timeSteps; t++)
+        {
+            double[] scores = GetInputFromSample(BackpropCache.AttentionScores, t);
+            double[] attentionWeights = Softmax(scores);
+
+            double[] gradContext = GetInputFromSample(gradOutputs, t);
+
+            for (int j = 0; j < BackpropCache.EncoderHiddenStates.GetLength(0); j++)
+            {
+                double[] encoderHidden = GetInputFromSample(BackpropCache.EncoderHiddenStates, j);
+                for (int k = 0; k < hiddenSize; k++)
+                {
+                    gradEncoderHidden[j, k] += attentionWeights[j] * gradContext[k];
+                }
+            }
+
+            double[] gradAttentionWeights = new double[attentionWeights.Length];
+            for (int j = 0; j < attentionWeights.Length; j++)
+            {
+                double[] encoderHidden = GetInputFromSample(BackpropCache.EncoderHiddenStates, j);
+                gradAttentionWeights[j] = Dot(gradContext, encoderHidden)[0];
+            }
+
+            double[] gradScores = new double[attentionWeights.Length];
+            for (int j = 0; j < attentionWeights.Length; j++)
+            {
+                double sum = 0.0;
+                for (int l = 0; l < attentionWeights.Length; l++)
+                {
+                    double delta = (j == l) ? 1.0 : 0.0;
+                    sum += gradAttentionWeights[l] * attentionWeights[j] * (delta - attentionWeights[l]);
+                }
+                gradScores[j] = sum;
+            }
+
+            TrainAlignment(BackpropCache, t, gradScores, learningRate);
+        }
+
+        return gradEncoderHidden;
+    }
+
+    public void EncoderBackward(double[,] gradOutputs, double learningRate)
+    {
+        int timeSteps = BackpropCache.EncoderHiddenStates.GetLength(0) - 1;
+        int hiddenSize = HiddenSize;
+
+        double[,] dWf = new double[ForgetGateWeight.GetLength(0), ForgetGateWeight.GetLength(1)];
+        double[,] dWi = new double[InputGateWeight.GetLength(0), InputGateWeight.GetLength(1)];
+        double[,] dWc = new double[CellGateWeight.GetLength(0), CellGateWeight.GetLength(1)];
+        double[,] dWo = new double[OutputGateWeight.GetLength(0), OutputGateWeight.GetLength(1)];
+        double[] dBf = new double[hiddenSize];
+        double[] dBi = new double[hiddenSize];
+        double[] dBc = new double[hiddenSize];
+        double[] dBo = new double[hiddenSize];
+
+        double[] dNextHidden = new double[hiddenSize];
+        double[] dNextCell = new double[hiddenSize];
+
+        for (int t = timeSteps; t >= 1; t--)
+        {
+            double[] hidden = GetInputFromSample(BackpropCache.EncoderHiddenStates, t);
+            double[] cell = GetInputFromSample(BackpropCache.EncoderCellStates, t);
+            double[] prevCell = GetInputFromSample(BackpropCache.EncoderCellStates, t - 1);
+            double[] forget = GetInputFromSample(BackpropCache.EncoderForgetGates, t);
+            double[] inputGate = GetInputFromSample(BackpropCache.EncoderInputGates, t);
+            double[] cellCandidate = GetInputFromSample(BackpropCache.EncoderCellCandidates, t);
+            double[] outputGate = GetInputFromSample(BackpropCache.EncoderOutputGates, t);
+
+            double[] dHidden = Add(GetInputFromSample(gradOutputs, t - 1), dNextHidden);
+
+            double[] tanhCell = Tanh(cell);
+            double[] dOutputGate = Multiply(dHidden, tanhCell);
+            double[] dOutputGatePre = Multiply(dOutputGate, DSigmoid(outputGate));
+
+            double[] dCell = Add(Multiply(dHidden, outputGate, DTanh(cell)), dNextCell);
+
+            double[] dInputGate = Multiply(dCell, cellCandidate);
+            double[] dInputGatePre = Multiply(dInputGate, DSigmoid(inputGate));
+
+            double[] dCellCandidate = Multiply(dCell, inputGate);
+            double[] dCellCandidatePre = Multiply(dCellCandidate, DTanh(cellCandidate));
+
+            double[] dForgetGate = Multiply(dCell, prevCell);
+            double[] dForgetGatePre = Multiply(dForgetGate, DSigmoid(forget));
+
+            double[] combined = GetInputFromSample(BackpropCache.EncoderInputs, t - 1)
+                .Concat(GetInputFromSample(BackpropCache.EncoderHiddenStates, t - 1)).ToArray();
+
+            AddToMatrix(dWf, OuterProduct(dForgetGatePre, combined));
+            AddToMatrix(dWi, OuterProduct(dInputGatePre, combined));
+            AddToMatrix(dWc, OuterProduct(dCellCandidatePre, combined));
+            AddToMatrix(dWo, OuterProduct(dOutputGatePre, combined));
+            AddToVector(dBf, dForgetGatePre);
+            AddToVector(dBi, dInputGatePre);
+            AddToVector(dBc, dCellCandidatePre);
+            AddToVector(dBo, dOutputGatePre);
+
+            dNextCell = Multiply(dCell, forget);
+
+            int offset = BackpropCache.EncoderInputs.GetLength(1);
+            int prevHiddenSize = hiddenSize;
+            dNextHidden = new double[hiddenSize];
+
+            for (int h = 0; h < hiddenSize; h++)
+            {
+                for (int k = 0; k < prevHiddenSize; k++)
+                {
+                    dNextHidden[k] +=
+                        dForgetGatePre[h] * ForgetGateWeight[offset + k, h] +
+                        dInputGatePre[h] * InputGateWeight[offset + k, h] +
+                        dCellCandidatePre[h] * CellGateWeight[offset + k, h] +
+                        dOutputGatePre[h] * OutputGateWeight[offset + k, h];
+                }
+            }
+        }
+
+        SubtractInPlace(ForgetGateWeight, Multiply(dWf, learningRate));
+        SubtractInPlace(InputGateWeight, Multiply(dWi, learningRate));
+        SubtractInPlace(CellGateWeight, Multiply(dWc, learningRate));
+        SubtractInPlace(OutputGateWeight, Multiply(dWo, learningRate));
+        SubtractInPlace(ForgetGateBias, Multiply(dBf, learningRate));
+        SubtractInPlace(InputGateBias, Multiply(dBi, learningRate));
+        SubtractInPlace(CellGateBias, Multiply(dBc, learningRate));
+        SubtractInPlace(OutputGateBias, Multiply(dBo, learningRate));
+    }
+    #endregion
     
-    // TODO: Abstract method for training attention
+    public void Backward(double[,] gradOutputs, double learningRate)
+    {
+        DecoderBackward(gradOutputs, learningRate);
+        double[,] gradEncoderHidden = AttentionBackward(gradOutputs, learningRate);
+        EncoderBackward(gradEncoderHidden, learningRate);
+    }
 
     public abstract void ResetAttention();
     public abstract void SaveAttention(BinaryWriter writer);
@@ -237,6 +475,7 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
     public abstract double[] Alignment(double[] encoderHidden, double[] decoderHidden, Action<object>? alignmentCacheAction = null);
     public abstract (Dictionary<string, object>, Action<object>) PrepareToCacheAlignment();
     public abstract void FinalizeAttentionCache(Dictionary<string, object> alignmentCache);
+    public abstract void TrainAlignment(LstmAttentionBackpropCache cache, int decoderTimeStep, double[] gradScores, double learningRate);
 
     public void Reset()
     {
