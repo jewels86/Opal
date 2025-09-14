@@ -1,4 +1,5 @@
-﻿using Opal.Modules;
+﻿using Opal.Configurations;
+using Opal.Modules;
 using Opal.Utilities;
 using Opal.Utilities.ANNs.Lstm;
 using Opal.Utilities.ANNs.Lstm.Attention;
@@ -22,11 +23,25 @@ internal static class Program
 
         string[] sentences = GetAllSentences();
 
-        if (ans.Contains("(1)"))
+        if (ans.StartsWith("(1)"))
         {
             TrainStopwordModel(sentences);
         }
-    }
+        else if (ans.StartsWith("(2)"))
+        {
+            var (embeddings, si) = NewEmbeddings();
+            TrainSemanticInterpreter(si, sentences.ToList());
+            string path = AnsiConsole.Ask("What path should the embeddings be saved to?", "embeddings.bin");
+            embeddings.SaveEmbeddingsToFile(path);
+            AnsiConsole.MarkupLine("Embeddings saved!");
+        }
+        else if (ans.StartsWith("(3)"))
+        {
+            var (embeddings, si) = GetEmbeddings();
+            TrainSemanticInterpreter(si, sentences.ToList());
+        }
+
+}
 
     private static string[] GetAllSentences()
     {
@@ -49,11 +64,10 @@ internal static class Program
     {
         AnsiConsole.MarkupLine("Training stopword model; starting TF-IDF with the dataset...");
         ConcurrentTfIdf tfidf = new();
-        //for (int i = 0; i < sentences.Length; i++) tfidf.Add(string.Intern($"doc_{i}"), StringParsing.Split(sentences[i]));
-        sentences.AsParallel().ForAll(x => tfidf.Add(string.Intern($"doc_{Guid.NewGuid()}"), StringParsing.Split(x)));
+        sentences.AsParallel().ForAll(x => tfidf.Add($"doc_{Guid.NewGuid()}", StringParsing.Split(x)));
 
         AnsiConsole.MarkupLine("TF-IDF will be computed on demand.");
-        EmbeddingsModule<string> embeddings = GetEmbeddings();
+        var (embeddings, si) = GetEmbeddings();
         AnsiConsole.MarkupLine("Creating LSTM...");
         LstmDotAttentionNetwork lstm = new("stopword-lstm");
 
@@ -99,11 +113,25 @@ internal static class Program
         AnsiConsole.MarkupLine("All done!");
     }
 
-    private static EmbeddingsModule<string> GetEmbeddings()
+    private static (EmbeddingsModule<string>, SemanticInterpreterModule) NewEmbeddings()
+    {
+        int k = AnsiConsole.Ask("How many buckets (as a power of 2) should be used for hashing?", 32);
+        int n = AnsiConsole.Ask("What dimensionality should the embeddings have?", 128);
+        int h = AnsiConsole.Ask("How many bits should be used in a single hash?", 16);
+        double r = AnsiConsole.Ask("What should the learning rate be?", 0.01);
+        
+        EmbeddingsModule<string> embeddings = new(k, n, h, r, "word-embeddings");
+        SemanticInterpreterModule semanticInterpreter =
+            SemanticInterpreterConfigurations.GenerateDefaultSemanticInterpreter(embeddings);
+        
+        return (embeddings, semanticInterpreter);
+    }
+
+    private static (EmbeddingsModule<string>, SemanticInterpreterModule) GetEmbeddings()
     {
         string path = AnsiConsole.Ask("What is the path to the embeddings file? (if you have not created one, you should do so)", "embeddings.bin");
         EmbeddingsModule<string> embeddings = new(0, 0, 0, 0, "word-embeddings");
         embeddings.LoadEmbeddingsFromFile(path);
-        return embeddings;
+        return (embeddings, SemanticInterpreterConfigurations.GenerateDefaultSemanticInterpreter(embeddings));
     }
 }
