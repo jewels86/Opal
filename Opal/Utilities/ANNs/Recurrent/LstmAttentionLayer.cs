@@ -125,13 +125,13 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
     }
 
     public delegate void CacheAttentionDelegate(double[] scores, double[] context);
-    public double[] Attention(double[,] h, double[] prevState, CacheAttentionDelegate? cache = null)
+    public double[] Attention(double[,] h, double[] prevState, CacheAttentionDelegate? cache = null, Action<object>? alignmentCacheAction = null)
     {
         int timeSteps = h.GetLength(0);
         int hiddenSize = h.GetLength(1);
         double[] scores = new double[timeSteps];
         for (int j = 0; j < timeSteps; j++)
-            scores[j] = Alignment(GetInputFromSample(h, j), prevState).Sum();
+            scores[j] = Alignment(GetInputFromSample(h, j), prevState, alignmentCacheAction).Sum();
         double[] attentionWeights = Softmax(scores);
         double[] context = new double[hiddenSize];
         for (int j = 0; j < timeSteps; j++)
@@ -170,6 +170,7 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
         List<double[]>? outputGates = null;
         List<double[]>? attentionScores = null;
         List<double[]>? attentionContexts = null;
+        var (alignmentCache, alignmentCacheAction) = PrepareToCacheAlignment();
         CacheDecoderDelegate? cacheFunc = null;
         CacheAttentionDelegate? attentionCacheFunc = null;
         if (cache)
@@ -199,7 +200,7 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
             double[] prevOutput = GetInputFromSample(y, t);
             double[] prevHidden = hiddenStates.Last();
             double[] prevCell = cellStates.Last();
-            double[] context = Attention(encoderHiddenStates, prevHidden, attentionCacheFunc);
+            double[] context = Attention(encoderHiddenStates, prevHidden, attentionCacheFunc, cache ? alignmentCacheAction : null);
             var (hidden, cell) = Decoder(prevOutput, context, prevHidden, prevCell, cacheFunc);
             hiddenStates.Add(hidden);
             cellStates.Add(cell);
@@ -215,6 +216,7 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
             BackpropCache.DecoderOutputGates = ToMatrix2D(outputGates!);
             BackpropCache.AttentionScores = ToMatrix2D(attentionScores!);
             BackpropCache.AttentionContextVectors = ToMatrix2D(attentionContexts!);
+            FinalizeAttentionCache(alignmentCache);
         }
 
         return ToMatrix2D(hiddenStates);
@@ -232,7 +234,9 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
     public abstract void ResetAttention();
     public abstract void SaveAttention(BinaryWriter writer);
     public abstract void LoadAttention(BinaryReader reader);
-    public abstract double[] Alignment(double[] encoderHidden, double[] decoderHidden);
+    public abstract double[] Alignment(double[] encoderHidden, double[] decoderHidden, Action<object>? alignmentCacheAction = null);
+    public abstract (Dictionary<string, object>, Action<object>) PrepareToCacheAlignment();
+    public abstract void FinalizeAttentionCache(Dictionary<string, object> alignmentCache);
 
     public void Reset()
     {
