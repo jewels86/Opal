@@ -1,6 +1,9 @@
-﻿namespace Opal.Utilities.ANNs.Lstm;
+﻿using Opal.Utilities.ANNs.Recurrent;
+
+namespace Opal.Utilities.ANNs.Lstm;
 
 using static MathFunctions;
+using static BinaryWriting;
 
 public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache, new()
 {
@@ -226,7 +229,7 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
             BackpropCache.DecoderOutputGates = ToMatrix2D(outputGates!);
             BackpropCache.AttentionScores = ToMatrix2D(attentionScores!);
             BackpropCache.AttentionContextVectors = ToMatrix2D(attentionContexts!);
-            FinalizeAttentionCache(alignmentCache);
+            FinalizeAlignmentCache(alignmentCache);
         }
 
         return ToMatrix2D(hiddenStates);
@@ -469,13 +472,75 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
         EncoderBackward(gradEncoderHidden, learningRate);
     }
 
-    public abstract void ResetAttention();
-    public abstract void SaveAttention(BinaryWriter writer);
-    public abstract void LoadAttention(BinaryReader reader);
+    public abstract void ResetAlignment();
+    public abstract void SaveAlignment(BinaryWriter writer);
+    public abstract void LoadAlignment(BinaryReader reader);
     public abstract double[] Alignment(double[] encoderHidden, double[] decoderHidden, Action<object>? alignmentCacheAction = null);
     public abstract (Dictionary<string, object>, Action<object>) PrepareToCacheAlignment();
-    public abstract void FinalizeAttentionCache(Dictionary<string, object> alignmentCache);
+    public abstract void FinalizeAlignmentCache(Dictionary<string, object> alignmentCache);
     public abstract void TrainAlignment(LstmAttentionBackpropCache cache, int decoderTimeStep, double[] gradScores, double learningRate);
+    
+    public void Save(BinaryWriter writer)
+    {
+        writer.Write(Tag);
+        writer.Write(InputSize);
+        writer.Write(HiddenSize);
+        writer.Write(OutputSize);
+        
+        WriteMatrix(writer, ForgetGateWeight);
+        WriteMatrix(writer, InputGateWeight);
+        WriteMatrix(writer, CellGateWeight);
+        WriteMatrix(writer, OutputGateWeight);
+        
+        WriteVector(writer, ForgetGateBias);
+        WriteVector(writer, InputGateBias);
+        WriteVector(writer, CellGateBias);
+        WriteVector(writer, OutputGateBias);
+        
+        WriteMatrix(writer, DecoderForgetGateWeight);
+        WriteMatrix(writer, DecoderInputGateWeight);
+        WriteMatrix(writer, DecoderCellGateWeight);
+        WriteMatrix(writer, DecoderOutputGateWeight);
+        
+        WriteVector(writer, DecoderForgetGateBias);
+        WriteVector(writer, DecoderInputGateBias);
+        WriteVector(writer, DecoderCellGateBias);
+        WriteVector(writer, DecoderOutputGateBias);
+
+        SaveAlignment(writer);
+    }
+    
+    public static TLayer Load<TLayer, TCache>(BinaryReader reader, TLayer layer) where TLayer : LstmAttentionLayer<TCache> where TCache : LstmAttentionBackpropCache, new()
+    {
+        string tag = reader.ReadString();
+        int inputSize = reader.ReadInt32();
+        int hiddenSize = reader.ReadInt32();
+        int outputSize = reader.ReadInt32();
+        
+        layer.ForgetGateWeight = ReadMatrix(reader);
+        layer.InputGateWeight = ReadMatrix(reader);
+        layer.CellGateWeight = ReadMatrix(reader);
+        layer.OutputGateWeight = ReadMatrix(reader);
+        
+        layer.ForgetGateBias = ReadVector(reader);
+        layer.InputGateBias = ReadVector(reader);
+        layer.CellGateBias = ReadVector(reader);
+        layer.OutputGateBias = ReadVector(reader);
+        
+        layer.DecoderForgetGateWeight = ReadMatrix(reader);
+        layer.DecoderInputGateWeight = ReadMatrix(reader);
+        layer.DecoderCellGateWeight = ReadMatrix(reader);
+        layer.DecoderOutputGateWeight = ReadMatrix(reader);
+        
+        layer.DecoderForgetGateBias = ReadVector(reader);
+        layer.DecoderInputGateBias = ReadVector(reader);
+        layer.DecoderCellGateBias = ReadVector(reader);
+        layer.DecoderOutputGateBias = ReadVector(reader);
+
+        layer.LoadAlignment(reader);
+
+        return layer;
+    }
 
     public void Reset()
     {
@@ -495,7 +560,7 @@ public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache
         DecoderInputGateBias = new double[HiddenSize];
         DecoderCellGateBias = new double[HiddenSize];
         DecoderOutputGateBias = new double[HiddenSize];
-        ResetAttention();
+        ResetAlignment();
     }
 }
 

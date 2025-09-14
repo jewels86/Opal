@@ -21,7 +21,7 @@ public class LstmDotAttentionLayer : LstmAttentionLayer<LstmDotAttentionLayer.Ls
         return ([], x => { });
     }
 
-    public override void FinalizeAttentionCache(Dictionary<string, object> alignmentCache)
+    public override void FinalizeAlignmentCache(Dictionary<string, object> alignmentCache)
     {
         
     }
@@ -31,16 +31,16 @@ public class LstmDotAttentionLayer : LstmAttentionLayer<LstmDotAttentionLayer.Ls
         
     }
 
-    public override void LoadAttention(BinaryReader reader)
+    public override void LoadAlignment(BinaryReader reader)
     {
         
     }
-    public override void SaveAttention(BinaryWriter writer)
+    public override void SaveAlignment(BinaryWriter writer)
     {
         
     }
 
-    public override void ResetAttention()
+    public override void ResetAlignment()
     {
         
     }

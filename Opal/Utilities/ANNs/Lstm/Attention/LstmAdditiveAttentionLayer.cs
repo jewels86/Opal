@@ -23,7 +23,7 @@ public class LstmAdditiveAttentionLayer : LstmAttentionLayer<LstmAdditiveAttenti
         for (int i = 0; i < v.Length; i++)
             score += v[i] * ff[i];
         alignmentCacheAction?.Invoke((ff, concat));
-        return new[] { score };
+        return [score];
     }
 
     public override (Dictionary<string, object>, Action<object>) PrepareToCacheAlignment()
@@ -42,7 +42,7 @@ public class LstmAdditiveAttentionLayer : LstmAttentionLayer<LstmAdditiveAttenti
         });
     }
 
-    public override void FinalizeAttentionCache(Dictionary<string, object> alignmentCache)
+    public override void FinalizeAlignmentCache(Dictionary<string, object> alignmentCache)
     {
         BackpropCache.FfList = alignmentCache["ffList"] as List<double[]> ?? [];
         BackpropCache.ConcatList = alignmentCache["concatList"] as List<double[]> ?? [];
@@ -67,7 +67,7 @@ public class LstmAdditiveAttentionLayer : LstmAttentionLayer<LstmAdditiveAttenti
         }
     }
 
-    public override void SaveAttention(BinaryWriter writer)
+    public override void SaveAlignment(BinaryWriter writer)
     {
         for (int i = 0; i < v.Length; i++)
             writer.Write(v[i]);
@@ -78,7 +78,7 @@ public class LstmAdditiveAttentionLayer : LstmAttentionLayer<LstmAdditiveAttenti
             writer.Write(alignmentLayer.Biases[i]);
     }
 
-    public override void LoadAttention(BinaryReader reader)
+    public override void LoadAlignment(BinaryReader reader)
     {
         for (int i = 0; i < v.Length; i++)
             v[i] = reader.ReadDouble();
@@ -89,7 +89,7 @@ public class LstmAdditiveAttentionLayer : LstmAttentionLayer<LstmAdditiveAttenti
             alignmentLayer.Biases[i] = reader.ReadDouble();
     }
 
-    public override void ResetAttention()
+    public override void ResetAlignment()
     {
         alignmentLayer.Reset();
         var rand = new Random();
