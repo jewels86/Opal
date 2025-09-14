@@ -61,12 +61,6 @@ namespace Opal.Modules
 
 		public void Initialize() { }
 
-		public void Receive(Packet packet)
-		{
-			var (payload, sender) = packet;
-
-		}
-
 		#region Add/Remove Embedding
 		public Embedding<T> CreateEmbedding(T data)
 		{

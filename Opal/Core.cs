@@ -17,7 +17,7 @@ namespace Opal
 
 		public static ConcurrentDictionary<int, IModule> RegisteredModules { get; } = new();
 
-		public static Action<string, int, string> LogFunction { get; set; } = StandardLog;
+		public static Action<string, int, string> LogFunction { get; set; } = Logging.AsyncLog;
 		public static readonly List<string> LogWhitelist = [];
 		public static readonly List<string> LogBlacklist = [];
 		

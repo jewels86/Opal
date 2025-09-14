@@ -1,4 +1,5 @@
-﻿using Opal.Configurations;
+﻿using Opal;
+using Opal.Configurations;
 using Opal.Modules;
 using Opal.Utilities;
 using Opal.Utilities.ANNs.Lstm;
@@ -12,6 +13,7 @@ internal static class Program
 {
     static void Main()
     {
+        Core.LogLevel = (int)Logging.LogLevel.LowInfo;
         AnsiConsole.MarkupLine("Welcome to the [green]Opal Testing Suite[/]!");
         string ans = AnsiConsole.Prompt(new SelectionPrompt<string>()
             .Title("What would you like to do?")
@@ -30,7 +32,7 @@ internal static class Program
         else if (ans.StartsWith("(2)"))
         {
             var (embeddings, si) = NewEmbeddings();
-            TrainSemanticInterpreter(si, sentences.ToList());
+            ParallelTrainSemanticInterpreter(si, sentences.ToList());
             string path = AnsiConsole.Ask("What path should the embeddings be saved to?", "embeddings.bin");
             embeddings.SaveEmbeddingsToFile(path);
             AnsiConsole.MarkupLine("Embeddings saved!");
@@ -115,7 +117,7 @@ internal static class Program
 
     private static (EmbeddingsModule<string>, SemanticInterpreterModule) NewEmbeddings()
     {
-        int k = AnsiConsole.Ask("How many buckets (as a power of 2) should be used for hashing?", 32);
+        int k = AnsiConsole.Ask("How many buckets (as a power of 2) should be used?", 32);
         int n = AnsiConsole.Ask("What dimensionality should the embeddings have?", 128);
         int h = AnsiConsole.Ask("How many bits should be used in a single hash?", 16);
         double r = AnsiConsole.Ask("What should the learning rate be?", 0.01);

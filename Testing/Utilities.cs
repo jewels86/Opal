@@ -59,5 +59,14 @@ public static class Utilities
             semanticInterpreter.Interpret(words);
         }
     }
+    
+    public static void ParallelTrainSemanticInterpreter(SemanticInterpreterModule semanticInterpreter, List<string> sentences)
+    {
+        foreach (string sentence in sentences)
+        {
+            string[] words = StringParsing.Parse(sentence);
+            semanticInterpreter.ParallelInterpret(words);
+        }
+    }
     #endregion
 }

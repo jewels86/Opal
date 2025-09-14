@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
+using Opal.Utilities;
 
 namespace Opal.Modules
 {
@@ -14,7 +15,7 @@ namespace Opal.Modules
 		public string Name { get; private set; }
 
 		/// <summary>The learning rate for the semantic interpreter.</summary>
-		public double L { get; set; } = 0.2;
+		public double L { get; set; } = 0.01;
 
 		public delegate void NewStorageNodeDelegate(string word);
 		public delegate void RemoveStorageNodeDelegate(string word);
@@ -82,8 +83,6 @@ namespace Opal.Modules
 		}
 
 		public void Initialize() { }
-
-		public void Receive(Packet packet) { }
 
 		#region Add/Remove Words
 		public void AddWord(string word)
@@ -174,6 +173,72 @@ namespace Opal.Modules
 			}
 
 			Core.Log(Name, 2, "Finished interpreting sentence: " + string.Join(" ", sentence));
+		}
+
+		/// <summary>
+		/// Parallelized version of Interpret using PLINQ for performance. Optimized: removed per-word logging in parallel loop.
+		/// </summary>
+		public void ParallelInterpret(string[] sentence)
+		{
+			sentence = sentence.Prepend("[special-start]").Append("[special-end]").ToArray();
+			Core.Log(Name, Logging.LogLevel.LowInfo, "Parallel interpreting sentence: " + string.Join(" ", sentence));
+
+			// Add words in parallel, but lock when modifying Added. Logging removed for performance.
+			sentence.AsParallel().ForAll(word =>
+			{
+				if (!Added.Contains(word))
+				{
+					lock (_addLock)
+					{
+						if (!Added.Contains(word)) // double-check inside lock
+						{
+							AddWord(word);
+						}
+					}
+				}
+			});
+
+			// Parallelize the main association and transition logic
+			Enumerable.Range(0, sentence.Length).AsParallel().ForAll(i =>
+			{
+				for (int j = 0; j < sentence.Length; j++)
+				{
+					if (i == j)
+						continue;
+					var distance = 1.0 / (i - j);
+					if (distance < 0) Associate(sentence[i], sentence[j], distance * L * 0.5);
+					else Associate(sentence[j], sentence[i], distance * L);
+				}
+
+				if (i == sentence.Length - 1)
+					return;
+				string currentWord = sentence[i];
+				string nextWord = sentence[i + 1];
+
+				WordTransitions.AddOrUpdate(currentWord,
+				_ =>
+				{
+					SortedDictionary<string, int> sortedDictionary = new SortedDictionary<string, int>();
+					lock (_sortedDictionaryLock)
+					{
+						sortedDictionary[nextWord] = 1;
+					}
+					return sortedDictionary;
+				},
+				(_, existingSortedDictionary) =>
+				{
+					lock (_sortedDictionaryLock)
+					{
+						if (existingSortedDictionary.ContainsKey(nextWord))
+							existingSortedDictionary[nextWord]++;
+						else
+							existingSortedDictionary[nextWord] = 1;
+					}
+					return existingSortedDictionary;
+				});
+			});
+
+			Core.Log(Name, 2, "Finished parallel interpreting sentence: " + string.Join(" ", sentence));
 		}
 		#endregion
 		#region Next Word
