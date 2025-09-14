@@ -2,8 +2,8 @@
 
 public class LstmDotAttentionLayer : LstmAttentionLayer<LstmDotAttentionLayer.LstmDotAttentionBackpropCache>
 {
-    public LstmDotAttentionLayer(int inputSize, int hiddenSize, int attentionSize, string name = "LstmDotAttentionLayer") 
-        : base(inputSize, hiddenSize, attentionSize, name)
+    public LstmDotAttentionLayer(int inputSize, int hiddenSize, int outputSize, string name = "LstmDotAttentionLayer") 
+        : base(inputSize, hiddenSize, outputSize, name)
     {
     }
 
@@ -49,5 +49,12 @@ public class LstmDotAttentionLayer : LstmAttentionLayer<LstmDotAttentionLayer.Ls
     public class LstmDotAttentionBackpropCache : LstmAttentionBackpropCache
     {
         
+    }
+}
+
+public class LstmDotAttentionNetwork : LstmAttentionNetwork<LstmDotAttentionLayer.LstmDotAttentionBackpropCache>
+{
+    public LstmDotAttentionNetwork(string name = "LstmDotAttentionNetwork") : base(name)
+    {
     }
 }

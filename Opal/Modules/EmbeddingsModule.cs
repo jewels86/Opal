@@ -377,6 +377,10 @@ namespace Opal.Modules
 			using var fs = new FileStream(filePath, FileMode.Create, FileAccess.Write);
 			using var writer = new BinaryWriter(fs);
 			writer.Write(EmbeddingIDs.Count);
+			writer.Write(K);
+			writer.Write(N);
+			writer.Write(H);
+			writer.Write(R);
 			foreach (var e in EmbeddingIDs.Values)
 			{
 				writer.Write(e.ID);
@@ -403,6 +407,10 @@ namespace Opal.Modules
 			using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
 			using var reader = new BinaryReader(fs);
 			int count = reader.ReadInt32();
+			K = reader.ReadInt32();
+			N = reader.ReadInt32();
+			H = reader.ReadInt32();
+			R = reader.ReadDouble();
 			EmbeddingIDs.Clear();
 			Embeddings.Clear();
 			for (int i = 0; i < count; i++)
