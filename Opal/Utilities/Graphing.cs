@@ -1,6 +1,6 @@
 ﻿using ScottPlot;
 
-namespace Opal;
+namespace Opal.Utilities;
 
 public static class Graphing
 {
