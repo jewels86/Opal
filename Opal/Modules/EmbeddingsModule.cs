@@ -2,6 +2,8 @@
 using Opal.Utilities.Opal.Utilities;
 using Opal.Utilities;
 using static Opal.Utilities.MathFunctions;
+using static Opal.Utilities.Logging.LogLevel;
+using static Opal.Utilities.Logging.AddedLogLevel;
 
 namespace Opal.Modules
 {
@@ -22,9 +24,12 @@ namespace Opal.Modules
 		public ConcurrentDictionary<int, ConcurrentDictionary<Guid, Embedding<T>>> Embeddings { get; } = [];
 		/// <summary>The embeddings stored in the module (id, embedding).</summary>
 		public ConcurrentDictionary<Guid, Embedding<T>> EmbeddingIDs { get; } = [];
+		public ConcurrentDictionary<T, Embedding<T>> EmbeddingData { get; } = [];
 		public SimHashGenerator<double[]> HashGenerator { get; }
 
 		public bool Log { get; set; } = false;
+
+		public Logging.LogLevel Baseline { get; set; } = LowDebug;
 
 		private readonly Func<ulong, int> _reduce;
 
@@ -51,10 +56,10 @@ namespace Opal.Modules
 
 		public void Initialize() { }
 
-		#region Add Embeddings
+		#region Add/Remove Embeddings
 		public Embedding<T> CreateEmbedding(T data)
 		{
-			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Creating embedding for data: {data} ({typeof(T).Name})");
+			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Creating embedding for data: {data} ({typeof(T).Name})");
 
 			double[] vector = RandomVector(EmbeddingSize);
 			vector = Normalize(vector);
@@ -65,18 +70,47 @@ namespace Opal.Modules
 
 			AddToBucket(bucketId, embedding);
 			EmbeddingIDs[id] = embedding;
+			EmbeddingData[data] = embedding;
 
-			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Created embedding: {embedding} (with hash {hash})");
+			if (Log) Core.Log(Name, Baseline, $"Created embedding: {embedding} (with hash {hash})");
 			return embedding;
+		}
+		public bool RemoveEmbedding(Guid id)
+		{
+			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Removing embedding with ID: {id} ({typeof(T).Name})");
+			if (EmbeddingIDs.TryRemove(id, out var embedding) && EmbeddingData.TryRemove(embedding.Data, out _))
+			{
+				ulong hash = HashGenerator.Hash(embedding.Vector);
+				int bucketId = _reduce(hash);
+				RemoveFromBucket(bucketId, embedding);
+				if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Removed embedding: {embedding} (with hash {hash})");
+				return true;
+			}
+			if (Log) Core.Log(Name, Baseline, $"Failed to remove embedding with ID: {id} (not found)");
+			return false;
+		}
+		public bool RemoveEmbedding(T data)
+		{
+			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Removing embedding with data: {data} ({typeof(T).Name})");
+			if (EmbeddingData.TryRemove(data, out var embedding) && EmbeddingIDs.TryRemove(embedding.Id, out _))
+			{
+				ulong hash = HashGenerator.Hash(embedding.Vector);
+				int bucketId = _reduce(hash);
+				RemoveFromBucket(bucketId, embedding);
+				if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Removed embedding: {embedding} (with hash {hash})");
+				return true;
+			}
+			if (Log) Core.Log(Name, Baseline, $"Failed to remove embedding with data: {data} (not found)");
+			return false;
 		}
 		#endregion
 		#region Associate Embeddings
 		public void Associate(Embedding<T> embeddingA, Embedding<T> embeddingB, double strength)
 		{
-			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Associating embeddings: {embeddingA} and {embeddingB} ({typeof(T).Name})");
+			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Associating embeddings: {embeddingA} and {embeddingB} ({typeof(T).Name})");
 			ulong oldHashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong oldHashB = HashGenerator.Hash(embeddingB.Vector);
-			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Old vectors: {oldHashA} and {oldHashB}");
+			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Old vectors: {oldHashA} and {oldHashB}");
 
 			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - LearningRate), Multiply(embeddingB.Vector, LearningRate * strength)));
 			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - LearningRate), Multiply(embeddingA.Vector, LearningRate * strength)));
@@ -86,7 +120,7 @@ namespace Opal.Modules
 			int bucketIdA = _reduce(hashA);
 			int bucketIdB = _reduce(hashB);
 
-			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"New vectors: {hashA} and {hashB} (belonging to buckets {bucketIdA} and {bucketIdB} respectively)");
+			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"New vectors: {hashA} and {hashB} (belonging to buckets {bucketIdA} and {bucketIdB} respectively)");
 
 			AddToBucket(bucketIdA, embeddingA);
 			AddToBucket(bucketIdB, embeddingB);
@@ -106,36 +140,37 @@ namespace Opal.Modules
 
 			EmbeddingIDs[embeddingA.Id] = embeddingA;
 			EmbeddingIDs[embeddingB.Id] = embeddingB;
-			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Associated embeddings: {embeddingA} and {embeddingB} (with hashes {hashA} and {hashB})");
+			if (Log) Core.Log(Name, Baseline, $"Associated embeddings: {embeddingA} and {embeddingB} (with hashes {oldHashA} -> {hashA} and {oldHashB} -> {hashB})");
 		}
 		#endregion
 		#region Get Embedding(s)
-		public Embedding<T>? GetEmbedding(Guid id)
-		{
-			return EmbeddingIDs.GetValueOrDefault(id);
-		}
-		public Embedding<T>? GetEmbedding(ulong hash)
-		{
-			int bucketId = _reduce(hash);
-			if (Embeddings.TryGetValue(bucketId, out var bucket))
-			{
-				return bucket.Values.AsParallel().FirstOrDefault(x => HashGenerator.Hash(x.Vector) == hash);
-			}
-			return null;
-		}
-		public IEnumerable<T> GetAllData()
-		{
-			return EmbeddingIDs.Values.AsParallel().Select(x => x.Data);
-		}
-		public Embedding<T>? GetEmbedding(T data)
-		{
-			return EmbeddingIDs.Values.AsParallel().FirstOrDefault(x => x.Data.Equals(data));
-		}
+		public Embedding<T>? GetEmbedding(Guid id) => EmbeddingIDs.GetValueOrDefault(id);
+		/// <summary>
+		/// Gets an embedding by its hash. Note that this operation may return null if the hash does not exist.
+		/// </summary>
+		/// <param name="hash">The hash of the target embedding.</param>
+		/// <returns>The target embedding or null if not found.</returns>
+		/// <remarks>
+		/// This is an EXPENSIVE operation as it requires searching through all embeddings in the bucket.
+		/// It's recommended to use GetEmbedding(Guid id) or GetEmbedding(T data) instead.
+		/// </remarks>
+		public Embedding<T>? GetEmbedding(ulong hash) => Embeddings.GetValueOrDefault(_reduce(hash))?.Values.AsParallel().FirstOrDefault(x => HashGenerator.Hash(x.Vector) == hash);
+		/// <summary>
+		/// Gets all embeddings stored in the module.
+		/// </summary>
+		/// <returns>All the embeddings in <see cref="EmbeddingIDs"/></returns>
+		/// <remarks>
+		/// This is an EXPENSIVE operation as it requires iterating through all embeddings in the module.
+		/// It's recommended to search for specific embeddings or at least buckets;
+		/// however, this method will search faster than iterating through the dictionary manually.
+		/// </remarks>
+		public IEnumerable<T> GetAllData() => EmbeddingIDs.Values.AsParallel().Select(x => x.Data);
+		public Embedding<T>? GetEmbedding(T data) => EmbeddingData.GetValueOrDefault(data);
 		#endregion
 		#region Find Embedding(s)
 		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, int bucketsToSearch = -1, Func<double[], double[], double>? similarityFunction = null)
 		{
-			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Finding closest embeddings for: {embedding} ({typeof(T).Name})");
+			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Finding closest embeddings for: {embedding} ({typeof(T).Name})");
 			ulong hash = HashGenerator.Hash(embedding.Vector);
 			int originalBucketId = _reduce(hash);
 
@@ -158,7 +193,7 @@ namespace Opal.Modules
 			}
 
 			var results = allCandidates.OrderByDescending(x => x.Item2).Take(max).ToList();
-			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Found {results.Count} closest embeddings for {embedding} (with hash {hash})");
+			if (Log) Core.Log(Name, Baseline, $"Found {results.Count} closest embeddings for {embedding} (with hash {hash})");
 			return results;
 		}
 		#endregion
