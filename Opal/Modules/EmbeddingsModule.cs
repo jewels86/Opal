@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Opal.Utilities.Opal.Utilities;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.IO;
 using Opal.Utilities;
 using static Opal.Utilities.MathFunctions;
 
@@ -27,19 +19,14 @@ namespace Opal.Modules
 		/// <summary>The learning rate to use when associating vectors.</summary>
 		public double LearningRate { get; private set; }
 		/// <summary>The embeddings stored in the module (bucketID, embedding[]).</summary>
-		public ConcurrentDictionary<int, ConcurrentDictionary<T, Embedding<T>>> Embeddings { get; } = [];
+		public ConcurrentDictionary<int, ConcurrentDictionary<Guid, Embedding<T>>> Embeddings { get; } = [];
 		/// <summary>The embeddings stored in the module (id, embedding).</summary>
-		public ConcurrentDictionary<int, Embedding<T>> EmbeddingIDs { get; } = [];
+		public ConcurrentDictionary<Guid, Embedding<T>> EmbeddingIDs { get; } = [];
 		public SimHashGenerator<double[]> HashGenerator { get; }
 
 		public bool Log { get; set; } = false;
 
-		private Func<ulong, int> _reduce;
-
-		private int _nextID = 0;
-		private object _nextIDLock = new();
-
-		private Random _random = new();
+		private readonly Func<ulong, int> _reduce;
 
 		/// <summary>
 		/// Creates a new EmbeddingsModule.
@@ -73,12 +60,10 @@ namespace Opal.Modules
 			vector = Normalize(vector);
 			ulong hash = HashGenerator.Hash(vector);
 			int bucketId = _reduce(hash);
-			int id;
-			lock (_nextIDLock) { id = _nextID++; } // TODO: can we use GUIDs instead?
+			Guid id = Guid.NewGuid();
 			Embedding<T> embedding = new(id, data, vector);
 
-			var bucket = Embeddings.GetOrAdd(bucketId, _ => new());
-			bucket.AddOrUpdate(data,_ => embedding, (_, _) => embedding);
+			AddToBucket(bucketId, embedding);
 			EmbeddingIDs[id] = embedding;
 
 			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Created embedding: {embedding} (with hash {hash})");
@@ -119,13 +104,13 @@ namespace Opal.Modules
 				RemoveFromBucket(oldBucketIdB, embeddingB);
 			}
 
-			EmbeddingIDs[embeddingA.ID] = embeddingA;
-			EmbeddingIDs[embeddingB.ID] = embeddingB;
+			EmbeddingIDs[embeddingA.Id] = embeddingA;
+			EmbeddingIDs[embeddingB.Id] = embeddingB;
 			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Associated embeddings: {embeddingA} and {embeddingB} (with hashes {hashA} and {hashB})");
 		}
 		#endregion
 		#region Get Embedding(s)
-		public Embedding<T>? GetEmbedding(int id)
+		public Embedding<T>? GetEmbedding(Guid id)
 		{
 			return EmbeddingIDs.GetValueOrDefault(id);
 		}
@@ -148,7 +133,7 @@ namespace Opal.Modules
 		}
 		#endregion
 		#region Find Embedding(s)
-		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, Func<double[], double[], double>? similarityFunction = null)
+		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, int bucketsToSearch = -1, Func<double[], double[], double>? similarityFunction = null)
 		{
 			if (Log) Core.Log(Name, Logging.LogLevel.HighDebug, $"Finding closest embeddings for: {embedding} ({typeof(T).Name})");
 			ulong hash = HashGenerator.Hash(embedding.Vector);
@@ -157,6 +142,7 @@ namespace Opal.Modules
 			similarityFunction ??= CosineSimilarity;
 
 			int[] sortedBuckets = [.. Embeddings.Keys.AsParallel().OrderBy(x => Math.Abs(x - originalBucketId))];
+			if (bucketsToSearch != -1) sortedBuckets = sortedBuckets.Take(bucketsToSearch).ToArray();
 			var allCandidates = new List<(Embedding<T>, double)>();
 
 			foreach (var bucketId in sortedBuckets)
@@ -165,9 +151,10 @@ namespace Opal.Modules
 				{
 					allCandidates.AddRange(
 						bucket.Values.AsParallel().Select(x => (x, similarityFunction(embedding.Vector, x.Vector)))
-						.Where(x => x.Item1.ID != embedding.ID)
+						.Where(x => x.Item1.Id != embedding.Id)
 					);
 				}
+				if (allCandidates.Count >= max) break;
 			}
 
 			var results = allCandidates.OrderByDescending(x => x.Item2).Take(max).ToList();
@@ -180,18 +167,18 @@ namespace Opal.Modules
 		public void AddToBucket(int bucketId, Embedding<T> embedding)
 		{
 			var bucket = Embeddings.GetOrAdd(bucketId, _ => new());
-			bucket.AddOrUpdate(embedding.Data, _ => embedding, (_, _) => embedding);
-			EmbeddingIDs[embedding.ID] = embedding;
+			bucket.AddOrUpdate(embedding.Id, _ => embedding, (_, _) => embedding);
+			EmbeddingIDs[embedding.Id] = embedding;
 		}
 
 		public void RemoveFromBucket(int bucketId, Embedding<T> embedding)
 		{
 			if (Embeddings.TryGetValue(bucketId, out var bucket))
 			{
-				bucket.TryRemove(new(embedding.Data, embedding));
+				bucket.TryRemove(new(embedding.Id, embedding));
 			}
 		}
-		public static Embedding<T> PlaceholderEmbedding(double[] vector) => new(-1, default(T)!, vector);
+		public static Embedding<T> PlaceholderEmbedding(double[] vector) => new(Guid.Empty, default(T)!, vector);
 		# endregion
 
 		#region Similarity
@@ -260,17 +247,16 @@ namespace Opal.Modules
 			writer.Write(LearningRate);
 			foreach (var e in EmbeddingIDs.Values)
 			{
-				writer.Write(e.ID);
-				// For T: if it's a primitive or string, write directly; else, use ToString()
+				writer.Write(e.Id.ToString());
 				if (typeof(T) == typeof(string))
-					writer.Write((string)(object)e.Data!);
+					writer.Write((string)(object)e.Data);
 				else if (typeof(T).IsPrimitive)
 					writer.Write(Convert.ToString(e.Data) ?? "");
 				else
-					writer.Write(e.Data?.ToString() ?? "");
+					writer.Write(e.Data.ToString() ?? "");
 				writer.Write(e.Vector.Length);
-				for (int i = 0; i < e.Vector.Length; i++)
-					writer.Write(e.Vector[i]);
+				foreach (var v in e.Vector)
+					writer.Write(v);
 			}
 			Core.Log(Name, Logging.LogLevel.LowInfo, $"Saved {EmbeddingIDs.Count} embeddings to {filePath}");
 		}
@@ -292,7 +278,7 @@ namespace Opal.Modules
 			Embeddings.Clear();
 			for (int i = 0; i < count; i++)
 			{
-				int id = reader.ReadInt32();
+				Guid id = Guid.Parse(reader.ReadString());
 				T data;
 				if (typeof(T) == typeof(string))
 					data = (T)(object)reader.ReadString();
@@ -305,32 +291,25 @@ namespace Opal.Modules
 				for (int j = 0; j < len; j++)
 					vector[j] = reader.ReadDouble();
 				var embedding = new Embedding<T>(id, data, vector);
-				EmbeddingIDs[embedding.ID] = embedding;
+				EmbeddingIDs[embedding.Id] = embedding;
 				ulong hash = HashGenerator.Hash(embedding.Vector);
-				int bucketID = _reduce(hash);
-				AddToBucket(bucketID, embedding);
+				int bucketId = _reduce(hash);
+				AddToBucket(bucketId, embedding);
 			}
 			Core.Log(Name, Logging.LogLevel.LowInfo, $"Loaded {count} embeddings from {filePath}");
-		}
-
-		private class SerializableEmbedding<TData>
-		{
-			public int ID { get; set; }
-			public TData Data { get; set; } = default!;
-			public double[] Vector { get; set; } = default!;
 		}
 		#endregion
 	}
 
-	public class Embedding<T>(int id, T data, double[] vector)
+	public class Embedding<T>(Guid id, T data, double[] vector)
 	{
-		public int ID { get; private set; } = id;
-		public T Data { get; private set; } = data;
+		public Guid Id { get; set; } = id;
+		public T Data { get; set; } = data;
 		public double[] Vector { get; set; } = vector;
 
 		public override string ToString()
 		{
-			return $"Embedding(ID: {ID}, Data: {Data})";
+			return $"Embedding(ID: {Id}, Data: {Data})";
 		}
 	}
 
