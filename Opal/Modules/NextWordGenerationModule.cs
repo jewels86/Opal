@@ -1,32 +1,26 @@
-﻿using Opal.Configurations;
-using Opal.Utilities;
-using Opal.Utilities.ANNs;
+﻿using Opal.Utilities;
 using Opal.Utilities.ANNs.Lstm;
-using Opal.Utilities.ANNs.Recurrent;
 using static Opal.Utilities.Logging.LogLevel;
 using static Opal.Utilities.Logging.AddedLogLevel;
 using static Opal.Utilities.Logging;
-
 namespace Opal.Modules;
 
-public class NextWordGenerationModule : IModule
-{ // TODO: Convert to NextWordGenerationModule<T>
-    public EmbeddingsModule<string> Embeddings { get; set; }
-    public SemanticInterpreterModule SemanticInterpreter { get; private set; }
-    public LstmNetwork Lstm { get; private set; } = new("next-word-generation-lstm");
+public class NextWordGenerationModule<T> : IModule where T : notnull
+{ 
+    public EmbeddingsModule<T> Embeddings { get; }
+    public LstmNetwork Lstm { get; } = new("next-word-generation-lstm");
 
-    public string Name { get; private set; }
+    public string Name { get; }
 
     public LogLevel Baseline { get; set; } = Info;
     public bool LoggingEnabled { get; set; } = true;
 
-    public NextWordGenerationModule(string? name = null, EmbeddingsModule<string>? embeddings = null, 
-        SemanticInterpreterModule? semanticInterpreter = null, int hiddenLayers = 1, int hiddenSize = 128, int batchSize = 1)
+    public NextWordGenerationModule(string? name = null, EmbeddingsModule<T>? embeddings = null, 
+        int hiddenLayers = 1, int hiddenSize = 128, int batchSize = 1)
     {
         Name = name ?? "next-word-generation";
         Embeddings = embeddings ?? new(32, 128, 64, 0.1, "next-word-generation-embeddings");
-        SemanticInterpreter =
-            semanticInterpreter ?? SemanticInterpreterConfigurations.GenerateDefaultSemanticInterpreter(Embeddings);
+
         int n = Embeddings.EmbeddingSize;
         Lstm.AddLayer(new LstmLayer(n, hiddenSize, batchSize, $"lstm-input-layer ({n}, {hiddenSize}) from {Name}"));
         for (int i = 0; i < hiddenLayers; i++)
@@ -34,15 +28,7 @@ public class NextWordGenerationModule : IModule
         Lstm.AddLayer(new LstmLayer(hiddenSize, n, batchSize, $"lstm-output-layer ({hiddenSize}, {n}) from {Name}"));
     }
     
-    /// <summary>
-    /// Trains the LSTM used for next word generation.
-    /// </summary>
-    /// <param name="input">The input words as an array ("the quick brown")</param>
-    /// <param name="target">The target or actual words as an array ("the quick brown fox")</param>
-    /// <param name="epochs"></param>
-    /// <param name="learningRate"></param>
-    /// <returns></returns>
-    public List<double> Train(string[] input, string[] target, int epochs = 100, double learningRate = 0.01)
+    public List<double> Train(T[] input, T[] target, int epochs = 100, double learningRate = 0.01)
     {
         if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), 
             $"Training LSTM with input \'{string.Join(" ", input)}\', target \'{string.Join(" ", target)}\', epochs {epochs}, learning rate {learningRate}");
@@ -50,7 +36,7 @@ public class NextWordGenerationModule : IModule
         if (input.Length == 0 || target.Length == 0)
         {
             if (LoggingEnabled) Log(Name, Baseline.Add(HighBaseline), "Input or target is empty.");
-            return [];
+            throw new ArgumentException("Input and target cannot be empty.");
         }
 
         var inputEmbeddings = input
@@ -66,7 +52,7 @@ public class NextWordGenerationModule : IModule
                 .Where(x => x.e == null)
                 .Select(x => x.w);
             if (LoggingEnabled) Log(Name, Baseline.Add(HighBaseline), $"Input words not found in embeddings: {string.Join(", ", missing)}");
-            return [];
+            throw new ArgumentException("Some input words not found in embeddings.");
         }
         if (targetEmbeddings.Any(e => e == null))
         {
@@ -74,17 +60,17 @@ public class NextWordGenerationModule : IModule
                 .Where(x => x.e == null)
                 .Select(x => x.w);
             if (LoggingEnabled) Log(Name, Baseline.Add(HighBaseline), $"Target words not found in embeddings: {string.Join(", ", missing)}");
-            return [];
+            throw new ArgumentException("Some target words not found in embeddings.");
         }
 
         List<List<double[]>> inputSeqs = [inputEmbeddings
             .Where(e => e is not null)
-            .Cast<Embedding<string>>()
+            .Cast<Embedding<T>>()
             .Select(e => e?.Vector)
             .ToList()!];
         List<List<double[]>> targetSeqs = [targetEmbeddings
             .Where(e => e is not null)
-            .Cast<Embedding<string>>()
+            .Cast<Embedding<T>>()
             .Select(e => e?.Vector)
             .ToList()!];
 
@@ -93,12 +79,12 @@ public class NextWordGenerationModule : IModule
         return result;
     }
     
-    public string GenerateNext(string[] input)
+    public T GenerateNext(T[] input)
     {
         if (input.Length == 0)
         {
             Log(Name, Baseline.Add(HighBaseline), "Input is empty.");
-            return string.Empty;
+            throw new ArgumentException("Input cannot be empty.");
         }
 
         var inputEmbeddings = input
@@ -110,26 +96,27 @@ public class NextWordGenerationModule : IModule
             var missing = input.Zip(inputEmbeddings, (w, e) => (w, e))
                 .Where(x => x.e == null)
                 .Select(x => x.w);
-            Log(Name, Baseline.Add(HighBaseline), $"Input words not found in embeddings: {string.Join(", ", missing)}");
-            return string.Empty;
+            var missingEnumerable = missing as T[] ?? missing.ToArray();
+            Log(Name, Baseline.Add(HighBaseline), $"Input words not found in embeddings: {string.Join(", ", missingEnumerable)}");
+            throw new ArgumentException("Some input words not found in embeddings: " + string.Join(", ", missingEnumerable));
         }
 
-        var inputSeq = inputEmbeddings.Select(e => e.Vector).ToList();
+        var inputSeq = inputEmbeddings.Select(e => e!.Vector).ToList();
         var outputSeq = Lstm.PredictSequence(inputSeq);
 
         if (outputSeq.Count == 0)
         {
             Log(Name, Baseline.Add(HighBaseline), "LSTM output sequence is empty.");
-            return string.Empty;
+            throw new InvalidOperationException("LSTM output sequence is empty.");
         }
 
         var lastOutput = outputSeq.Last();
-        var similars = Embeddings.FindSimilar(EmbeddingsModule<string>.PlaceholderEmbedding(lastOutput)).ToList();
+        var similars = Embeddings.FindSimilar(EmbeddingsModule<T>.PlaceholderEmbedding(lastOutput)).ToList();
 
         if (similars.Count == 0)
         {
             Log(Name, Baseline.Add(HighBaseline), "No similar words found for LSTM output.");
-            return string.Empty;
+            throw new InvalidOperationException("No similar words found for LSTM output.");
         }
 
         var topCandidate = similars.First().Item1.Data;

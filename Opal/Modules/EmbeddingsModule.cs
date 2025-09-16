@@ -299,7 +299,7 @@ namespace Opal.Modules
 			if (!File.Exists(filePath))
 			{
 				Log(Name, Baseline.Add(HighBaseline), $"File not found: {filePath}");
-				return;
+				throw new FileNotFoundException($"File not found: {filePath}");
 			}
 			using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
 			using var reader = new BinaryReader(fs);
