@@ -4,12 +4,12 @@ using Opal.Utilities;
 using static Opal.Utilities.MathFunctions;
 using static Opal.Utilities.Logging.LogLevel;
 using static Opal.Utilities.Logging.AddedLogLevel;
+using static Opal.Utilities.Logging;
 
 namespace Opal.Modules
 {
 	public class EmbeddingsModule<T> : IModule where T : notnull
 	{
-		public int ID { get; private set; }
 		public string Name { get; private set; }
 
 		/// <summary>The number of buckets as a power of two.</summary>
@@ -27,9 +27,9 @@ namespace Opal.Modules
 		public ConcurrentDictionary<T, Embedding<T>> EmbeddingData { get; } = [];
 		public SimHashGenerator<double[]> HashGenerator { get; }
 
-		public bool Log { get; set; } = false;
+		public bool LoggingEnabled { get; set; } = false;
 
-		public Logging.LogLevel Baseline { get; set; } = LowDebug;
+		public LogLevel Baseline { get; set; } = LowDebug;
 
 		private readonly Func<ulong, int> _reduce;
 
@@ -44,7 +44,6 @@ namespace Opal.Modules
 		/// <param name="reduce">A function that takes a ulong hash and converts it to an int bucket.</param>
 		public EmbeddingsModule(int totalBuckets, int embeddingSize, int hashBits, double learningRate, string? name = null, Func<ulong, int>? reduce = null)
 		{
-			ID = Core.Register(this);
 			Name = name ?? $"embeddings-{typeof(T).Name.ToLower()}";
 			TotalBuckets = totalBuckets;
 			EmbeddingSize = embeddingSize;
@@ -59,7 +58,7 @@ namespace Opal.Modules
 		#region Add/Remove Embeddings
 		public Embedding<T> CreateEmbedding(T data)
 		{
-			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Creating embedding for data: {data} ({typeof(T).Name})");
+			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Creating embedding for data: {data} ({typeof(T).Name})");
 
 			double[] vector = RandomVector(EmbeddingSize);
 			vector = Normalize(vector);
@@ -72,45 +71,45 @@ namespace Opal.Modules
 			EmbeddingIDs[id] = embedding;
 			EmbeddingData[data] = embedding;
 
-			if (Log) Core.Log(Name, Baseline, $"Created embedding: {embedding} (with hash {hash})");
+			if (LoggingEnabled) Log(Name, Baseline, $"Created embedding: {embedding} (with hash {hash})");
 			return embedding;
 		}
 		public bool RemoveEmbedding(Guid id)
 		{
-			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Removing embedding with ID: {id} ({typeof(T).Name})");
+			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Removing embedding with ID: {id} ({typeof(T).Name})");
 			if (EmbeddingIDs.TryRemove(id, out var embedding) && EmbeddingData.TryRemove(embedding.Data, out _))
 			{
 				ulong hash = HashGenerator.Hash(embedding.Vector);
 				int bucketId = _reduce(hash);
 				RemoveFromBucket(bucketId, embedding);
-				if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Removed embedding: {embedding} (with hash {hash})");
+				if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Removed embedding: {embedding} (with hash {hash})");
 				return true;
 			}
-			if (Log) Core.Log(Name, Baseline, $"Failed to remove embedding with ID: {id} (not found)");
+			if (LoggingEnabled) Log(Name, Baseline, $"Failed to remove embedding with ID: {id} (not found)");
 			return false;
 		}
 		public bool RemoveEmbedding(T data)
 		{
-			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Removing embedding with data: {data} ({typeof(T).Name})");
+			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Removing embedding with data: {data} ({typeof(T).Name})");
 			if (EmbeddingData.TryRemove(data, out var embedding) && EmbeddingIDs.TryRemove(embedding.Id, out _))
 			{
 				ulong hash = HashGenerator.Hash(embedding.Vector);
 				int bucketId = _reduce(hash);
 				RemoveFromBucket(bucketId, embedding);
-				if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Removed embedding: {embedding} (with hash {hash})");
+				if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Removed embedding: {embedding} (with hash {hash})");
 				return true;
 			}
-			if (Log) Core.Log(Name, Baseline, $"Failed to remove embedding with data: {data} (not found)");
+			if (LoggingEnabled) Log(Name, Baseline, $"Failed to remove embedding with data: {data} (not found)");
 			return false;
 		}
 		#endregion
 		#region Associate Embeddings
 		public void Associate(Embedding<T> embeddingA, Embedding<T> embeddingB, double strength)
 		{
-			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Associating embeddings: {embeddingA} and {embeddingB} ({typeof(T).Name})");
+			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Associating embeddings: {embeddingA} and {embeddingB} ({typeof(T).Name})");
 			ulong oldHashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong oldHashB = HashGenerator.Hash(embeddingB.Vector);
-			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Old vectors: {oldHashA} and {oldHashB}");
+			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Old vectors: {oldHashA} and {oldHashB}");
 
 			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - LearningRate), Multiply(embeddingB.Vector, LearningRate * strength)));
 			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - LearningRate), Multiply(embeddingA.Vector, LearningRate * strength)));
@@ -120,7 +119,7 @@ namespace Opal.Modules
 			int bucketIdA = _reduce(hashA);
 			int bucketIdB = _reduce(hashB);
 
-			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"New vectors: {hashA} and {hashB} (belonging to buckets {bucketIdA} and {bucketIdB} respectively)");
+			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"New vectors: {hashA} and {hashB} (belonging to buckets {bucketIdA} and {bucketIdB} respectively)");
 
 			AddToBucket(bucketIdA, embeddingA);
 			AddToBucket(bucketIdB, embeddingB);
@@ -140,7 +139,7 @@ namespace Opal.Modules
 
 			EmbeddingIDs[embeddingA.Id] = embeddingA;
 			EmbeddingIDs[embeddingB.Id] = embeddingB;
-			if (Log) Core.Log(Name, Baseline, $"Associated embeddings: {embeddingA} and {embeddingB} (with hashes {oldHashA} -> {hashA} and {oldHashB} -> {hashB})");
+			if (LoggingEnabled) Log(Name, Baseline, $"Associated embeddings: {embeddingA} and {embeddingB} (with hashes {oldHashA} -> {hashA} and {oldHashB} -> {hashB})");
 		}
 		#endregion
 		#region Get Embedding(s)
@@ -170,7 +169,7 @@ namespace Opal.Modules
 		#region Find Embedding(s)
 		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, int bucketsToSearch = -1, Func<double[], double[], double>? similarityFunction = null)
 		{
-			if (Log) Core.Log(Name, Baseline.Add(LowBaseline), $"Finding closest embeddings for: {embedding} ({typeof(T).Name})");
+			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Finding closest embeddings for: {embedding} ({typeof(T).Name})");
 			ulong hash = HashGenerator.Hash(embedding.Vector);
 			int originalBucketId = _reduce(hash);
 
@@ -193,7 +192,7 @@ namespace Opal.Modules
 			}
 
 			var results = allCandidates.OrderByDescending(x => x.Item2).Take(max).ToList();
-			if (Log) Core.Log(Name, Baseline, $"Found {results.Count} closest embeddings for {embedding} (with hash {hash})");
+			if (LoggingEnabled) Log(Name, Baseline, $"Found {results.Count} closest embeddings for {embedding} (with hash {hash})");
 			return results;
 		}
 		#endregion
@@ -293,13 +292,13 @@ namespace Opal.Modules
 				foreach (var v in e.Vector)
 					writer.Write(v);
 			}
-			Core.Log(Name, Logging.LogLevel.LowInfo, $"Saved {EmbeddingIDs.Count} embeddings to {filePath}");
+			Log(Name, Baseline.Add(HighBaseline), $"Saved {EmbeddingIDs.Count} embeddings to {filePath}");
 		}
 		public void LoadEmbeddingsFromFile(string filePath)
 		{
 			if (!File.Exists(filePath))
 			{
-				Core.Log(Name, Logging.LogLevel.LowWarning, $"File not found: {filePath}");
+				Log(Name, Baseline.Add(HighBaseline), $"File not found: {filePath}");
 				return;
 			}
 			using var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read);
@@ -330,8 +329,8 @@ namespace Opal.Modules
 				ulong hash = HashGenerator.Hash(embedding.Vector);
 				int bucketId = _reduce(hash);
 				AddToBucket(bucketId, embedding);
-			}
-			Core.Log(Name, Logging.LogLevel.LowInfo, $"Loaded {count} embeddings from {filePath}");
+			} 
+			Log(Name, Baseline, $"Loaded {count} embeddings from {filePath}");
 		}
 		#endregion
 	}

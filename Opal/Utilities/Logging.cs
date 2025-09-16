@@ -49,8 +49,11 @@ public static class Logging
         Urgent = 2,
         HighUrgent = 3,
     }
+    
+    public static LogLevel CurrentLevel { get; set; } = LogLevel.Info;
+    public static List<string> Blacklist { get; } = new();
 
-    private static readonly ConcurrentQueue<(string name, int level, string message)> LogQueue = new();
+    private static readonly ConcurrentQueue<(string name, LogLevel level, string message)> LogQueue = new();
     private static readonly AutoResetEvent LogEvent = new(false);
     private static readonly Thread LogThread;
     private static volatile bool _logThreadStarted = false;
@@ -62,21 +65,27 @@ public static class Logging
         _logThreadStarted = true;
     }
 
-    public static void StandardLog(string name, int level, string message)
+    public static void StandardLog(string name, LogLevel level, string message)
     {
-        if (level < Core.LogLevel) return;
-        if (Core.LogWhitelist.Count != 0 && !Core.LogWhitelist.Contains(name)) return;
-        if (Core.LogBlacklist.Contains(name)) return;
+        if (level < CurrentLevel) return;
+        if (Blacklist.Contains(name)) return;
         Console.WriteLine($"[{name}] [{level}] {message}");
     }
 
-    public static void AsyncLog(string name, int level, string message)
+    public static void AsyncLog(string name, LogLevel level, string message)
     {
-        if (level < Core.LogLevel) return;
-        if (Core.LogWhitelist.Count != 0 && !Core.LogWhitelist.Contains(name)) return;
-        if (Core.LogBlacklist.Contains(name)) return;
+        if (level < CurrentLevel) return;
+        if (Blacklist.Contains(name)) return;
         LogQueue.Enqueue((name, level, message));
         LogEvent.Set();
+    }
+
+    public static void Log(string name, LogLevel level, string message, bool async = true)
+    {
+        if (async && _logThreadStarted)
+            AsyncLog(name, level, message);
+        else
+            StandardLog(name, level, message);
     }
 
     private static void ProcessLogQueue()
