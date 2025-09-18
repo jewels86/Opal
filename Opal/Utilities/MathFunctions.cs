@@ -300,4 +300,11 @@ public static class MathFunctions
     {
         return vectorA.AsParallel().Zip(vectorB.AsParallel(), (a, b) => a * b).Sum();
     }
+
+    public static bool Equals(double[] a, double[] b, bool parallel = true)
+    {
+        IEnumerable<double> usefulA = parallel ? a.AsParallel() : a;
+        IEnumerable<double> usefulB = parallel ? b.AsParallel() : b;
+        return usefulA.SequenceEqual(usefulB);
+    }
 }

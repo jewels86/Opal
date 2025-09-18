@@ -53,8 +53,6 @@ namespace Opal.Modules
 			_reduce = reduce ?? (x => (int)(x & (ulong)(TotalBuckets - 1)));
 		}
 
-		public void Initialize() { }
-
 		#region Add/Remove Embeddings
 		public Embedding<T> CreateEmbedding(T data)
 		{
@@ -111,9 +109,11 @@ namespace Opal.Modules
 			ulong oldHashB = HashGenerator.Hash(embeddingB.Vector);
 			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Old vectors: {oldHashA} and {oldHashB}");
 
-			embeddingA.Vector = Normalize(Add(Multiply(embeddingA.Vector, 1 - LearningRate), Multiply(embeddingB.Vector, LearningRate * strength)));
-			embeddingB.Vector = Normalize(Add(Multiply(embeddingB.Vector, 1 - LearningRate), Multiply(embeddingA.Vector, LearningRate * strength)));
-
+			double[] newAVector = Normalize(Add(Multiply(embeddingA.Vector, 1 - LearningRate), Multiply(embeddingB.Vector, LearningRate * strength)));
+			double[] newBVector = Normalize(Add(Multiply(embeddingB.Vector, 1 - LearningRate), Multiply(embeddingA.Vector, LearningRate * strength)));
+			embeddingA = embeddingA with { Vector = newAVector };
+			embeddingB = embeddingB with { Vector = newBVector };
+			
 			ulong hashA = HashGenerator.Hash(embeddingA.Vector);
 			ulong hashB = HashGenerator.Hash(embeddingB.Vector);
 			int bucketIdA = _reduce(hashA);
@@ -175,23 +175,29 @@ namespace Opal.Modules
 
 			similarityFunction ??= CosineSimilarity;
 
-			int[] sortedBuckets = [.. Embeddings.Keys.AsParallel().OrderBy(x => Math.Abs(x - originalBucketId))];
+			int[] sortedBuckets = [.. Embeddings.Keys.OrderBy(x => Math.Abs(x - originalBucketId))];
 			if (bucketsToSearch != -1) sortedBuckets = sortedBuckets.Take(bucketsToSearch).ToArray();
 			var allCandidates = new List<(Embedding<T>, double)>();
 
 			foreach (var bucketId in sortedBuckets)
 			{
+				if (allCandidates.Count >= max) break;
 				if (Embeddings.TryGetValue(bucketId, out var bucket))
 				{
-					allCandidates.AddRange(
-						bucket.Values.AsParallel().Select(x => (x, similarityFunction(embedding.Vector, x.Vector)))
-						.Where(x => x.Item1.Id != embedding.Id)
-					);
+					var candidates = bucket.Values.AsParallel()
+						.Where(x => x.Id != embedding.Id)
+						.Select(x => (x, similarityFunction(embedding.Vector, x.Vector)))
+						.OrderByDescending(x => x.Item2)
+						.Take(max - allCandidates.Count)
+						.ToList();
+					allCandidates.AddRange(candidates);
 				}
-				if (allCandidates.Count >= max) break;
 			}
 
-			var results = allCandidates.OrderByDescending(x => x.Item2).Take(max).ToList();
+			var results = allCandidates
+				.OrderByDescending(x => x.Item2)
+				.Take(max)
+				.ToList();
 			if (LoggingEnabled) Log(Name, Baseline, $"Found {results.Count} closest embeddings for {embedding} (with hash {hash})");
 			return results;
 		}
@@ -335,16 +341,25 @@ namespace Opal.Modules
 		#endregion
 	}
 
-	public class Embedding<T>(Guid id, T data, double[] vector)
+	public readonly record struct Embedding<T>(Guid Id, T Data, double[] Vector) where T : notnull
 	{
-		public Guid Id { get; set; } = id;
-		public T Data { get; set; } = data;
-		public double[] Vector { get; set; } = vector;
-
-		public override string ToString()
+		public bool Equals(Embedding<T> other)
 		{
-			return $"Embedding(ID: {Id}, Data: {Data})";
+			return Id.Equals(other.Id)
+			       && EqualityComparer<T>.Default.Equals(Data, other.Data)
+			       && MathFunctions.Equals(Vector, other.Vector);
 		}
+
+		public override int GetHashCode()
+		{
+			int hash = HashCode.Combine(Id, Data);
+			foreach (var v in Vector)
+				hash = HashCode.Combine(hash, v);
+			return hash;
+		}
+
+		public override string ToString() => $"Embedding(ID: {Id}, Data: {Data})";
 	}
+
 
 }
