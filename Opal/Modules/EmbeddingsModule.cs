@@ -10,7 +10,7 @@ namespace Opal.Modules
 {
 	public class EmbeddingsModule<T> : IModule where T : notnull
 	{
-		public string Name { get; private set; }
+		public string Name { get; }
 
 		/// <summary>The number of buckets as a power of two.</summary>
 		public int TotalBuckets { get; private set; }
