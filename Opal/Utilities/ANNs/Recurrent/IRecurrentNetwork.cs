@@ -1,10 +1,10 @@
 ﻿namespace Opal.Utilities.ANNs.Recurrent;
 
-public interface IRecurrentNetwork : INueralNetwork
+public interface IRecurrentNetwork
 {
-    string Name { get; set; }
-    List<IRecurrentLayer> Layers { get; set; }
-    List<double[]> PredictSequence(List<double[]> inputSequence);
-    void Train(List<List<double[]>> inputSequences, List<List<double[]>> targetSequences, int epochs, double learningRate);
-    double EvaluateLoss(List<List<double[]>> inputSequences, List<List<double[]>> targetSequences);
+    public string Name { get; }
+    public List<IRecurrentLayer> Layers { get; }
+    public List<double[]> PredictSequence(double[,] inputSequence);
+    public void Train(double[,,] inputSequences, double[,,] targetSequences, int epochs, double learningRate);
+    public double EvaluateLoss(double[,,] inputSequences, double[,,] targetSequences);
 }

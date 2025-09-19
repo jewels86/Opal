@@ -226,6 +226,35 @@ public static class MathFunctions
             .Select(i => Enumerable.Range(0, colCount).Select(j => matrix[i, j]).ToArray())
             .ToList();
     }
+    
+    public static double[,,] ToMatrix3D(List<List<double[]>> sequences)
+    {
+        if (sequences == null || sequences.Count == 0)
+            throw new ArgumentException("Input list cannot be null or empty.");
+        int batchSize = sequences.Count;
+        int timeSteps = sequences[0].Count;
+        int inputSize = sequences[0][0].Length;
+        double[,,] tensor = new double[batchSize, timeSteps, inputSize];
+        sequences.AsParallel().Select((seq, b) => new { seq, b }).ForAll(item =>
+        {
+            for (int t = 0; t < timeSteps; t++)
+            for (int i = 0; i < inputSize; i++)
+                tensor[item.b, t, i] = item.seq[t][i];
+        });
+        return tensor;
+    }
+
+    public static List<List<double[]>> ToSequenceList(double[,,] tensor) // is this the right word? are 3d matrices called tensors?
+    {
+        int batchSize = tensor.GetLength(0);
+        int timeSteps = tensor.GetLength(1);
+        int inputSize = tensor.GetLength(2);
+        return Enumerable.Range(0, batchSize).AsParallel()
+            .Select(b => Enumerable.Range(0, timeSteps)
+                .Select(t => Enumerable.Range(0, inputSize)
+                    .Select(i => tensor[b, t, i]).ToArray()).ToList())
+            .ToList();
+    }
 
     public static double[,] OuterProduct(double[] a, double[] b)
     {

@@ -1,5 +1,5 @@
 ﻿using Opal.Utilities;
-using Opal.Utilities.ANNs.Lstm;
+using Opal.Utilities.ANNs.Recurrent;
 using static Opal.Utilities.Logging.LogLevel;
 using static Opal.Utilities.Logging.AddedLogLevel;
 using static Opal.Utilities.Logging;
@@ -8,27 +8,21 @@ namespace Opal.Modules;
 public class NextWordGenerationModule<T> : IModule where T : notnull
 { 
     public EmbeddingsModule<T> Embeddings { get; }
-    public LstmNetwork Lstm { get; } = new("next-word-generation-lstm");
+    public IRecurrentNetwork Network { get; }
 
     public string Name { get; }
 
     public LogLevel Baseline { get; set; } = Info;
     public bool LoggingEnabled { get; set; } = true;
 
-    public NextWordGenerationModule(string? name = null, EmbeddingsModule<T>? embeddings = null, 
-        int hiddenLayers = 1, int hiddenSize = 128, int batchSize = 1)
+    public NextWordGenerationModule(EmbeddingsModule<T> embeddings, IRecurrentNetwork rnn, string? name = null)
     {
         Name = name ?? "next-word-generation";
-        Embeddings = embeddings ?? new(32, 128, 64, 0.1, "next-word-generation-embeddings");
-
-        int n = Embeddings.EmbeddingSize;
-        Lstm.AddLayer(new LstmLayer(n, hiddenSize, batchSize, $"lstm-input-layer ({n}, {hiddenSize}) from {Name}"));
-        for (int i = 0; i < hiddenLayers; i++)
-            Lstm.AddLayer(new LstmLayer(hiddenSize, hiddenSize, batchSize, $"lstm-hidden-layer {i + 1} ({hiddenSize}, {hiddenSize}) from {Name}"));
-        Lstm.AddLayer(new LstmLayer(hiddenSize, n, batchSize, $"lstm-output-layer ({hiddenSize}, {n}) from {Name}"));
+        Embeddings = embeddings;
+        Network = rnn;
     }
     
-    public List<double> Train(T[] input, T[] target, int epochs = 100, double learningRate = 0.01)
+    public void Train(T[] input, T[] target, int epochs = 100, double learningRate = 0.01)
     {
         if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), 
             $"Training LSTM with input \'{string.Join(" ", input)}\', target \'{string.Join(" ", target)}\', epochs {epochs}, learning rate {learningRate}");
@@ -63,20 +57,23 @@ public class NextWordGenerationModule<T> : IModule where T : notnull
             throw new ArgumentException("Some target words not found in embeddings.");
         }
 
-        List<List<double[]>> inputSeqs = [inputEmbeddings
-            .Where(e => e is not null)
-            .Cast<Embedding<T>>()
-            .Select(e => e?.Vector)
-            .ToList()!];
-        List<List<double[]>> targetSeqs = [targetEmbeddings
-            .Where(e => e is not null)
-            .Cast<Embedding<T>>()
-            .Select(e => e?.Vector)
-            .ToList()!];
+        double[,,] inputSeqs = MathFunctions.ToMatrix3D([
+            inputEmbeddings
+                .Where(e => e is not null)
+                .Cast<Embedding<T>>()
+                .Select(e => e.Vector)
+                .ToList()
+        ]);
+        double[,,] targetSeqs = MathFunctions.ToMatrix3D([
+            targetEmbeddings
+                .Where(e => e is not null)
+                .Cast<Embedding<T>>()
+                .Select(e => e.Vector)
+                .ToList()
+        ]);
 
-        List<double> result = Lstm.Train(inputSeqs, targetSeqs, epochs, learningRate);
+        Network.Train(inputSeqs, targetSeqs, epochs, learningRate);
         if (LoggingEnabled) Log(Name, Baseline, $"Training complete for input \'{string.Join(" ", input)}\'.");
-        return result;
     }
     
     public T GenerateNext(T[] input)
@@ -101,8 +98,8 @@ public class NextWordGenerationModule<T> : IModule where T : notnull
             throw new ArgumentException("Some input words not found in embeddings: " + string.Join(", ", missingEnumerable));
         }
 
-        var inputSeq = inputEmbeddings.Select(e => e!.Vector).ToList();
-        var outputSeq = Lstm.PredictSequence(inputSeq);
+        var inputSeq = inputEmbeddings.Select(e => e?.Vector!).ToList();
+        var outputSeq = Network.PredictSequence(MathFunctions.ToMatrix2D(inputSeq));
 
         if (outputSeq.Count == 0)
         {
