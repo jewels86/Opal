@@ -1,11 +1,11 @@
 ﻿namespace Opal.Utilities.ANNs;
 
-public interface ILayer
+public interface ILayer<T> where T : notnull
 {
-    public double[] Forward(double[] input);
-    public double[] Backward(double[] gradOutput, double learningRate);
-    public void Reset();
+    public int InputSize { get; }
+    public int OutputSize { get; }
     
-    public delegate double ActivationFunction(double input);
-    public delegate double ActivationFunctionDerivative(double input); 
+    public T Forward(T input);
+    public T Backward(T gradOutput, double learningRate);
+    public void Reset();
 }

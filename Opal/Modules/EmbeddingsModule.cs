@@ -5,6 +5,7 @@ using static Opal.Utilities.MathFunctions;
 using static Opal.Utilities.Logging.LogLevel;
 using static Opal.Utilities.Logging.AddedLogLevel;
 using static Opal.Utilities.Logging;
+using Opal.Utilities.Concurrency;
 
 namespace Opal.Modules
 {
@@ -167,7 +168,8 @@ namespace Opal.Modules
 		public Embedding<T>? GetEmbedding(T data) => EmbeddingData.GetValueOrDefault(data);
 		#endregion
 		#region Find Embedding(s)
-		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, int bucketsToSearch = -1, Func<double[], double[], double>? similarityFunction = null)
+		public List<(Embedding<T>, double)> FindSimilar(Embedding<T> embedding, int max = 10, int bucketsToSearch = -1, 
+			Func<double[], double[], double>? similarityFunction = null, bool parallel = true)
 		{
 			if (LoggingEnabled) Log(Name, Baseline.Add(LowBaseline), $"Finding closest embeddings for: {embedding} ({typeof(T).Name})");
 			ulong hash = HashGenerator.Hash(embedding.Vector);
@@ -184,7 +186,7 @@ namespace Opal.Modules
 				if (allCandidates.Count >= max) break;
 				if (Embeddings.TryGetValue(bucketId, out var bucket))
 				{
-					var candidates = bucket.Values.AsParallel()
+					var candidates = bucket.Values.AsParallel(parallel)
 						.Where(x => x.Id != embedding.Id)
 						.Select(x => (x, similarityFunction(embedding.Vector, x.Vector)))
 						.OrderByDescending(x => x.Item2)

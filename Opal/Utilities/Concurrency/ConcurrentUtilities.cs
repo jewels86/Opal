@@ -2,8 +2,9 @@
 
 public static class ConcurrentUtilities
 {
-    public static IEnumerable<T> AsParallel<T>(this IEnumerable<T> source, bool parallel) =>
-        parallel ? source.AsParallel() : source;
+    public static ParallelQuery<T> AsParallel<T>(this IEnumerable<T> source, bool parallel) =>
+        parallel ? source.AsParallel() : source.AsParallel().WithDegreeOfParallelism(1);
+
     public static void ForAllParallel<T>(this IEnumerable<T> source, Action<T> action, bool parallel)
     {
         if (parallel)

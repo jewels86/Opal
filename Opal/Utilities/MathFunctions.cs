@@ -53,7 +53,7 @@ public static class MathFunctions
         return new double[length];
     }
 
-    public static double[] Apply(ILayer.ActivationFunction fn, double[] x)
+    public static double[] Apply(Func<double, double> fn, double[] x)
     {
         var y = new double[x.Length];
         for (int i = 0; i < x.Length; i++)
@@ -337,3 +337,4 @@ public static class MathFunctions
         return usefulA.SequenceEqual(usefulB);
     }
 }
+
