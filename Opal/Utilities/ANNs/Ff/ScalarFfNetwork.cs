@@ -1,0 +1,41 @@
+﻿using Opal.Mathematics;
+
+namespace Opal.Utilities.ANNs.Ff;
+
+public class ScalarFfNetwork : FfNetwork<double, double, double, double, double>
+{
+    public ScalarFfNetwork(
+        ActivationFunction<double>? hiddenActivation = null,
+        ActivationFunction<double>? outputActivation = null,
+        LossFunction<double>? lossFunction = null,
+        IFfOptimizer<double, double>? optimizer = null,
+        string name = "ScalarFfNetwork")
+        : base(1, 1, 1, 1,
+            hiddenActivation ?? ActivationFunctions.Identity,
+            outputActivation ?? ActivationFunctions.Identity,
+            lossFunction ?? LossFunctions.MeanSquaredError,
+            optimizer ?? new StandardScalarFfOptimizer(),
+            new ScalarFfTensorOperations(), new ScalarFfTensorOperations(), new ScalarFfTensorOperations(), name)
+    {
+    }
+}
+
+public class ScalarFfTensorOperations : IFfTensorOperations<double, double, double, double>
+{
+    public double Add(double output, double biases) => output + biases;
+    public double Apply(double output, Func<double, double> activation) => activation(output);
+    public double DefaultBiases(int size) => 0.0;
+    public double DefaultOutput(int size) => 0.0;
+    public double DefaultWeights(int rows, int cols) => Tensors.RandomDouble();
+    public double DefaultInput(int size) => 0.0;
+    public double Multiply(double weights, double input) => weights * input;
+    public double GradBiases(double gradZ) => gradZ;
+    public double GradInput(double weights, double gradZ) => weights * gradZ;
+    public double GradWeights(double gradZ, double lastInput) => gradZ * lastInput;
+}
+
+public class StandardScalarFfOptimizer : IFfOptimizer<double, double>
+{
+    public double UpdateBiases(double biases, double gradBiases, double learningRate) => biases - gradBiases * learningRate;
+    public double UpdateWeights(double weights, double gradWeights, double learningRate) => weights - gradWeights * learningRate;
+}

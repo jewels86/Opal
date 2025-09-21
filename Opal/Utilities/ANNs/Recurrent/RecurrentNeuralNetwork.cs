@@ -1,4 +1,6 @@
-﻿namespace Opal.Utilities.ANNs.Recurrent;
+﻿using Opal.Mathematics;
+
+namespace Opal.Utilities.ANNs.Recurrent;
 
 public class RecurrentNeuralNetwork : IRecurrentNetwork
 {

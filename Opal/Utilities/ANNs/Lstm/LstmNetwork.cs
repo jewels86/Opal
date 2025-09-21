@@ -1,4 +1,6 @@
-﻿namespace Opal.Utilities.ANNs.Lstm;
+﻿using Opal.Mathematics;
+
+namespace Opal.Utilities.ANNs.Lstm;
 
 public class LstmNetwork
 {

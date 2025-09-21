@@ -1,11 +1,11 @@
 ﻿namespace Opal.Utilities.ANNs;
 
-public interface ILayer<T> where T : notnull
+public interface ILayer<TInput, TOutput> where TInput : notnull where TOutput : notnull
 {
     public int InputSize { get; }
     public int OutputSize { get; }
     
-    public T Forward(T input);
-    public T Backward(T gradOutput, double learningRate);
+    public TOutput Forward(TInput input);
+    public TInput Backward(TOutput gradOutput, double learningRate);
     public void Reset();
 }
