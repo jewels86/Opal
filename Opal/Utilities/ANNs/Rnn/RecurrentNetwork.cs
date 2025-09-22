@@ -2,14 +2,14 @@
 
 namespace Opal.Utilities.ANNs.Recurrent;
 
-public class RecurrentNeuralNetwork : IRecurrentNetwork
+public class RecurrentNetwork : IRecurrentNetwork
 {
     // TODO: Rewrite manually
     
     public string Name { get; set; }
     public List<IRecurrentLayer> Layers { get; set; }
 
-    public RecurrentNeuralNetwork(string name)
+    public RecurrentNetwork(string name)
     {
         Name = name;
         Layers = [];

@@ -8,13 +8,13 @@ public class MatrixFfNetwork : FfNetwork<double[,], double[,], double[,], double
         ActivationFunction<double[,]>? hiddenActivation = null,
         ActivationFunction<double[,]>? outputActivation = null,
         LossFunction<double[,]>? lossFunction = null,
-        IFfOptimizer<double[,], double[,]>? optimizer = null,
+        IOptimizer<double[,], double[,]>? optimizer = null,
         string name = "MatrixFfNetwork")
         : base(inputRows * inputCols, hiddenRows * hiddenCols, outputRows * outputCols, hiddenLayers,
             hiddenActivation ?? ActivationFunctions.ReLuMatrix,
             outputActivation ?? ActivationFunctions.ReLuMatrix,
             lossFunction ?? LossFunctions.MeanSquaredErrorMatrix,
-            optimizer ?? new StandardMatrixFfOptimizer(),
+            optimizer ?? new StandardMatrixOptimizer(),
             new MatrixFfTensorOperations(), new MatrixFfTensorOperations(), new MatrixFfTensorOperations(), name)
     {
     }
@@ -50,8 +50,3 @@ public class MatrixFfTensorOperations : IFfTensorOperations<double[,], double[,]
     }
 }
 
-public class StandardMatrixFfOptimizer : IFfOptimizer<double[,], double[,]>
-{
-    public double[,] UpdateBiases(double[,] biases, double[,] gradBiases, double learningRate) => Matrices.Subtract(biases, Matrices.Multiply(gradBiases, learningRate));
-    public double[,] UpdateWeights(double[,] weights, double[,] gradWeights, double learningRate) => Matrices.Subtract(weights, Matrices.Multiply(gradWeights, learningRate));
-}

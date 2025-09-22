@@ -8,13 +8,13 @@ public class ScalarFfNetwork : FfNetwork<double, double, double, double, double>
         ActivationFunction<double>? hiddenActivation = null,
         ActivationFunction<double>? outputActivation = null,
         LossFunction<double>? lossFunction = null,
-        IFfOptimizer<double, double>? optimizer = null,
+        IOptimizer<double, double>? optimizer = null,
         string name = "ScalarFfNetwork")
         : base(1, 1, 1, 1,
             hiddenActivation ?? ActivationFunctions.Identity,
             outputActivation ?? ActivationFunctions.Identity,
             lossFunction ?? LossFunctions.MeanSquaredError,
-            optimizer ?? new StandardScalarFfOptimizer(),
+            optimizer ?? new StandardScalarOptimizer(),
             new ScalarFfTensorOperations(), new ScalarFfTensorOperations(), new ScalarFfTensorOperations(), name)
     {
     }
@@ -34,8 +34,3 @@ public class ScalarFfTensorOperations : IFfTensorOperations<double, double, doub
     public double GradWeights(double gradZ, double lastInput) => gradZ * lastInput;
 }
 
-public class StandardScalarFfOptimizer : IFfOptimizer<double, double>
-{
-    public double UpdateBiases(double biases, double gradBiases, double learningRate) => biases - gradBiases * learningRate;
-    public double UpdateWeights(double weights, double gradWeights, double learningRate) => weights - gradWeights * learningRate;
-}

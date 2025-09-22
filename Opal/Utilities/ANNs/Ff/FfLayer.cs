@@ -12,13 +12,13 @@ public class FfLayer<TWeights, TBiases, TInput, TOutput> : ILayer<TInput, TOutpu
     public ActivationFunction<TOutput> Activation { get; set; }
     
     private IFfTensorOperations<TWeights, TBiases, TInput, TOutput> TensorOperations { get; }
-    private IFfOptimizer<TWeights, TBiases> Optimizer { get; }
+    private IOptimizer<TWeights, TBiases> Optimizer { get; }
 
     private TInput lastInput;
 
     public FfLayer(int inputSize, int outputSize, ActivationFunction<TOutput> activation, 
         IFfTensorOperations<TWeights, TBiases, TInput, TOutput> tensorOperations,
-        IFfOptimizer<TWeights, TBiases> optimizer)
+        IOptimizer<TWeights, TBiases> optimizer)
     {
         InputSize = inputSize;
         OutputSize = outputSize;
@@ -73,10 +73,4 @@ public interface IFfTensorOperations<TWeights, TBiases, TInput, TOutput>
     TOutput DefaultOutput(int size);
     TWeights DefaultWeights(int rows, int cols);
     TBiases DefaultBiases(int size);
-}
-
-public interface IFfOptimizer<TWeights, TBiases>
-{
-    TWeights UpdateWeights(TWeights weights, TWeights gradWeights, double learningRate);
-    TBiases UpdateBiases(TBiases biases, TBiases gradBiases, double learningRate);
 }

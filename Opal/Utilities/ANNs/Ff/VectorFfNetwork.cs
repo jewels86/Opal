@@ -8,13 +8,13 @@ public class VectorFfNetwork : FfNetwork<double[,], double[], double[], double[]
         ActivationFunction<double[]>? hiddenActivation = null, 
         ActivationFunction<double[]>? outputActivation = null,
         LossFunction<double[]>? lossFunction = null, 
-        IFfOptimizer<double[,], double[]>? optimizer = null,
+        IOptimizer<double[,], double[]>? optimizer = null,
         string name = "VectorFfNetwork")
         : base(inputSize, hiddenSize, outputSize, hiddenLayers,
             hiddenActivation ?? ActivationFunctions.ReLuVector, 
             outputActivation ?? ActivationFunctions.ReLuVector,
             lossFunction ?? LossFunctions.CrossEntropy, 
-            optimizer ?? new StandardVectorFfOptimizer(),
+            optimizer ?? new StandardVectorOptimizer(),
             new VectorFfTensorOperations(), new VectorFfTensorOperations(), new VectorFfTensorOperations(), name)
     {
     }
@@ -44,10 +44,4 @@ public class VectorFfTensorOperations : IFfTensorOperations<double[,], double[],
     }
 
     public double[,] GradWeights(double[] gradZ, double[] lastInput) => Vectors.OuterProduct(lastInput, gradZ);
-}
-
-public class StandardVectorFfOptimizer : IFfOptimizer<double[,], double[]>
-{
-    public double[] UpdateBiases(double[] biases, double[] gradBiases, double learningRate) => Vectors.Subtract(biases, Vectors.Multiply(gradBiases, learningRate));
-    public double[,] UpdateWeights(double[,] weights, double[,] gradWeights, double learningRate) => Matrices.Subtract(weights, Matrices.Multiply(gradWeights, learningRate));
 }

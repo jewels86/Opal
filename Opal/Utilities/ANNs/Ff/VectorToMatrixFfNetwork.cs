@@ -14,19 +14,19 @@ public class VectorToMatrixFfNetwork : FfNetwork<double[,], double[,], double[],
         ActivationFunction<double[,]>? hiddenActivation = null,
         ActivationFunction<double[,]>? outputActivation = null,
         LossFunction<double[,]>? lossFunction = null,
-        IFfOptimizer<double[,], double[,]>? optimizer = null,
+        IOptimizer<double[,], double[,]>? optimizer = null,
         string name = "VectorToMatrixFfNetwork")
         : base(inputSize, hiddenRows * hiddenCols, outputRows * outputCols, hiddenLayers,
             hiddenActivation ?? ActivationFunctions.ReLuMatrix,
             outputActivation ?? ActivationFunctions.ReLuMatrix,
             lossFunction ?? LossFunctions.MeanSquaredErrorMatrix,
-            optimizer ?? new VectorToMatrixFfOptimizer(),
+            optimizer ?? new VectorToMatrixOptimizer(),
             new VectorToMatrixFfTensorOperations(), new MatrixFfTensorOperations(), new MatrixFfTensorOperations(), name)
     {
     }
 }
 
-public class VectorToMatrixFfOptimizer : IFfOptimizer<double[,], double[,]> {
+public class VectorToMatrixOptimizer : IOptimizer<double[,], double[,]> {
     public double[,] UpdateBiases(double[,] biases, double[,] gradBiases, double learningRate) => Matrices.Subtract(biases, Matrices.Multiply(gradBiases, learningRate));
     public double[,] UpdateWeights(double[,] weights, double[,] gradWeights, double learningRate) => Matrices.Subtract(weights, Matrices.Multiply(gradWeights, learningRate));
 }

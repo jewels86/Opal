@@ -25,11 +25,11 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
     public ActivationFunction<THidden> HiddenActivation { get; }
     
     public LossFunction<TOutput> LossFunction { get; }
-    public IFfOptimizer<TWeights, TBiases> Optimizer { get; }
+    public IOptimizer<TWeights, TBiases> Optimizer { get; }
     
     protected FfNetwork(int inputSize, int hiddenSize, int outputSize, int hiddenLayers,
         ActivationFunction<THidden> hiddenActivation, ActivationFunction<TOutput> outputActivation,
-        LossFunction<TOutput> lossFunction, IFfOptimizer<TWeights, TBiases> optimizer, 
+        LossFunction<TOutput> lossFunction, IOptimizer<TWeights, TBiases> optimizer, 
         IFfTensorOperations<TWeights, TBiases, TInput, THidden> inputTensorOperations,
         IFfTensorOperations<TWeights, TBiases, THidden, THidden> hiddenTensorOperations,
         IFfTensorOperations<TWeights, TBiases, THidden, TOutput> outputTensorOperations,
