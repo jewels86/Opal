@@ -1,25 +1,45 @@
-﻿using Opal.Utilities.ANNs.Recurrent;
-
-namespace Opal.Utilities.ANNs.Lstm;
+﻿namespace Opal.Utilities.ANNs.Lstm;
 
 using static MathFunctions;
-using static BinaryWriting;
 
+public abstract class LstmAttentionLayer<T> where T : LstmAttentionBackpropCache, new()
+{
+    public string Tag { get; private set; } = "LSTM Attention Layer";
+    
     public T BackpropCache { get; set; }
     
     #region Parameters and Functions
-
     public double[,] ForgetGateWeight { get; set; }
     public double[,] InputGateWeight { get; set; }
     public double[,] CellGateWeight { get; set; }
     public double[,] OutputGateWeight { get; set; }
     
-
-    #region Parameters and Functions
+    public double[] ForgetGateBias { get; set; }
+    public double[] InputGateBias { get; set; }
+    public double[] CellGateBias { get; set; }
+    public double[] OutputGateBias { get; set; }
+    
+    public double[,] DecoderForgetGateWeight { get; set; }
+    public double[,] DecoderInputGateWeight { get; set; }
+    public double[,] DecoderCellGateWeight { get; set; }
+    public double[,] DecoderOutputGateWeight { get; set; }
+    
+    public double[] DecoderForgetGateBias { get; set; }
+    public double[] DecoderInputGateBias { get; set; }
+    public double[] DecoderCellGateBias { get; set; }
+    public double[] DecoderOutputGateBias { get; set; }
+    
+    public Func<double[], double[]> TanhActivation { get; set; } = Tanh;
+    public Func<double[], double[]> SigmoidActivation { get; set; } = Sigmoid;
+    public Func<double[], double[]> DTanh { get; set; } = TanhDerivative;
+    public Func<double[], double[]> DSigmoid { get; set; } = SigmoidDerivative;
+    #endregion
+    
+    public int InputSize { get; set; }
     public int HiddenSize { get; set; }
     public int OutputSize { get; set; }
 
-
+    public LstmAttentionLayer(int inputSize, int hiddenSize, int outputSize, string? tag = null)
     {
         InputSize = inputSize;
         HiddenSize = hiddenSize;
@@ -44,17 +64,19 @@ using static BinaryWriting;
         DecoderForgetGateBias = new double[HiddenSize];
         DecoderInputGateBias = new double[HiddenSize];
         DecoderCellGateBias = new double[HiddenSize];
-
+        DecoderOutputGateBias = new double[HiddenSize];
 
         BackpropCache = new T();
     }
 
-
+    #region Encoder, Attention, and Decoder
     #region Encoder
     public delegate void CacheEncoderDelegate(double[] forget, double[] inputGate, double[] cellCandidate, double[] outputGate);
     public (double[] hidden, double[] cell) Encoder(double[] input, double[] prevHidden, double[] prevCell, CacheEncoderDelegate? cache = null)
     {
-
+        double[] combined = input.Concat(prevHidden).ToArray();
+        double[] forget = SigmoidActivation(Add(Multiply(ForgetGateWeight, combined), ForgetGateBias));
+        double[] inputGate = SigmoidActivation(Add(Multiply(InputGateWeight, combined), InputGateBias));
         double[] cellCandidate = TanhActivation(Add(Multiply(CellGateWeight, combined), CellGateBias));
         double[] cell = Add(Multiply(forget, prevCell), Multiply(inputGate, cellCandidate));
         double[] outputGate = SigmoidActivation(Add(Multiply(OutputGateWeight, combined), OutputGateBias));
@@ -71,7 +93,27 @@ using static BinaryWriting;
         CacheEncoderDelegate? cacheFunc = null;
         List<double[]>? forgetGates = null;
         List<double[]>? inputGates = null;
-
+        List<double[]>? cellCandidates = null;
+        List<double[]>? outputGates = null;
+        if (cache)
+        {
+            forgetGates = [];
+            inputGates = [];
+            cellCandidates = [];
+            outputGates = [];
+            cacheFunc = (forget, inputGate, cellCandidate, outputGate) =>
+            {
+                forgetGates.Add(forget);
+                inputGates.Add(inputGate);
+                cellCandidates.Add(cellCandidate);
+                outputGates.Add(outputGate);
+            };
+        }
+        int timeSteps = x.GetLength(0);
+        for (int t = 0; t < timeSteps; t++)
+        {
+            double[] input = GetInputFromSample(x, t);
+            var (hidden, cell) = Encoder(input, hiddenStates.Last(), cellStates.Last(), cacheFunc);
             hiddenStates.Add(hidden);
             cellStates.Add(cell);
         }
@@ -93,7 +135,7 @@ using static BinaryWriting;
     public delegate void CacheAttentionDelegate(double[] scores, double[] context);
     public double[] Attention(double[,] h, double[] prevState, CacheAttentionDelegate? cache = null, Action<object>? alignmentCacheAction = null)
     {
-
+        int timeSteps = h.GetLength(0);
         int hiddenSize = h.GetLength(1);
         double[] scores = new double[timeSteps];
         for (int j = 0; j < timeSteps; j++)
@@ -184,7 +226,7 @@ using static BinaryWriting;
             BackpropCache.DecoderOutputGates = ToMatrix2D(outputGates!);
             BackpropCache.AttentionScores = ToMatrix2D(attentionScores!);
             BackpropCache.AttentionContextVectors = ToMatrix2D(attentionContexts!);
-            FinalizeAlignmentCache(alignmentCache);
+            FinalizeAttentionCache(alignmentCache);
         }
 
         return ToMatrix2D(hiddenStates);
@@ -427,75 +469,13 @@ using static BinaryWriting;
         EncoderBackward(gradEncoderHidden, learningRate);
     }
 
-    public abstract void ResetAlignment();
-    public abstract void SaveAlignment(BinaryWriter writer);
-    public abstract void LoadAlignment(BinaryReader reader);
+    public abstract void ResetAttention();
+    public abstract void SaveAttention(BinaryWriter writer);
+    public abstract void LoadAttention(BinaryReader reader);
     public abstract double[] Alignment(double[] encoderHidden, double[] decoderHidden, Action<object>? alignmentCacheAction = null);
     public abstract (Dictionary<string, object>, Action<object>) PrepareToCacheAlignment();
-    public abstract void FinalizeAlignmentCache(Dictionary<string, object> alignmentCache);
+    public abstract void FinalizeAttentionCache(Dictionary<string, object> alignmentCache);
     public abstract void TrainAlignment(LstmAttentionBackpropCache cache, int decoderTimeStep, double[] gradScores, double learningRate);
-    
-    public void Save(BinaryWriter writer)
-    {
-        writer.Write(Tag);
-        writer.Write(InputSize);
-        writer.Write(HiddenSize);
-        writer.Write(OutputSize);
-        
-        WriteMatrix(writer, ForgetGateWeight);
-        WriteMatrix(writer, InputGateWeight);
-        WriteMatrix(writer, CellGateWeight);
-        WriteMatrix(writer, OutputGateWeight);
-        
-        WriteVector(writer, ForgetGateBias);
-        WriteVector(writer, InputGateBias);
-        WriteVector(writer, CellGateBias);
-        WriteVector(writer, OutputGateBias);
-        
-        WriteMatrix(writer, DecoderForgetGateWeight);
-        WriteMatrix(writer, DecoderInputGateWeight);
-        WriteMatrix(writer, DecoderCellGateWeight);
-        WriteMatrix(writer, DecoderOutputGateWeight);
-        
-        WriteVector(writer, DecoderForgetGateBias);
-        WriteVector(writer, DecoderInputGateBias);
-        WriteVector(writer, DecoderCellGateBias);
-        WriteVector(writer, DecoderOutputGateBias);
-
-        SaveAlignment(writer);
-    }
-    
-    public static TLayer Load<TLayer, TCache>(BinaryReader reader, TLayer layer) where TLayer : LstmAttentionLayer<TCache> where TCache : LstmAttentionBackpropCache, new()
-    {
-        string tag = reader.ReadString();
-        int inputSize = reader.ReadInt32();
-        int hiddenSize = reader.ReadInt32();
-        int outputSize = reader.ReadInt32();
-        
-        layer.ForgetGateWeight = ReadMatrix(reader);
-        layer.InputGateWeight = ReadMatrix(reader);
-        layer.CellGateWeight = ReadMatrix(reader);
-        layer.OutputGateWeight = ReadMatrix(reader);
-        
-        layer.ForgetGateBias = ReadVector(reader);
-        layer.InputGateBias = ReadVector(reader);
-        layer.CellGateBias = ReadVector(reader);
-        layer.OutputGateBias = ReadVector(reader);
-        
-        layer.DecoderForgetGateWeight = ReadMatrix(reader);
-        layer.DecoderInputGateWeight = ReadMatrix(reader);
-        layer.DecoderCellGateWeight = ReadMatrix(reader);
-        layer.DecoderOutputGateWeight = ReadMatrix(reader);
-        
-        layer.DecoderForgetGateBias = ReadVector(reader);
-        layer.DecoderInputGateBias = ReadVector(reader);
-        layer.DecoderCellGateBias = ReadVector(reader);
-        layer.DecoderOutputGateBias = ReadVector(reader);
-
-        layer.LoadAlignment(reader);
-
-        return layer;
-    }
 
     public void Reset()
     {
@@ -515,7 +495,7 @@ using static BinaryWriting;
         DecoderInputGateBias = new double[HiddenSize];
         DecoderCellGateBias = new double[HiddenSize];
         DecoderOutputGateBias = new double[HiddenSize];
-        ResetAlignment();
+        ResetAttention();
     }
 }
 
