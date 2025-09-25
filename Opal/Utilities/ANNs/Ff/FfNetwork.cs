@@ -13,9 +13,9 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
     
     public string Name { get; }
     
-    public int InputSize { get; }
-    public int HiddenSize { get; }
-    public int OutputSize { get; }
+    public int[] InputShape { get; }
+    public int[] HiddenShape { get; }
+    public int[] OutputShape { get; }
     
     public IFfTensorOperations<TWeights, TBiases, TInput, THidden> InputTensorOperations { get; }
     public IFfTensorOperations<TWeights, TBiases, THidden, THidden> HiddenTensorOperations { get; }
@@ -27,7 +27,7 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
     public LossFunction<TOutput> LossFunction { get; }
     public IOptimizer<TWeights, TBiases> Optimizer { get; }
     
-    protected FfNetwork(int inputSize, int hiddenSize, int outputSize, int hiddenLayers,
+    protected FfNetwork(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
         ActivationFunction<THidden> hiddenActivation, ActivationFunction<TOutput> outputActivation,
         LossFunction<TOutput> lossFunction, IOptimizer<TWeights, TBiases> optimizer, 
         IFfTensorOperations<TWeights, TBiases, TInput, THidden> inputTensorOperations,
@@ -35,9 +35,9 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
         IFfTensorOperations<TWeights, TBiases, THidden, TOutput> outputTensorOperations,
         string name = "FfNetwork")
     {
-        InputSize = inputSize;
-        HiddenSize = hiddenSize;
-        OutputSize = outputSize;
+        InputShape = inputShape;
+        HiddenShape = hiddenShape;
+        OutputShape = outputShape;
         Name = name;
         
         InputTensorOperations = inputTensorOperations;
@@ -49,11 +49,11 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
         LossFunction = lossFunction;
         Optimizer = optimizer;
         
-        InputLayer = new(InputSize, HiddenSize, HiddenActivation, InputTensorOperations, Optimizer);
+        InputLayer = new(InputShape, HiddenShape, HiddenActivation, InputTensorOperations, Optimizer);
         HiddenLayers = [];
         for (int i = 0; i < hiddenLayers; i++)
-            HiddenLayers.Add(new(HiddenSize, HiddenSize, HiddenActivation, HiddenTensorOperations, Optimizer));
-        OutputLayer = new(HiddenSize, OutputSize, OutputActivation, OutputTensorOperations, Optimizer);
+            HiddenLayers.Add(new(HiddenShape, HiddenShape, HiddenActivation, HiddenTensorOperations, Optimizer));
+        OutputLayer = new(HiddenShape, OutputShape, OutputActivation, OutputTensorOperations, Optimizer);
     }
     
 

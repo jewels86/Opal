@@ -5,23 +5,28 @@ namespace Opal.Utilities.ANNs.Ff;
 public class VectorToMatrixFfNetwork : FfNetwork<double[,], double[,], double[], double[,], double[,]>
 {
     public VectorToMatrixFfNetwork(
-        int inputSize,
-        int hiddenRows,
-        int hiddenCols,
-        int outputRows,
-        int outputCols,
+        int[] inputShape,
+        int[] hiddenShape,
+        int[] outputShape,
         int hiddenLayers,
         ActivationFunction<double[,]>? hiddenActivation = null,
         ActivationFunction<double[,]>? outputActivation = null,
         LossFunction<double[,]>? lossFunction = null,
         IOptimizer<double[,], double[,]>? optimizer = null,
         string name = "VectorToMatrixFfNetwork")
-        : base(inputSize, hiddenRows * hiddenCols, outputRows * outputCols, hiddenLayers,
+        : base(
+            inputShape,
+            hiddenShape,
+            outputShape,
+            hiddenLayers,
             hiddenActivation ?? ActivationFunctions.ReLuMatrix,
             outputActivation ?? ActivationFunctions.ReLuMatrix,
             lossFunction ?? LossFunctions.MeanSquaredErrorMatrix,
             optimizer ?? new VectorToMatrixOptimizer(),
-            new VectorToMatrixFfTensorOperations(), new MatrixFfTensorOperations(), new MatrixFfTensorOperations(), name)
+            new VectorToMatrixFfTensorOperations(),
+            new MatrixFfTensorOperations(),
+            new MatrixFfTensorOperations(),
+            name)
     {
     }
 }
@@ -35,10 +40,10 @@ public class VectorToMatrixFfTensorOperations : IFfTensorOperations<double[,], d
 {
     public double[,] Add(double[,] output, double[,] biases) => Matrices.Add(output, biases);
     public double[,] Apply(double[,] output, Func<double, double> activation) => Matrices.ApplyElementwise(output, activation);
-    public double[,] DefaultBiases(int size) => new double[size, size];
-    public double[,] DefaultOutput(int size) => new double[size, size];
-    public double[,] DefaultWeights(int rows, int cols) => Matrices.RandomMatrix(rows, cols);
-    public double[] DefaultInput(int size) => new double[size];
+    public double[,] DefaultBiases(int[] shape) => new double[shape[0], shape[1]];
+    public double[,] DefaultOutput(int[] shape) => new double[shape[0], shape[1]];
+    public double[,] DefaultWeights(int[] outputShape, int[] inputShape) => Matrices.RandomMatrix(outputShape[0], inputShape[0]);
+    public double[] DefaultInput(int[] shape) => new double[shape[0]];
     public double[,] Multiply(double[,] weights, double[] input)
     {
         return Matrices.MultiplyMatrixByVectorAsColumn(weights, input);

@@ -7,8 +7,8 @@ public class FfLayer<TWeights, TBiases, TInput, TOutput> : ILayer<TInput, TOutpu
 {
     public TWeights Weights { get; set; }
     public TBiases Biases { get; set; }
-    public int InputSize { get; }
-    public int OutputSize { get; }
+    public int[] InputShape { get; }
+    public int[] OutputShape { get; }
     public ActivationFunction<TOutput> Activation { get; set; }
     
     private IFfTensorOperations<TWeights, TBiases, TInput, TOutput> TensorOperations { get; }
@@ -16,17 +16,17 @@ public class FfLayer<TWeights, TBiases, TInput, TOutput> : ILayer<TInput, TOutpu
 
     private TInput lastInput;
 
-    public FfLayer(int inputSize, int outputSize, ActivationFunction<TOutput> activation, 
+    public FfLayer(int[] inputShape, int[] outputShape, ActivationFunction<TOutput> activation, 
         IFfTensorOperations<TWeights, TBiases, TInput, TOutput> tensorOperations,
         IOptimizer<TWeights, TBiases> optimizer)
     {
-        InputSize = inputSize;
-        OutputSize = outputSize;
+        InputShape = inputShape;
+        OutputShape = outputShape;
         Activation = activation;
         
-        Weights = tensorOperations.DefaultWeights(outputSize, inputSize);
-        Biases = tensorOperations.DefaultBiases(outputSize);
-        lastInput = tensorOperations.DefaultInput(inputSize);
+        Weights = tensorOperations.DefaultWeights(outputShape, inputShape);
+        Biases = tensorOperations.DefaultBiases(outputShape);
+        lastInput = tensorOperations.DefaultInput(inputShape);
         
         TensorOperations = tensorOperations;
         Optimizer = optimizer;
@@ -55,9 +55,9 @@ public class FfLayer<TWeights, TBiases, TInput, TOutput> : ILayer<TInput, TOutpu
 
     public void Reset()
     {
-        Weights = TensorOperations.DefaultWeights(OutputSize, InputSize);
-        Biases = TensorOperations.DefaultBiases(OutputSize);
-        lastInput = TensorOperations.DefaultInput(InputSize);
+        Weights = TensorOperations.DefaultWeights(OutputShape, InputShape);
+        Biases = TensorOperations.DefaultBiases(OutputShape);
+        lastInput = TensorOperations.DefaultInput(InputShape);
     }
 }
 
@@ -71,8 +71,8 @@ public interface IFfTensorOperations<TWeights, TBiases, TInput, TOutput>
     TWeights GradWeights(TOutput gradZ, TInput lastInput);
     TBiases GradBiases(TOutput gradZ);
 
-    TInput DefaultInput(int size);
-    TOutput DefaultOutput(int size);
-    TWeights DefaultWeights(int rows, int cols);
-    TBiases DefaultBiases(int size);
+    TInput DefaultInput(int[] inputShape);
+    TOutput DefaultOutput(int[] outputsShape);
+    TWeights DefaultWeights(int[] outputShape, int[] inputShape);
+    TBiases DefaultBiases(int[] outputShape);
 }
