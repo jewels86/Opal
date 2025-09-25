@@ -2,21 +2,21 @@
 
 namespace Opal.Utilities.ANNs.Rnn;
 
-public class RecurrentLayer<TIn, TOut, TWeights, TBiases, TState> : ILayer<TIn, TOut> 
+public class RecurrentLayer<TWeights, TBiases, TState, TIn, TOut> : ILayer<TIn, TOut> 
     where TIn : notnull where TOut : notnull
     where TWeights : notnull
     where TBiases : notnull
     where TState : notnull
 {
-    public int InputSize { get; }
-    public int OutputSize { get; }
+    public int[] InputShape { get; }
+    public int[] OutputShape { get; }
     
     public TWeights InputWeights { get; set; }
     public TWeights RecurrentWeights { get; set; }
     public TBiases Biases { get; set; }
     
     public TState HiddenState { get; set; }
-    public ActivationFunction<TOut> Activation { get; set; }
+    public ActivationFunction<TOut> Activation { get; }
 
     private readonly IRecurrentTensorOperations<TWeights, TBiases, TIn, TOut, TState> tensorOperations;
     private readonly IOptimizer<TWeights, TBiases> optimizer;
@@ -26,17 +26,17 @@ public class RecurrentLayer<TIn, TOut, TWeights, TBiases, TState> : ILayer<TIn, 
     private List<TOut> cachedOutputs;
     private List<TOut> cachedSums;
 
-    public RecurrentLayer(int inputSize, int outputSize, ActivationFunction<TOut> activation, 
+    public RecurrentLayer(int[] inputShape, int[] outputShape, ActivationFunction<TOut> activation, 
         IRecurrentTensorOperations<TWeights, TBiases, TIn, TOut, TState> tensorOperations, IOptimizer<TWeights, TBiases> optimizer)
     {
-        InputSize = inputSize;
-        OutputSize = outputSize;
+        InputShape = inputShape;
+        OutputShape = outputShape;
         Activation = activation;
         
-        InputWeights = tensorOperations.DefaultWeights(outputSize, inputSize);
-        RecurrentWeights = tensorOperations.DefaultWeights(outputSize, outputSize);
-        Biases = tensorOperations.DefaultBiases(outputSize);
-        HiddenState = tensorOperations.DefaultState(outputSize);
+        InputWeights = tensorOperations.DefaultWeights(outputShape, inputShape);
+        RecurrentWeights = tensorOperations.DefaultWeights(outputShape, outputShape);
+        Biases = tensorOperations.DefaultBiases(outputShape);
+        HiddenState = tensorOperations.DefaultState(outputShape);
         
         this.tensorOperations = tensorOperations;
         this.optimizer = optimizer;
@@ -67,11 +67,11 @@ public class RecurrentLayer<TIn, TOut, TWeights, TBiases, TState> : ILayer<TIn, 
     }
     public TOut Forward(TIn input) => Forward(input, true);
 
-    public void Backward(TOut gradOutput, double learningRate)
+    public TIn Backward(TOut gradOutput, double learningRate)
     {
-        var gradInputWeights = tensorOperations.DefaultWeights(OutputSize, InputSize);
-        var gradRecurrentWeights = tensorOperations.DefaultWeights(OutputSize, OutputSize);
-        var gradBiases = tensorOperations.DefaultBiases(OutputSize);
+        var gradInputWeights = tensorOperations.DefaultWeights(OutputShape, InputShape);
+        var gradRecurrentWeights = tensorOperations.DefaultWeights(OutputShape, OutputShape);
+        var gradBiases = tensorOperations.DefaultBiases(OutputShape);
         TState prevState = HiddenState;
 
         for (int t = cachedInputs.Count - 1; t >= 0; t--)
@@ -87,7 +87,7 @@ public class RecurrentLayer<TIn, TOut, TWeights, TBiases, TState> : ILayer<TIn, 
             gradRecurrentWeights = tensorOperations.Add(gradRecurrentWeights, tensorOperations.GradRecurrentWeights(gradZ, prevState));
             gradBiases = tensorOperations.Add(gradBiases, tensorOperations.GradBiases(gradZ));
             
-            gradOutput = tensorOperations.GradInput(RecurrentWeights, gradZ);
+            gradOutput = tensorOperations.GradOutput(RecurrentWeights, gradZ);
         }
         
         InputWeights = optimizer.UpdateWeights(InputWeights, gradInputWeights, learningRate);
@@ -98,14 +98,16 @@ public class RecurrentLayer<TIn, TOut, TWeights, TBiases, TState> : ILayer<TIn, 
         cachedStates.Clear();
         cachedOutputs.Clear();
         cachedSums.Clear();
+        
+        return tensorOperations.GradInput(InputWeights, gradOutput);
     }
 
     public void Reset()
     {
-        HiddenState = tensorOperations.DefaultState(OutputSize);
-        InputWeights = tensorOperations.DefaultWeights(OutputSize, InputSize);
-        RecurrentWeights = tensorOperations.DefaultWeights(OutputSize, OutputSize);
-        Biases = tensorOperations.DefaultBiases(OutputSize);
+        HiddenState = tensorOperations.DefaultState(OutputShape);
+        InputWeights = tensorOperations.DefaultWeights(OutputShape, InputShape);
+        RecurrentWeights = tensorOperations.DefaultWeights(OutputShape, OutputShape);
+        Biases = tensorOperations.DefaultBiases(OutputShape);
         cachedInputs.Clear();
         cachedStates.Clear();
         cachedOutputs.Clear();
@@ -119,12 +121,10 @@ public interface IRecurrentTensorOperations<TWeights, TBiases, TInput, TOutput, 
     where TBiases : notnull
     where TState : notnull
 {
-    public TWeights DefaultWeights(int rows, int cols);
-    public TBiases DefaultBiases(int size);
-    public TState DefaultState(int size);
-    public TInput DefaultInput(int size); 
-    // seems weird that we would tell them the dimensions considering we don't know the tensor shape
-    // maybe we should switch the ILayer.InputSize and OutputSize requirements to be shapes instead?
+    public TWeights DefaultWeights(int[] outputShape, int[] inputShape);
+    public TBiases DefaultBiases(int[] shape);
+    public TState DefaultState(int[] shape);
+    public TInput DefaultInput(int[] shape); 
     
     public TOutput Add(TOutput a, TBiases b); // this seems weird too- why would we add two tensors of different types?
     public TOutput Add(TOutput a, TOutput b);
@@ -137,7 +137,8 @@ public interface IRecurrentTensorOperations<TWeights, TBiases, TInput, TOutput, 
     public TWeights GradInputWeights(TOutput gradZ, TInput input);
     public TWeights GradRecurrentWeights(TOutput gradZ, TState state);
     public TBiases GradBiases(TOutput gradZ);
-    public TOutput GradInput(TWeights weights, TOutput gradZ);
+    public TOutput GradOutput(TWeights weights, TOutput gradZ);
+    public TInput GradInput(TWeights weights, TOutput gradZ);
     
     
     public TState UpdateState(TOutput output);

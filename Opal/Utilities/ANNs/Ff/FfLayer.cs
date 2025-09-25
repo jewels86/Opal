@@ -50,9 +50,6 @@ public class FfLayer<TWeights, TBiases, TInput, TOutput> : ILayer<TInput, TOutpu
 
         return gradInput;
     }
-
-    void ILayer<TInput, TOutput>.Backward(TOutput gradOutput, double learningRate) => Backward(gradOutput, learningRate);
-
     public void Reset()
     {
         Weights = TensorOperations.DefaultWeights(OutputShape, InputShape);
