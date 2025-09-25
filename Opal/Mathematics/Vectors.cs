@@ -15,6 +15,7 @@ public static class Vectors
         return vector;
     }
     
+    #region Apply
     public static double[] ApplyElementwise(double[] input, Func<double, double> func)
     {
         int size = input.Length;
@@ -32,8 +33,9 @@ public static class Vectors
             result[i] = func(input[i], i);
         return result;
     }
+    #endregion
     
-    #region Operations
+    #region Simple Operations
     public static double[] Add(double[] a, double[] b)
     {
         if (a.Length != b.Length)
@@ -63,7 +65,8 @@ public static class Vectors
     }
     public static double[] Multiply(double[] a, double scalar) => ApplyElementwise(a, x => x * scalar);
     public static double[] Divide(double[] a, double scalar) => ApplyElementwise(a, x => x / scalar);
-    
+    #endregion
+    #region Other Operations
     public static double[,] OuterProduct(double[] a, double[] b)
     {
         int rows = a.Length, cols = b.Length;

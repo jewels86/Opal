@@ -14,6 +14,7 @@ public static class Matrices
         return matrix;
     }
     
+    #region Apply
     public static double[,] ApplyElementwise(double[,] input, Func<double, double> func)
     {
         int rows = input.GetLength(0), cols = input.GetLength(1);
@@ -32,19 +33,9 @@ public static class Matrices
             result[i, j] = func(input[i, j], i, j);
         return result;
     }
+    #endregion
     
-    public static double[,] Transpose(double[,] matrix)
-    {
-        int rows = matrix.GetLength(0), cols = matrix.GetLength(1);
-        var result = new double[cols, rows];
-        for (int i = 0; i < rows; i++)
-        for (int j = 0; j < cols; j++)
-            result[j, i] = matrix[i, j];
-        return result;
-    }
-
-    #region Operations
-
+    #region Simple Operations
     public static double[,] Add(double[,] a, double[,] b)
     {
         if (a.GetLength(0) != b.GetLength(0) || a.GetLength(1) != b.GetLength(1))
@@ -146,6 +137,17 @@ public static class Matrices
     public static double[,] Divide(double[,] matrix, double scalar) => ApplyElementwise(matrix, x => x / scalar);
     #endregion
 
+    #region Other Operations
+    public static double[,] Transpose(double[,] matrix)
+    {
+        int rows = matrix.GetLength(0), cols = matrix.GetLength(1);
+        var result = new double[cols, rows];
+        for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            result[j, i] = matrix[i, j];
+        return result;
+    }
+    
     public static double[] Flatten(double[,] matrix)
     {
         int rows = matrix.GetLength(0);
@@ -187,4 +189,5 @@ public static class Matrices
             result[i / dim, i % dim] = vector[i];
         return result;
     }
+    #endregion
 }
