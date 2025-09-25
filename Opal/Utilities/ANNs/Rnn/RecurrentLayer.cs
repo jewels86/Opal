@@ -122,9 +122,8 @@ public interface IRecurrentTensorOperations<TWeights, TBiases, TInput, TOutput, 
     where TState : notnull
 {
     public TWeights DefaultWeights(int[] outputShape, int[] inputShape);
-    public TBiases DefaultBiases(int[] shape);
-    public TState DefaultState(int[] shape);
-    public TInput DefaultInput(int[] shape); 
+    public TBiases DefaultBiases(int[] outputShape);
+    public TState DefaultState(int[] outputsShape);
     
     public TOutput Add(TOutput a, TBiases b); // this seems weird too- why would we add two tensors of different types?
     public TOutput Add(TOutput a, TOutput b);
@@ -132,7 +131,6 @@ public interface IRecurrentTensorOperations<TWeights, TBiases, TInput, TOutput, 
     public TBiases Add(TBiases a, TBiases b);
     public TOutput Multiply(TWeights weights, TInput input);
     public TOutput Multiply(TWeights weights, TState state);
-    public TOutput Multiply(TWeights weights, TOutput output);
     public TOutput Multiply(TOutput a, TOutput b);
     public TWeights GradInputWeights(TOutput gradZ, TInput input);
     public TWeights GradRecurrentWeights(TOutput gradZ, TState state);
