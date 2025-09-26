@@ -131,6 +131,24 @@ public static class Matrices
                 result[i, j] = column[i, 0] * vector[j];
         return result;
     }
+
+    public static double[,] Concat(double[,] a, double[,] b)
+    {
+        int aRows = a.GetLength(0), aCols = a.GetLength(1);
+        int bRows = b.GetLength(0), bCols = b.GetLength(1);
+        if (aRows != bRows)
+            throw new ArgumentException("Matrices must have the same number of rows to concatenate.");
+        
+        var result = new double[aRows, aCols + bCols];
+        for (int i = 0; i < aRows; i++)
+        {
+            for (int j = 0; j < aCols; j++)
+                result[i, j] = a[i, j];
+            for (int j = 0; j < bCols; j++)
+                result[i, aCols + j] = b[i, j];
+        }
+        return result;
+    }
     #endregion
     #region Scalars and Matrices
     public static double[,] Multiply(double[,] matrix, double scalar) => ApplyElementwise(matrix, x => x * scalar);
@@ -188,6 +206,16 @@ public static class Matrices
         for (int i = 0; i < n; i++)
             result[i / dim, i % dim] = vector[i];
         return result;
+    }
+    public static double Dot(double[,] a, double[,] b)
+    {
+        if (a.GetLength(0) != b.GetLength(0) || a.GetLength(1) != b.GetLength(1))
+            throw new ArgumentException("Matrices must be of the same dimensions.");
+        double sum = 0;
+        for (int i = 0; i < a.GetLength(0); i++)
+        for (int j = 0; j < a.GetLength(1); j++)
+            sum += a[i, j] * b[i, j];
+        return sum;
     }
     #endregion
 }

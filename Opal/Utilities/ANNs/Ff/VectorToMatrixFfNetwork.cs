@@ -1,4 +1,5 @@
 ﻿using Opal.Mathematics;
+using Opal.Mathematics.TensorOperations;
 
 namespace Opal.Utilities.ANNs.Ff;
 
@@ -24,8 +25,8 @@ public class VectorToMatrixFfNetwork : FfNetwork<double[,], double[,], double[],
             lossFunction ?? LossFunctions.MeanSquaredErrorMatrix,
             optimizer ?? new VectorToMatrixOptimizer(),
             new VectorToMatrixFfTensorOperations(),
-            new MatrixFfTensorOperations(),
-            new MatrixFfTensorOperations(),
+            new StandardMatrixTensorOperations(),
+            new StandardMatrixTensorOperations(),
             name)
     {
     }

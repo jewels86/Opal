@@ -1,4 +1,5 @@
 ﻿using Opal.Mathematics;
+using Opal.Mathematics.TensorOperations;
 
 namespace Opal.Utilities.ANNs.Ff;
 
@@ -23,27 +24,22 @@ public class VectorFfNetwork : FfNetwork<double[,], double[], double[], double[]
             outputActivation ?? ActivationFunctions.ReLuVector,
             lossFunction ?? LossFunctions.CrossEntropy, 
             optimizer ?? new StandardVectorOptimizer(),
-            new VectorFfTensorOperations(),
-            new VectorFfTensorOperations(),
-            new VectorFfTensorOperations(),
+            new StandardVectorTensorOperations(),
+            new StandardVectorTensorOperations(),
+            new StandardVectorTensorOperations(),
             name)
     {
     }
 }
 
-public class VectorFfTensorOperations : IFfTensorOperations<double[,], double[], double[], double[]>
+public class VectorFfNetworkFactory : 
+    IFfNetworkFactory<double[,], double[], double[], double[], double[], VectorFfNetwork>
 {
-    public double[] Add(double[] output, double[] biases) => Vectors.Add(output, biases);
-    public double[] Apply(double[] output, Func<double, double> activation) => Vectors.ApplyElementwise(output, activation);
-    public double[] DefaultBiases(int[] shape) => new double[shape[0]];
-    public double[] DefaultOutput(int[] shape) => new double[shape[0]];
-    public double[,] DefaultWeights(int[] outputShape, int[] inputShape) => Matrices.RandomMatrix(outputShape[0], inputShape[0]);
-    public double[] DefaultInput(int[] shape) => new double[shape[0]];
-    public double[] Multiply(double[,] weights, double[] input) => Matrices.Multiply(weights, input);
-    public double[] GradBiases(double[] gradZ) => gradZ;
-    public double[] GradInput(double[,] weights, double[] gradZ)
+    public VectorFfNetwork Create(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
+        ActivationFunction<double[]> hiddenActivation, ActivationFunction<double[]> outputActivation,
+        LossFunction<double[]> lossFunction, IOptimizer<double[,], double[]> optimizer, string name = "FfNetwork")
     {
-        return Matrices.Multiply(Matrices.Transpose(weights), gradZ);
+        return new VectorFfNetwork(inputShape, hiddenShape, outputShape, hiddenLayers, hiddenActivation,
+            outputActivation, lossFunction, optimizer, name);
     }
-    public double[,] GradWeights(double[] gradZ, double[] lastInput) => Vectors.OuterProduct(gradZ, lastInput);
 }

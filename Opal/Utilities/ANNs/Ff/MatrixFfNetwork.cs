@@ -1,4 +1,5 @@
 ﻿using Opal.Mathematics;
+using Opal.Mathematics.TensorOperations;
 
 namespace Opal.Utilities.ANNs.Ff;
 
@@ -23,40 +24,22 @@ public class MatrixFfNetwork : FfNetwork<double[,], double[,], double[,], double
             outputActivation ?? ActivationFunctions.ReLuMatrix,
             lossFunction ?? LossFunctions.MeanSquaredErrorMatrix,
             optimizer ?? new StandardMatrixOptimizer(),
-            new MatrixFfTensorOperations(),
-            new MatrixFfTensorOperations(),
-            new MatrixFfTensorOperations(),
+            new StandardMatrixTensorOperations(),
+            new StandardMatrixTensorOperations(),
+            new StandardMatrixTensorOperations(),
             name)
     {
     }
 }
 
-public class MatrixFfTensorOperations : IFfTensorOperations<double[,], double[,], double[,], double[,]>
+public class MatrixFfNetworkFactory : 
+    IFfNetworkFactory<double[,], double[,], double[,], double[,], double[,], MatrixFfNetwork>
 {
-    public double[,] Add(double[,] output, double[,] biases) => Matrices.Add(output, biases);
-
-    public double[,] Apply(double[,] output, Func<double, double> activation) => Matrices.ApplyElementwise(output, activation);
-
-    public double[,] DefaultBiases(int[] shape) => new double[shape[0], shape[1]];
-
-    public double[,] DefaultOutput(int[] shape) => new double[shape[0], shape[1]];
-    public double[,] DefaultWeights(int[] outputShape, int[] inputShape) => Matrices.RandomMatrix(outputShape[0], inputShape[1]);
-    public double[,] DefaultInput(int[] shape) => new double[shape[0], shape[1]];
-
-    public double[,] Multiply(double[,] weights, double[,] input)
+    public MatrixFfNetwork Create(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
+        ActivationFunction<double[,]> hiddenActivation, ActivationFunction<double[,]> outputActivation,
+        LossFunction<double[,]> lossFunction, IOptimizer<double[,], double[,]> optimizer, string name = "FfNetwork")
     {
-        return Matrices.Multiply(weights, input);
-    }
-
-    public double[,] GradBiases(double[,] gradZ) => gradZ;
-
-    public double[,] GradInput(double[,] weights, double[,] gradZ)
-    {
-        return Matrices.Multiply(Matrices.Transpose(weights), gradZ);
-    }
-
-    public double[,] GradWeights(double[,] gradZ, double[,] lastInput)
-    {
-        return Matrices.OuterProduct(Matrices.Flatten(gradZ), Matrices.Flatten(lastInput));
+        return new MatrixFfNetwork(inputShape, hiddenShape, outputShape, hiddenLayers, hiddenActivation,
+            outputActivation, lossFunction, optimizer, name);
     }
 }

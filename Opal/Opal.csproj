@@ -11,7 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Mathematics\TensorOperations\" />
     <Folder Include="Modules\Refinement\" />
   </ItemGroup>
 

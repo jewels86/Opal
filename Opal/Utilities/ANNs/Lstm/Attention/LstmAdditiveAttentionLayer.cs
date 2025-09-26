@@ -53,3 +53,4 @@ public class LstmAdditiveAttentionLayer<TWeights, TBiases, TTensor> : LstmAttent
         return result;
     }
 }
+
