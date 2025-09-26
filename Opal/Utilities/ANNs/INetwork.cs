@@ -1,6 +1,6 @@
 ﻿namespace Opal.Utilities.ANNs;
 
-public interface INeuralNetwork<in TInput, TOutput>
+public interface INetwork<in TInput, TOutput>
     where TInput : notnull
     where TOutput : notnull
 {

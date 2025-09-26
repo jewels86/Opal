@@ -2,7 +2,7 @@
 
 namespace Opal.Utilities.ANNs.Ff;
 
-public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : INeuralNetwork<TInput, TOutput>
+public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : INetwork<TInput, TOutput>
     where TInput : notnull where TOutput : notnull
     where THidden : notnull
     where TWeights : notnull where TBiases : notnull

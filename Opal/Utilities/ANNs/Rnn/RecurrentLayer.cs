@@ -125,7 +125,7 @@ public interface IRecurrentTensorOperations<TWeights, TBiases, TInput, TOutput, 
     public TBiases DefaultBiases(int[] outputShape);
     public TState DefaultState(int[] outputsShape);
     
-    public TOutput Add(TOutput a, TBiases b); // this seems weird too- why would we add two tensors of different types?
+    public TOutput Add(TOutput a, TBiases b);
     public TOutput Add(TOutput a, TOutput b);
     public TWeights Add(TWeights a, TWeights b);
     public TBiases Add(TBiases a, TBiases b);

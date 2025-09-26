@@ -2,7 +2,7 @@
 
 namespace Opal.Utilities.ANNs.Rnn;
 
-public class RecurrentNetwork<TWeights, TBiases, TState, TInput, THidden, TOutput> : INeuralNetwork<TInput, TOutput>
+public class RecurrentNetwork<TWeights, TBiases, TState, TInput, THidden, TOutput> : INetwork<TInput, TOutput>
     where TInput : notnull where TOutput : notnull
     where THidden : notnull
     where TWeights : notnull
