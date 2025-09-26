@@ -10,17 +10,18 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
     public string Name { get; }
     
     public int[] InputShape { get; }
+    public int[] HiddenShape { get; }
     public int[] OutputShape { get; }
     
     public LstmLayer<TWeights, TBiases, TTensor> InputLayer { get; }
     public List<LstmLayer<TWeights, TBiases, TTensor>> HiddenLayers { get; }
     public LstmLayer<TWeights, TBiases, TTensor> OutputLayer { get; }
     
-    private readonly ILstmTensorOperations<TWeights, TBiases, TTensor> tensorOperations;
-    private readonly IOptimizer<TWeights, TBiases> optimizer;
-    private readonly ActivationFunction<TTensor> sigmoidActivation;
-    private readonly ActivationFunction<TTensor> tanhActivation;
-    private readonly LossFunction<TTensor[]> lossFunction;
+    protected readonly ILstmTensorOperations<TWeights, TBiases, TTensor> tensorOperations;
+    protected readonly IOptimizer<TWeights, TBiases> optimizer;
+    protected readonly ActivationFunction<TTensor> sigmoidActivation;
+    protected readonly ActivationFunction<TTensor> tanhActivation;
+    protected readonly LossFunction<TTensor[]> lossFunction;
 
     public LstmNetwork(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
         ActivationFunction<TTensor> sigmoidActivation, ActivationFunction<TTensor> tanhActivation,
@@ -31,6 +32,7 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
         Name = name;
         
         InputShape = inputShape;
+        HiddenShape = hiddenShape;
         OutputShape = outputShape;
         
         this.tensorOperations = tensorOperations;
@@ -48,7 +50,7 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
         OutputLayer = new(hiddenShape, hiddenShape, outputShape, tensorOperations, optimizer, sigmoidActivation, tanhActivation);
     }
     
-    public TTensor[] Forward(TTensor[] input)
+    public virtual TTensor[] Forward(TTensor[] input)
     {
         var output = InputLayer.Forward(input);
         foreach (var layer in HiddenLayers)
@@ -56,7 +58,7 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
         return OutputLayer.Forward(output);
     }
     
-    public void Train(TTensor[][] inputs, TTensor[][] targets, int epochs, double learningRate)
+    public virtual void Train(TTensor[][] inputs, TTensor[][] targets, int epochs, double learningRate)
     {
         for (int epoch = 0; epoch < epochs; epoch++)
         {

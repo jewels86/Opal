@@ -76,5 +76,6 @@ public static class Vectors
             result[i, j] = a[i] * b[j];
         return result;
     }
+    public static double[] Concat(double[] a, double[] b) => a.Concat(b).ToArray();
     #endregion
 }

@@ -29,27 +29,27 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
     public TBiases DecoderOutputGateBiases { get; set; }
     public TBiases DecoderCellGateBiases { get; set; }
     
-    private List<TTensor> encoderInputCache = [];
-    private List<TTensor> encoderForgetCache = [];
-    private List<TTensor> encoderInputGateCache = [];
-    private List<TTensor> encoderOutputGateCache = [];
-    private List<TTensor> encoderCellGateCache = [];
-    private List<TTensor> encoderNewCellCache = [];
-    private List<TTensor> encoderNewHiddenCache = [];
+    protected List<TTensor> encoderInputCache = [];
+    protected List<TTensor> encoderForgetCache = [];
+    protected List<TTensor> encoderInputGateCache = [];
+    protected List<TTensor> encoderOutputGateCache = [];
+    protected List<TTensor> encoderCellGateCache = [];
+    protected List<TTensor> encoderNewCellCache = [];
+    protected List<TTensor> encoderNewHiddenCache = [];
     
-    private List<TTensor> decoderInputCache = [];
-    private List<TTensor> decoderForgetCache = [];
-    private List<TTensor> decoderInputGateCache = [];
-    private List<TTensor> decoderOutputGateCache = [];
-    private List<TTensor> decoderCellGateCache = [];
-    private List<TTensor> decoderNewCellCache = [];
-    private List<TTensor> decoderNewHiddenCache = [];
-    
-    public ActivationFunction<TTensor> SigmoidActivation { get; set; }
-    public ActivationFunction<TTensor> TanhActivation { get; set; }
+    protected List<TTensor> decoderInputCache = [];
+    protected List<TTensor> decoderForgetCache = [];
+    protected List<TTensor> decoderInputGateCache = [];
+    protected List<TTensor> decoderOutputGateCache = [];
+    protected List<TTensor> decoderCellGateCache = [];
+    protected List<TTensor> decoderNewCellCache = [];
+    protected List<TTensor> decoderNewHiddenCache = [];
 
-    private readonly ILstmTensorOperations<TWeights, TBiases, TTensor> tensorOperations;
-    private readonly IOptimizer<TWeights, TBiases> optimizer;
+    protected readonly ActivationFunction<TTensor> SigmoidActivation;
+    protected readonly ActivationFunction<TTensor> TanhActivation;
+
+    protected readonly ILstmTensorOperations<TWeights, TBiases, TTensor> tensorOperations;
+    protected readonly IOptimizer<TWeights, TBiases> optimizer;
 
     public LstmLayer(int[] inputShape, int[] hiddenShape, int[] outputShape,
         ILstmTensorOperations<TWeights, TBiases, TTensor> tensorOperations,
@@ -184,7 +184,7 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
     }
     #endregion
 
-    public TTensor[] Forward(TTensor[] inputs, TTensor initialHidden, TTensor initialCell, bool cache = true)
+    public virtual TTensor[] Forward(TTensor[] inputs, TTensor initialHidden, TTensor initialCell, bool cache = true)
     {
         var encoderOutputs = Encoder(inputs, cache);
         var decoderOutputs = Decoder(encoderOutputs, initialHidden, initialCell, cache);
@@ -195,7 +195,7 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
     public TTensor[] Forward(TTensor[] inputs) => Forward(inputs, true);
     
     #region Backward
-    public TTensor[] DecodeBackward(TTensor[] gradOutputs, double learningRate)
+    public TTensor[] DecoderBackward(TTensor[] gradOutputs, double learningRate)
     {
         int timeSteps = gradOutputs.GetLength(0);
         var dWForget = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
@@ -363,9 +363,9 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
     }
     #endregion
     
-    public TTensor[] Backward(TTensor[] gradOutputs, double learningRate)
+    public virtual TTensor[] Backward(TTensor[] gradOutputs, double learningRate)
     {
-        var dEncoderOutputs = DecodeBackward(gradOutputs, learningRate);
+        var dEncoderOutputs = DecoderBackward(gradOutputs, learningRate);
         var dInputs = EncoderBackward(dEncoderOutputs, learningRate);
         return dInputs;
     }

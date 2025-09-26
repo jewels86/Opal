@@ -1,60 +1,32 @@
-﻿namespace Opal.Utilities.ANNs.Lstm.Attention;
+﻿using Opal.Mathematics;
+using Opal.Utilities.ANNs.Lstm;
 
-public class LstmDotAttentionLayer : LstmAttentionLayer<LstmDotAttentionLayer.LstmDotAttentionBackpropCache>
+namespace Opal.Utilities.ANNs.Lstm.Attention;
+
+public class LstmDotAttentionLayer<TWeights, TBiases, TTensor> : LstmAttentionLayer<TWeights, TBiases, TTensor>
+    where TWeights : notnull
+    where TBiases : notnull
+    where TTensor : notnull
 {
-    public LstmDotAttentionLayer(int inputSize, int hiddenSize, int outputSize, string name = "LstmDotAttentionLayer") 
-        : base(inputSize, hiddenSize, outputSize, name)
+    public LstmDotAttentionLayer(
+        int[] inputShape, int[] hiddenShape, int[] outputShape,
+        ILstmAttentionTensorOperations<TWeights, TBiases, TTensor> tensorOperations,
+        IOptimizer<TWeights, TBiases> optimizer,
+        ActivationFunction<TTensor> sigmoidActivation,
+        ActivationFunction<TTensor> tanhActivation)
+        : base(inputShape, hiddenShape, outputShape, tensorOperations, optimizer, sigmoidActivation, tanhActivation)
     {
     }
 
-    public override double[] Alignment(double[] encoderHidden, double[] decoderHidden, Action<object>? alignmentCacheAction = null)
+    public override double[] Alignment(TTensor[] hidden, TTensor prevState)
     {
-        double score = 0.0;
-        for (int i = 0; i < encoderHidden.Length; i++)
-            score += encoderHidden[i] * decoderHidden[i];
-        return [score];
+        double[] scores = new double[hidden.Length];
+        for (int i = 0; i < hidden.Length; i++)
+        {
+            scores[i] = tensorOperations.Dot(hidden[i], prevState);
+        }
+        return scores;
     }
 
-    #region Overrides
-    public override (Dictionary<string, object>, Action<object>) PrepareToCacheAlignment()
-    {
-        return ([], x => { });
-    }
-
-    public override void FinalizeAlignmentCache(Dictionary<string, object> alignmentCache)
-    {
-        
-    }
-
-    public override void TrainAlignment(LstmAttentionBackpropCache cache, int decoderTimeStep, double[] gradScores, double learningRate)
-    {
-        
-    }
-
-    public override void LoadAlignment(BinaryReader reader)
-    {
-        
-    }
-    public override void SaveAlignment(BinaryWriter writer)
-    {
-        
-    }
-
-    public override void ResetAlignment()
-    {
-        
-    }
-    #endregion
-
-    public class LstmDotAttentionBackpropCache : LstmAttentionBackpropCache
-    {
-        
-    }
-}
-
-public class LstmDotAttentionNetwork : LstmAttentionNetwork<LstmDotAttentionLayer.LstmDotAttentionBackpropCache>
-{
-    public LstmDotAttentionNetwork(string name = "LstmDotAttentionNetwork") : base(name)
-    {
-    }
+    public override void TrainAlignment(int timeStep, double[] gradScores, double learningRate) { }
 }
