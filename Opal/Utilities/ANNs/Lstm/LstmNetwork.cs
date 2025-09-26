@@ -17,11 +17,11 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
     public List<LstmLayer<TWeights, TBiases, TTensor>> HiddenLayers { get; }
     public LstmLayer<TWeights, TBiases, TTensor> OutputLayer { get; }
     
-    protected readonly ILstmTensorOperations<TWeights, TBiases, TTensor> tensorOperations;
-    protected readonly IOptimizer<TWeights, TBiases> optimizer;
-    protected readonly ActivationFunction<TTensor> sigmoidActivation;
-    protected readonly ActivationFunction<TTensor> tanhActivation;
-    protected readonly LossFunction<TTensor[]> lossFunction;
+    protected readonly ILstmTensorOperations<TWeights, TBiases, TTensor> TensorOperations;
+    protected readonly IOptimizer<TWeights, TBiases> Optimizer;
+    protected readonly ActivationFunction<TTensor> SigmoidActivation;
+    protected readonly ActivationFunction<TTensor> TanhActivation;
+    protected readonly LossFunction<TTensor[]> LossFunction;
 
     public LstmNetwork(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
         ActivationFunction<TTensor> sigmoidActivation, ActivationFunction<TTensor> tanhActivation,
@@ -35,11 +35,11 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
         HiddenShape = hiddenShape;
         OutputShape = outputShape;
         
-        this.tensorOperations = tensorOperations;
-        this.optimizer = optimizer;
-        this.sigmoidActivation = sigmoidActivation;
-        this.tanhActivation = tanhActivation;
-        this.lossFunction = lossFunction;
+        this.TensorOperations = tensorOperations;
+        this.Optimizer = optimizer;
+        this.SigmoidActivation = sigmoidActivation;
+        this.TanhActivation = tanhActivation;
+        this.LossFunction = lossFunction;
 
         InputLayer = new(inputShape, hiddenShape, hiddenShape, tensorOperations, optimizer, sigmoidActivation,
             tanhActivation);
@@ -71,7 +71,7 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
                     hidden = layer.Forward(hidden);
                 var output = OutputLayer.Forward(hidden);
 
-                var lossGrad = lossFunction.Derivative(output, target);
+                var lossGrad = LossFunction.Derivative(output, target);
 
                 var grad = OutputLayer.Backward(lossGrad, learningRate);
                 for (int h = HiddenLayers.Count - 1; h >= 0; h--)
@@ -88,7 +88,7 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
         {
             var predicted = Forward(inputs[i]);
             var actual = targets[i];
-            totalLoss += lossFunction.Function(predicted, actual);
+            totalLoss += LossFunction.Function(predicted, actual);
         }
         return totalLoss / inputs.Length;
     }

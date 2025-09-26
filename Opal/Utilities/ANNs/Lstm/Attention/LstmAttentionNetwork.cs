@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs.Lstm;
+namespace Opal.Utilities.ANNs.Lstm.Attention;
 
 public class LstmAttentionNetwork<TWeights, TBiases, TTensor, TLayer, TLayerFactory> : LstmNetwork<TWeights, TBiases, TTensor>
     where TWeights : notnull
@@ -52,7 +52,7 @@ public class LstmAttentionNetwork<TWeights, TBiases, TTensor, TLayer, TLayerFact
                     hidden = layer.Forward(hidden);
                 var output = OutputLayer.Forward(hidden);
 
-                var lossGrad = lossFunction.Derivative(output, target);
+                var lossGrad = LossFunction.Derivative(output, target);
 
                 var grad = OutputLayer.Backward(lossGrad, learningRate);
                 for (int h = HiddenLayers.Count - 1; h >= 0; h--)

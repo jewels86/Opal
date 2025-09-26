@@ -30,7 +30,7 @@ public class LstmAdditiveAttentionLayer<TWeights, TBiases, TTensor> : LstmAttent
         TTensor[] concatInputs = new TTensor[hidden.Length];
         for (int i = 0; i < hidden.Length; i++)
         {
-            TTensor concat = tensorOperations.Concat(hidden[i], prevState);
+            TTensor concat = TensorOperations.Concat(hidden[i], prevState);
             concatInputs[i] = concat;
             scores[i] = alignmentNetwork.Forward(concat)[0];
         }

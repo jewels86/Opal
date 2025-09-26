@@ -29,27 +29,27 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
     public TBiases DecoderOutputGateBiases { get; set; }
     public TBiases DecoderCellGateBiases { get; set; }
     
-    protected List<TTensor> encoderInputCache = [];
-    protected List<TTensor> encoderForgetCache = [];
-    protected List<TTensor> encoderInputGateCache = [];
-    protected List<TTensor> encoderOutputGateCache = [];
-    protected List<TTensor> encoderCellGateCache = [];
-    protected List<TTensor> encoderNewCellCache = [];
-    protected List<TTensor> encoderNewHiddenCache = [];
+    protected List<TTensor> EncoderInputCache = [];
+    protected List<TTensor> EncoderForgetCache = [];
+    protected List<TTensor> EncoderInputGateCache = [];
+    protected List<TTensor> EncoderOutputGateCache = [];
+    protected List<TTensor> EncoderCellGateCache = [];
+    protected List<TTensor> EncoderNewCellCache = [];
+    protected List<TTensor> EncoderNewHiddenCache = [];
     
-    protected List<TTensor> decoderInputCache = [];
-    protected List<TTensor> decoderForgetCache = [];
-    protected List<TTensor> decoderInputGateCache = [];
-    protected List<TTensor> decoderOutputGateCache = [];
-    protected List<TTensor> decoderCellGateCache = [];
-    protected List<TTensor> decoderNewCellCache = [];
-    protected List<TTensor> decoderNewHiddenCache = [];
+    protected List<TTensor> DecoderInputCache = [];
+    protected List<TTensor> DecoderForgetCache = [];
+    protected List<TTensor> DecoderInputGateCache = [];
+    protected List<TTensor> DecoderOutputGateCache = [];
+    protected List<TTensor> DecoderCellGateCache = [];
+    protected List<TTensor> DecoderNewCellCache = [];
+    protected List<TTensor> DecoderNewHiddenCache = [];
 
     protected readonly ActivationFunction<TTensor> SigmoidActivation;
     protected readonly ActivationFunction<TTensor> TanhActivation;
 
-    protected readonly ILstmTensorOperations<TWeights, TBiases, TTensor> tensorOperations;
-    protected readonly IOptimizer<TWeights, TBiases> optimizer;
+    protected readonly ILstmTensorOperations<TWeights, TBiases, TTensor> TensorOperations;
+    protected readonly IOptimizer<TWeights, TBiases> Optimizer;
 
     public LstmLayer(int[] inputShape, int[] hiddenShape, int[] outputShape,
         ILstmTensorOperations<TWeights, TBiases, TTensor> tensorOperations,
@@ -60,8 +60,8 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
         HiddenShape = hiddenShape;
         OutputShape = outputShape;
         
-        this.tensorOperations = tensorOperations;
-        this.optimizer = optimizer;
+        this.TensorOperations = tensorOperations;
+        this.Optimizer = optimizer;
         
         EncoderForgetGateWeights = tensorOperations.DefaultWeights(hiddenShape, inputShape);
         EncoderInputGateWeights = tensorOperations.DefaultWeights(hiddenShape, inputShape);
@@ -90,17 +90,17 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
 
     public (TTensor hidden, TTensor cell) Encoder(TTensor input, TTensor hidden, TTensor cell, EncoderCacheHandler? cacheHandler = null)
     {
-        TTensor concat = tensorOperations.Concat(input, hidden);
-        TTensor forget = SigmoidActivation.Function(tensorOperations.Add(
-            tensorOperations.Multiply(EncoderForgetGateWeights, concat), EncoderForgetGateBiases));
-        TTensor inputGate = SigmoidActivation.Function(tensorOperations.Add(
-            tensorOperations.Multiply(EncoderInputGateWeights, concat), EncoderInputGateBiases));
-        TTensor outputGate = SigmoidActivation.Function(tensorOperations.Add(
-            tensorOperations.Multiply(EncoderOutputGateWeights, concat), EncoderOutputGateBiases));
-        TTensor cellGate = TanhActivation.Function(tensorOperations.Add(
-            tensorOperations.Multiply(EncoderCellGateWeights, concat), EncoderCellGateBiases));
-        TTensor newCell = tensorOperations.Add(tensorOperations.Multiply(forget, cell), tensorOperations.Multiply(inputGate, cellGate));
-        TTensor newHidden = tensorOperations.Multiply(outputGate, TanhActivation.Function(newCell));
+        TTensor concat = TensorOperations.Concat(input, hidden);
+        TTensor forget = SigmoidActivation.Function(TensorOperations.Add(
+            TensorOperations.Multiply(EncoderForgetGateWeights, concat), EncoderForgetGateBiases));
+        TTensor inputGate = SigmoidActivation.Function(TensorOperations.Add(
+            TensorOperations.Multiply(EncoderInputGateWeights, concat), EncoderInputGateBiases));
+        TTensor outputGate = SigmoidActivation.Function(TensorOperations.Add(
+            TensorOperations.Multiply(EncoderOutputGateWeights, concat), EncoderOutputGateBiases));
+        TTensor cellGate = TanhActivation.Function(TensorOperations.Add(
+            TensorOperations.Multiply(EncoderCellGateWeights, concat), EncoderCellGateBiases));
+        TTensor newCell = TensorOperations.Add(TensorOperations.Multiply(forget, cell), TensorOperations.Multiply(inputGate, cellGate));
+        TTensor newHidden = TensorOperations.Multiply(outputGate, TanhActivation.Function(newCell));
         if (cacheHandler is not null)
             cacheHandler(input, forget, inputGate, outputGate, cellGate, newCell, newHidden);
         return (newHidden, newCell);
@@ -108,18 +108,18 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
 
     public TTensor[] Encoder(TTensor[] inputs, bool cache = true)
     {
-        List<TTensor> hiddenStates = [tensorOperations.DefaultState(HiddenShape)];
-        List<TTensor> cellStates = [tensorOperations.DefaultCell(OutputShape)];
+        List<TTensor> hiddenStates = [TensorOperations.DefaultState(HiddenShape)];
+        List<TTensor> cellStates = [TensorOperations.DefaultCell(OutputShape)];
         
         EncoderCacheHandler? cacheFunc = !cache ? null : (input, forget, inputGate, outputGate, cellGate, newCell, newHidden) =>
         {
-            encoderInputCache.Add(input);
-            encoderForgetCache.Add(forget);
-            encoderInputGateCache.Add(inputGate);
-            encoderOutputGateCache.Add(outputGate);
-            encoderCellGateCache.Add(cellGate);
-            encoderNewCellCache.Add(newCell);
-            encoderNewHiddenCache.Add(newHidden);
+            EncoderInputCache.Add(input);
+            EncoderForgetCache.Add(forget);
+            EncoderInputGateCache.Add(inputGate);
+            EncoderOutputGateCache.Add(outputGate);
+            EncoderCellGateCache.Add(cellGate);
+            EncoderNewCellCache.Add(newCell);
+            EncoderNewHiddenCache.Add(newHidden);
         };
         
         int timeSteps = inputs.GetLength(0);
@@ -139,17 +139,17 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
     public delegate void DecoderCacheHandler(TTensor input, TTensor forget, TTensor inputGate, TTensor outputGate, TTensor cellGate, TTensor newCell, TTensor newHidden);
     public (TTensor hidden, TTensor cell) Decoder(TTensor input, TTensor hidden, TTensor cell, DecoderCacheHandler? cacheHandler = null)
     {
-        TTensor concat = tensorOperations.Concat(input, hidden);
-        TTensor forget = SigmoidActivation.Function(tensorOperations.Add(
-            tensorOperations.Multiply(DecoderForgetGateWeights, concat), DecoderForgetGateBiases));
-        TTensor inputGate = SigmoidActivation.Function(tensorOperations.Add(
-            tensorOperations.Multiply(DecoderInputGateWeights, concat), DecoderInputGateBiases));
-        TTensor outputGate = SigmoidActivation.Function(tensorOperations.Add(
-            tensorOperations.Multiply(DecoderOutputGateWeights, concat), DecoderOutputGateBiases));
-        TTensor cellGate = TanhActivation.Function(tensorOperations.Add(
-            tensorOperations.Multiply(DecoderCellGateWeights, concat), DecoderCellGateBiases));
-        TTensor newCell = tensorOperations.Add(tensorOperations.Multiply(forget, cell), tensorOperations.Multiply(inputGate, cellGate));
-        TTensor newHidden = tensorOperations.Multiply(outputGate, TanhActivation.Function(newCell));
+        TTensor concat = TensorOperations.Concat(input, hidden);
+        TTensor forget = SigmoidActivation.Function(TensorOperations.Add(
+            TensorOperations.Multiply(DecoderForgetGateWeights, concat), DecoderForgetGateBiases));
+        TTensor inputGate = SigmoidActivation.Function(TensorOperations.Add(
+            TensorOperations.Multiply(DecoderInputGateWeights, concat), DecoderInputGateBiases));
+        TTensor outputGate = SigmoidActivation.Function(TensorOperations.Add(
+            TensorOperations.Multiply(DecoderOutputGateWeights, concat), DecoderOutputGateBiases));
+        TTensor cellGate = TanhActivation.Function(TensorOperations.Add(
+            TensorOperations.Multiply(DecoderCellGateWeights, concat), DecoderCellGateBiases));
+        TTensor newCell = TensorOperations.Add(TensorOperations.Multiply(forget, cell), TensorOperations.Multiply(inputGate, cellGate));
+        TTensor newHidden = TensorOperations.Multiply(outputGate, TanhActivation.Function(newCell));
         if (cacheHandler is not null)
             cacheHandler(input, forget, inputGate, outputGate, cellGate, newCell, newHidden);
         return (newHidden, newCell);
@@ -162,13 +162,13 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
         
         DecoderCacheHandler? cacheFunc = !cache ? null : (input, forget, inputGate, outputGate, cellGate, newCell, newHidden) =>
         {
-            decoderInputCache.Add(input);
-            decoderForgetCache.Add(forget);
-            decoderInputGateCache.Add(inputGate);
-            decoderOutputGateCache.Add(outputGate);
-            decoderCellGateCache.Add(cellGate);
-            decoderNewCellCache.Add(newCell);
-            decoderNewHiddenCache.Add(newHidden);
+            DecoderInputCache.Add(input);
+            DecoderForgetCache.Add(forget);
+            DecoderInputGateCache.Add(inputGate);
+            DecoderOutputGateCache.Add(outputGate);
+            DecoderCellGateCache.Add(cellGate);
+            DecoderNewCellCache.Add(newCell);
+            DecoderNewHiddenCache.Add(newHidden);
         };
         
         int timeSteps = inputs.GetLength(0);
@@ -191,173 +191,173 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
         return decoderOutputs;
     }
     
-    public TTensor[] Forward(TTensor[] inputs, bool cache) => Forward(inputs, tensorOperations.DefaultState(HiddenShape), tensorOperations.DefaultCell(OutputShape), cache);
+    public TTensor[] Forward(TTensor[] inputs, bool cache) => Forward(inputs, TensorOperations.DefaultState(HiddenShape), TensorOperations.DefaultCell(OutputShape), cache);
     public TTensor[] Forward(TTensor[] inputs) => Forward(inputs, true);
     
     #region Backward
     public TTensor[] DecoderBackward(TTensor[] gradOutputs, double learningRate)
     {
         int timeSteps = gradOutputs.GetLength(0);
-        var dWForget = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
-        var dWInput = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
-        var dWOutput = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
-        var dWCell = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
-        var dbForget = tensorOperations.DefaultBiases(OutputShape);
-        var dbInput = tensorOperations.DefaultBiases(OutputShape);
-        var dbOutput = tensorOperations.DefaultBiases(OutputShape);
-        var dbCell = tensorOperations.DefaultBiases(OutputShape);
+        var dWForget = TensorOperations.DefaultWeights(OutputShape, HiddenShape);
+        var dWInput = TensorOperations.DefaultWeights(OutputShape, HiddenShape);
+        var dWOutput = TensorOperations.DefaultWeights(OutputShape, HiddenShape);
+        var dWCell = TensorOperations.DefaultWeights(OutputShape, HiddenShape);
+        var dbForget = TensorOperations.DefaultBiases(OutputShape);
+        var dbInput = TensorOperations.DefaultBiases(OutputShape);
+        var dbOutput = TensorOperations.DefaultBiases(OutputShape);
+        var dbCell = TensorOperations.DefaultBiases(OutputShape);
         
-        TTensor dHiddenNext = tensorOperations.DefaultState(OutputShape);
-        TTensor dCellNext = tensorOperations.DefaultCell(OutputShape);
+        TTensor dHiddenNext = TensorOperations.DefaultState(OutputShape);
+        TTensor dCellNext = TensorOperations.DefaultCell(OutputShape);
         List<TTensor> dHiddenStates = [];
 
         for (int t = timeSteps - 1; t >= 0; t--)
         {
-            TTensor cell = decoderNewCellCache[t];
-            TTensor prevCell = t == 0 ? tensorOperations.DefaultCell(OutputShape) : decoderNewCellCache[t - 1];
-            TTensor input = decoderInputCache[t];
-            TTensor forget = decoderForgetCache[t];
-            TTensor inputGate = decoderInputGateCache[t];
-            TTensor outputGate = decoderOutputGateCache[t];
-            TTensor cellGate = decoderCellGateCache[t];
+            TTensor cell = DecoderNewCellCache[t];
+            TTensor prevCell = t == 0 ? TensorOperations.DefaultCell(OutputShape) : DecoderNewCellCache[t - 1];
+            TTensor input = DecoderInputCache[t];
+            TTensor forget = DecoderForgetCache[t];
+            TTensor inputGate = DecoderInputGateCache[t];
+            TTensor outputGate = DecoderOutputGateCache[t];
+            TTensor cellGate = DecoderCellGateCache[t];
             
-            TTensor dHidden = tensorOperations.Add(gradOutputs[t], dHiddenNext);
+            TTensor dHidden = TensorOperations.Add(gradOutputs[t], dHiddenNext);
             TTensor tanhCell = TanhActivation.Function(cell);
-            TTensor dOutputGate = tensorOperations.Multiply(dHidden, tanhCell);
-            TTensor dOutputGatePre = tensorOperations.Multiply(dOutputGate, SigmoidActivation.Derivative(outputGate));
+            TTensor dOutputGate = TensorOperations.Multiply(dHidden, tanhCell);
+            TTensor dOutputGatePre = TensorOperations.Multiply(dOutputGate, SigmoidActivation.Derivative(outputGate));
             
-            TTensor dCell = tensorOperations.Add(tensorOperations.Multiply(dHidden, outputGate, TanhActivation.Derivative(cell)), dCellNext);
+            TTensor dCell = TensorOperations.Add(TensorOperations.Multiply(dHidden, outputGate, TanhActivation.Derivative(cell)), dCellNext);
 
-            var dInputGate = tensorOperations.Multiply(dCell, cellGate);
-            var dInputGatePre = tensorOperations.Multiply(dInputGate, SigmoidActivation.Derivative(inputGate));
+            var dInputGate = TensorOperations.Multiply(dCell, cellGate);
+            var dInputGatePre = TensorOperations.Multiply(dInputGate, SigmoidActivation.Derivative(inputGate));
 
-            var dCellCandidate = tensorOperations.Multiply(dCell, inputGate);
-            var dCellCandidatePre = tensorOperations.Multiply(dCellCandidate, TanhActivation.Derivative(cellGate));
+            var dCellCandidate = TensorOperations.Multiply(dCell, inputGate);
+            var dCellCandidatePre = TensorOperations.Multiply(dCellCandidate, TanhActivation.Derivative(cellGate));
 
-            var dForgetGate = tensorOperations.Multiply(dCell, prevCell);
-            var dForgetGatePre = tensorOperations.Multiply(dForgetGate, SigmoidActivation.Derivative(forget));
+            var dForgetGate = TensorOperations.Multiply(dCell, prevCell);
+            var dForgetGatePre = TensorOperations.Multiply(dForgetGate, SigmoidActivation.Derivative(forget));
             
-            TTensor concat = tensorOperations.Concat(input, t == 0 ? tensorOperations.DefaultState(HiddenShape) : decoderNewHiddenCache[t - 1]);
+            TTensor concat = TensorOperations.Concat(input, t == 0 ? TensorOperations.DefaultState(HiddenShape) : DecoderNewHiddenCache[t - 1]);
             
-            tensorOperations.UpdateAccumulatedWeights(dWForget, dForgetGatePre, concat);
-            tensorOperations.UpdateAccumulatedWeights(dWInput, dInputGatePre, concat);
-            tensorOperations.UpdateAccumulatedWeights(dWOutput, dOutputGatePre, concat);
-            tensorOperations.UpdateAccumulatedWeights(dWCell, dCellCandidatePre, concat);
-            tensorOperations.UpdateAccumulatedBiases(dbForget, dForgetGatePre);
-            tensorOperations.UpdateAccumulatedBiases(dbInput, dInputGatePre);
-            tensorOperations.UpdateAccumulatedBiases(dbOutput, dOutputGatePre);
-            tensorOperations.UpdateAccumulatedBiases(dbCell, dCellCandidatePre);
+            TensorOperations.UpdateAccumulatedWeights(dWForget, dForgetGatePre, concat);
+            TensorOperations.UpdateAccumulatedWeights(dWInput, dInputGatePre, concat);
+            TensorOperations.UpdateAccumulatedWeights(dWOutput, dOutputGatePre, concat);
+            TensorOperations.UpdateAccumulatedWeights(dWCell, dCellCandidatePre, concat);
+            TensorOperations.UpdateAccumulatedBiases(dbForget, dForgetGatePre);
+            TensorOperations.UpdateAccumulatedBiases(dbInput, dInputGatePre);
+            TensorOperations.UpdateAccumulatedBiases(dbOutput, dOutputGatePre);
+            TensorOperations.UpdateAccumulatedBiases(dbCell, dCellCandidatePre);
 
-            dCellNext = tensorOperations.Multiply(dCell, forget);
-            dHiddenNext = tensorOperations.Add(
-                tensorOperations.Multiply(DecoderForgetGateWeights, dForgetGatePre),
-                tensorOperations.Multiply(DecoderInputGateWeights, dInputGatePre),
-                tensorOperations.Multiply(DecoderOutputGateWeights, dOutputGatePre),
-                tensorOperations.Multiply(DecoderCellGateWeights, dCellCandidatePre)
+            dCellNext = TensorOperations.Multiply(dCell, forget);
+            dHiddenNext = TensorOperations.Add(
+                TensorOperations.Multiply(DecoderForgetGateWeights, dForgetGatePre),
+                TensorOperations.Multiply(DecoderInputGateWeights, dInputGatePre),
+                TensorOperations.Multiply(DecoderOutputGateWeights, dOutputGatePre),
+                TensorOperations.Multiply(DecoderCellGateWeights, dCellCandidatePre)
             );
             
             dHiddenStates.Add(dHiddenNext);
         }
         
-        DecoderForgetGateWeights = optimizer.UpdateWeights(DecoderForgetGateWeights, dWForget, learningRate);
-        DecoderInputGateWeights = optimizer.UpdateWeights(DecoderInputGateWeights, dWInput, learningRate);
-        DecoderOutputGateWeights = optimizer.UpdateWeights(DecoderOutputGateWeights, dWOutput, learningRate);
-        DecoderCellGateWeights = optimizer.UpdateWeights(DecoderCellGateWeights, dWCell, learningRate);
-        DecoderForgetGateBiases = optimizer.UpdateBiases(DecoderForgetGateBiases, dbForget, learningRate);
-        DecoderInputGateBiases = optimizer.UpdateBiases(DecoderInputGateBiases, dbInput, learningRate);
-        DecoderOutputGateBiases = optimizer.UpdateBiases(DecoderOutputGateBiases, dbOutput, learningRate);
-        DecoderCellGateBiases = optimizer.UpdateBiases(DecoderCellGateBiases, dbCell, learningRate);
+        DecoderForgetGateWeights = Optimizer.UpdateWeights(DecoderForgetGateWeights, dWForget, learningRate);
+        DecoderInputGateWeights = Optimizer.UpdateWeights(DecoderInputGateWeights, dWInput, learningRate);
+        DecoderOutputGateWeights = Optimizer.UpdateWeights(DecoderOutputGateWeights, dWOutput, learningRate);
+        DecoderCellGateWeights = Optimizer.UpdateWeights(DecoderCellGateWeights, dWCell, learningRate);
+        DecoderForgetGateBiases = Optimizer.UpdateBiases(DecoderForgetGateBiases, dbForget, learningRate);
+        DecoderInputGateBiases = Optimizer.UpdateBiases(DecoderInputGateBiases, dbInput, learningRate);
+        DecoderOutputGateBiases = Optimizer.UpdateBiases(DecoderOutputGateBiases, dbOutput, learningRate);
+        DecoderCellGateBiases = Optimizer.UpdateBiases(DecoderCellGateBiases, dbCell, learningRate);
         
-        decoderInputCache.Clear();
-        decoderForgetCache.Clear();
-        decoderInputGateCache.Clear();
-        decoderOutputGateCache.Clear();
-        decoderCellGateCache.Clear();
-        decoderNewCellCache.Clear();
-        decoderNewHiddenCache.Clear();
+        DecoderInputCache.Clear();
+        DecoderForgetCache.Clear();
+        DecoderInputGateCache.Clear();
+        DecoderOutputGateCache.Clear();
+        DecoderCellGateCache.Clear();
+        DecoderNewCellCache.Clear();
+        DecoderNewHiddenCache.Clear();
         
         return dHiddenStates.ToArray();
     }
     public TTensor[] EncoderBackward(TTensor[] gradOutputs, double learningRate) 
     {
         int timeSteps = gradOutputs.GetLength(0);
-        var dWForget = tensorOperations.DefaultWeights(HiddenShape, InputShape);
-        var dWInput = tensorOperations.DefaultWeights(HiddenShape, InputShape);
-        var dWOutput = tensorOperations.DefaultWeights(HiddenShape, InputShape);
-        var dWCell = tensorOperations.DefaultWeights(HiddenShape, InputShape);
-        var dbForget = tensorOperations.DefaultBiases(HiddenShape);
-        var dbInput = tensorOperations.DefaultBiases(HiddenShape);
-        var dbOutput = tensorOperations.DefaultBiases(HiddenShape);
-        var dbCell = tensorOperations.DefaultBiases(HiddenShape);
+        var dWForget = TensorOperations.DefaultWeights(HiddenShape, InputShape);
+        var dWInput = TensorOperations.DefaultWeights(HiddenShape, InputShape);
+        var dWOutput = TensorOperations.DefaultWeights(HiddenShape, InputShape);
+        var dWCell = TensorOperations.DefaultWeights(HiddenShape, InputShape);
+        var dbForget = TensorOperations.DefaultBiases(HiddenShape);
+        var dbInput = TensorOperations.DefaultBiases(HiddenShape);
+        var dbOutput = TensorOperations.DefaultBiases(HiddenShape);
+        var dbCell = TensorOperations.DefaultBiases(HiddenShape);
         
-        TTensor dHiddenNext = tensorOperations.DefaultState(HiddenShape);
-        TTensor dCellNext = tensorOperations.DefaultCell(HiddenShape);
+        TTensor dHiddenNext = TensorOperations.DefaultState(HiddenShape);
+        TTensor dCellNext = TensorOperations.DefaultCell(HiddenShape);
         List<TTensor> dHiddenStates = [];
 
         for (int t = timeSteps - 1; t >= 0; t--)
         {
-            TTensor cell = encoderNewCellCache[t];
-            TTensor prevCell = t == 0 ? tensorOperations.DefaultCell(HiddenShape) : encoderNewCellCache[t - 1];
-            TTensor input = encoderInputCache[t];
-            TTensor forget = encoderForgetCache[t];
-            TTensor inputGate = encoderInputGateCache[t];
-            TTensor outputGate = encoderOutputGateCache[t];
-            TTensor cellGate = encoderCellGateCache[t];
+            TTensor cell = EncoderNewCellCache[t];
+            TTensor prevCell = t == 0 ? TensorOperations.DefaultCell(HiddenShape) : EncoderNewCellCache[t - 1];
+            TTensor input = EncoderInputCache[t];
+            TTensor forget = EncoderForgetCache[t];
+            TTensor inputGate = EncoderInputGateCache[t];
+            TTensor outputGate = EncoderOutputGateCache[t];
+            TTensor cellGate = EncoderCellGateCache[t];
             
-            TTensor dHidden = tensorOperations.Add(gradOutputs[t], dHiddenNext);
+            TTensor dHidden = TensorOperations.Add(gradOutputs[t], dHiddenNext);
             TTensor tanhCell = TanhActivation.Function(cell);
-            TTensor dOutputGate = tensorOperations.Multiply(dHidden, tanhCell);
-            TTensor dOutputGatePre = tensorOperations.Multiply(dOutputGate, SigmoidActivation.Derivative(outputGate));
+            TTensor dOutputGate = TensorOperations.Multiply(dHidden, tanhCell);
+            TTensor dOutputGatePre = TensorOperations.Multiply(dOutputGate, SigmoidActivation.Derivative(outputGate));
             
-            TTensor dCell = tensorOperations.Add(tensorOperations.Multiply(dHidden, outputGate, TanhActivation.Derivative(cell)), dCellNext);
+            TTensor dCell = TensorOperations.Add(TensorOperations.Multiply(dHidden, outputGate, TanhActivation.Derivative(cell)), dCellNext);
 
-            var dInputGate = tensorOperations.Multiply(dCell, cellGate);
-            var dInputGatePre = tensorOperations.Multiply(dInputGate, SigmoidActivation.Derivative(inputGate));
+            var dInputGate = TensorOperations.Multiply(dCell, cellGate);
+            var dInputGatePre = TensorOperations.Multiply(dInputGate, SigmoidActivation.Derivative(inputGate));
 
-            var dCellCandidate = tensorOperations.Multiply(dCell, inputGate);
-            var dCellCandidatePre = tensorOperations.Multiply(dCellCandidate, TanhActivation.Derivative(cellGate));
+            var dCellCandidate = TensorOperations.Multiply(dCell, inputGate);
+            var dCellCandidatePre = TensorOperations.Multiply(dCellCandidate, TanhActivation.Derivative(cellGate));
 
-            var dForgetGate = tensorOperations.Multiply(dCell, prevCell);
-            var dForgetGatePre = tensorOperations.Multiply(dForgetGate, SigmoidActivation.Derivative(forget));
+            var dForgetGate = TensorOperations.Multiply(dCell, prevCell);
+            var dForgetGatePre = TensorOperations.Multiply(dForgetGate, SigmoidActivation.Derivative(forget));
             
-            TTensor concat = tensorOperations.Concat(input, t == 0 ? tensorOperations.DefaultState(HiddenShape) : encoderNewHiddenCache[t - 1]);
+            TTensor concat = TensorOperations.Concat(input, t == 0 ? TensorOperations.DefaultState(HiddenShape) : EncoderNewHiddenCache[t - 1]);
             
-            tensorOperations.UpdateAccumulatedWeights(dWForget, dForgetGatePre, concat);
-            tensorOperations.UpdateAccumulatedWeights(dWInput, dInputGatePre, concat);
-            tensorOperations.UpdateAccumulatedWeights(dWOutput, dOutputGatePre, concat);
-            tensorOperations.UpdateAccumulatedWeights(dWCell, dCellCandidatePre, concat);
-            tensorOperations.UpdateAccumulatedBiases(dbForget, dForgetGatePre);
-            tensorOperations.UpdateAccumulatedBiases(dbInput, dInputGatePre);
-            tensorOperations.UpdateAccumulatedBiases(dbOutput, dOutputGatePre);
-            tensorOperations.UpdateAccumulatedBiases(dbCell, dCellCandidatePre);
+            TensorOperations.UpdateAccumulatedWeights(dWForget, dForgetGatePre, concat);
+            TensorOperations.UpdateAccumulatedWeights(dWInput, dInputGatePre, concat);
+            TensorOperations.UpdateAccumulatedWeights(dWOutput, dOutputGatePre, concat);
+            TensorOperations.UpdateAccumulatedWeights(dWCell, dCellCandidatePre, concat);
+            TensorOperations.UpdateAccumulatedBiases(dbForget, dForgetGatePre);
+            TensorOperations.UpdateAccumulatedBiases(dbInput, dInputGatePre);
+            TensorOperations.UpdateAccumulatedBiases(dbOutput, dOutputGatePre);
+            TensorOperations.UpdateAccumulatedBiases(dbCell, dCellCandidatePre);
 
-            dCellNext = tensorOperations.Multiply(dCell, forget);
-            dHiddenNext = tensorOperations.Add(
-                tensorOperations.Multiply(EncoderForgetGateWeights, dForgetGatePre),
-                tensorOperations.Multiply(EncoderInputGateWeights, dInputGatePre),
-                tensorOperations.Multiply(EncoderOutputGateWeights, dOutputGatePre),
-                tensorOperations.Multiply(EncoderCellGateWeights, dCellCandidatePre)
+            dCellNext = TensorOperations.Multiply(dCell, forget);
+            dHiddenNext = TensorOperations.Add(
+                TensorOperations.Multiply(EncoderForgetGateWeights, dForgetGatePre),
+                TensorOperations.Multiply(EncoderInputGateWeights, dInputGatePre),
+                TensorOperations.Multiply(EncoderOutputGateWeights, dOutputGatePre),
+                TensorOperations.Multiply(EncoderCellGateWeights, dCellCandidatePre)
             );
             
             dHiddenStates.Add(dHiddenNext);
         }
         
-        EncoderForgetGateWeights = optimizer.UpdateWeights(EncoderForgetGateWeights, dWForget, learningRate);
-        EncoderInputGateWeights = optimizer.UpdateWeights(EncoderInputGateWeights, dWInput, learningRate); 
-        EncoderOutputGateWeights = optimizer.UpdateWeights(EncoderOutputGateWeights, dWOutput, learningRate);
-        EncoderCellGateWeights = optimizer.UpdateWeights(EncoderCellGateWeights, dWCell, learningRate);
-        EncoderForgetGateBiases = optimizer.UpdateBiases(EncoderForgetGateBiases, dbForget, learningRate);
-        EncoderInputGateBiases = optimizer.UpdateBiases(EncoderInputGateBiases, dbInput, learningRate);
-        EncoderOutputGateBiases = optimizer.UpdateBiases(EncoderOutputGateBiases, dbOutput, learningRate);
-        EncoderCellGateBiases = optimizer.UpdateBiases(EncoderCellGateBiases, dbCell, learningRate);
+        EncoderForgetGateWeights = Optimizer.UpdateWeights(EncoderForgetGateWeights, dWForget, learningRate);
+        EncoderInputGateWeights = Optimizer.UpdateWeights(EncoderInputGateWeights, dWInput, learningRate); 
+        EncoderOutputGateWeights = Optimizer.UpdateWeights(EncoderOutputGateWeights, dWOutput, learningRate);
+        EncoderCellGateWeights = Optimizer.UpdateWeights(EncoderCellGateWeights, dWCell, learningRate);
+        EncoderForgetGateBiases = Optimizer.UpdateBiases(EncoderForgetGateBiases, dbForget, learningRate);
+        EncoderInputGateBiases = Optimizer.UpdateBiases(EncoderInputGateBiases, dbInput, learningRate);
+        EncoderOutputGateBiases = Optimizer.UpdateBiases(EncoderOutputGateBiases, dbOutput, learningRate);
+        EncoderCellGateBiases = Optimizer.UpdateBiases(EncoderCellGateBiases, dbCell, learningRate);
         
-        encoderInputCache.Clear();
-        encoderForgetCache.Clear();
-        encoderInputGateCache.Clear();
-        encoderOutputGateCache.Clear();
-        encoderCellGateCache.Clear();
-        encoderNewCellCache.Clear();
-        encoderNewHiddenCache.Clear();
+        EncoderInputCache.Clear();
+        EncoderForgetCache.Clear();
+        EncoderInputGateCache.Clear();
+        EncoderOutputGateCache.Clear();
+        EncoderCellGateCache.Clear();
+        EncoderNewCellCache.Clear();
+        EncoderNewHiddenCache.Clear();
         
         return dHiddenStates.ToArray();
     }
@@ -372,39 +372,39 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
 
     public void Reset()
     {
-        EncoderForgetGateWeights = tensorOperations.DefaultWeights(HiddenShape, InputShape);
-        EncoderInputGateWeights = tensorOperations.DefaultWeights(HiddenShape, InputShape);
-        EncoderOutputGateWeights = tensorOperations.DefaultWeights(HiddenShape, InputShape);
-        EncoderCellGateWeights = tensorOperations.DefaultWeights(HiddenShape, InputShape);
-        EncoderForgetGateBiases = tensorOperations.DefaultBiases(HiddenShape);
-        EncoderInputGateBiases = tensorOperations.DefaultBiases(HiddenShape);
-        EncoderOutputGateBiases = tensorOperations.DefaultBiases(HiddenShape);
-        EncoderCellGateBiases = tensorOperations.DefaultBiases(HiddenShape);
+        EncoderForgetGateWeights = TensorOperations.DefaultWeights(HiddenShape, InputShape);
+        EncoderInputGateWeights = TensorOperations.DefaultWeights(HiddenShape, InputShape);
+        EncoderOutputGateWeights = TensorOperations.DefaultWeights(HiddenShape, InputShape);
+        EncoderCellGateWeights = TensorOperations.DefaultWeights(HiddenShape, InputShape);
+        EncoderForgetGateBiases = TensorOperations.DefaultBiases(HiddenShape);
+        EncoderInputGateBiases = TensorOperations.DefaultBiases(HiddenShape);
+        EncoderOutputGateBiases = TensorOperations.DefaultBiases(HiddenShape);
+        EncoderCellGateBiases = TensorOperations.DefaultBiases(HiddenShape);
         
-        DecoderForgetGateWeights = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
-        DecoderInputGateWeights = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
-        DecoderOutputGateWeights = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
-        DecoderCellGateWeights = tensorOperations.DefaultWeights(OutputShape, HiddenShape);
-        DecoderForgetGateBiases = tensorOperations.DefaultBiases(OutputShape);
-        DecoderInputGateBiases = tensorOperations.DefaultBiases(OutputShape);
-        DecoderOutputGateBiases = tensorOperations.DefaultBiases(OutputShape);
-        DecoderCellGateBiases = tensorOperations.DefaultBiases(OutputShape);
+        DecoderForgetGateWeights = TensorOperations.DefaultWeights(OutputShape, HiddenShape);
+        DecoderInputGateWeights = TensorOperations.DefaultWeights(OutputShape, HiddenShape);
+        DecoderOutputGateWeights = TensorOperations.DefaultWeights(OutputShape, HiddenShape);
+        DecoderCellGateWeights = TensorOperations.DefaultWeights(OutputShape, HiddenShape);
+        DecoderForgetGateBiases = TensorOperations.DefaultBiases(OutputShape);
+        DecoderInputGateBiases = TensorOperations.DefaultBiases(OutputShape);
+        DecoderOutputGateBiases = TensorOperations.DefaultBiases(OutputShape);
+        DecoderCellGateBiases = TensorOperations.DefaultBiases(OutputShape);
         
-        encoderInputCache.Clear();
-        encoderForgetCache.Clear();
-        encoderInputGateCache.Clear();
-        encoderOutputGateCache.Clear();
-        encoderCellGateCache.Clear();
-        encoderNewCellCache.Clear();
-        encoderNewHiddenCache.Clear();
+        EncoderInputCache.Clear();
+        EncoderForgetCache.Clear();
+        EncoderInputGateCache.Clear();
+        EncoderOutputGateCache.Clear();
+        EncoderCellGateCache.Clear();
+        EncoderNewCellCache.Clear();
+        EncoderNewHiddenCache.Clear();
         
-        decoderInputCache.Clear();
-        decoderForgetCache.Clear();
-        decoderInputGateCache.Clear();
-        decoderOutputGateCache.Clear();
-        decoderCellGateCache.Clear();
-        decoderNewCellCache.Clear();
-        decoderNewHiddenCache.Clear();
+        DecoderInputCache.Clear();
+        DecoderForgetCache.Clear();
+        DecoderInputGateCache.Clear();
+        DecoderOutputGateCache.Clear();
+        DecoderCellGateCache.Clear();
+        DecoderNewCellCache.Clear();
+        DecoderNewHiddenCache.Clear();
     }
 }
 

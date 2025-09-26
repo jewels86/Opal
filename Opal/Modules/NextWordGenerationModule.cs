@@ -1,5 +1,5 @@
 ﻿using Opal.Utilities;
-using Opal.Utilities.ANNs.Recurrent;
+using Opal.Utilities.ANNs;
 using static Opal.Utilities.Logging.LogLevel;
 using static Opal.Utilities.Logging.AddedLogLevel;
 using static Opal.Utilities.Logging;
@@ -8,14 +8,14 @@ namespace Opal.Modules;
 public class NextWordGenerationModule<T> : IModule where T : notnull
 { 
     public EmbeddingsModule<T> Embeddings { get; }
-    public IRecurrentNetwork Network { get; }
+    public INetwork<double[][],double[][]> Network { get; }
 
     public string Name { get; }
 
     public LogLevel Baseline { get; set; } = Info;
     public bool LoggingEnabled { get; set; } = true;
 
-    public NextWordGenerationModule(EmbeddingsModule<T> embeddings, IRecurrentNetwork rnn, string? name = null)
+    public NextWordGenerationModule(EmbeddingsModule<T> embeddings, INetwork<double[][], double[][]> rnn, string? name = null)
     {
         Name = name ?? "next-word-generation";
         Embeddings = embeddings;
@@ -57,20 +57,20 @@ public class NextWordGenerationModule<T> : IModule where T : notnull
             throw new ArgumentException("Some target words not found in embeddings.");
         }
 
-        double[,,] inputSeqs = MathFunctions.ToMatrix3D([
+        double[][][] inputSeqs = [
             inputEmbeddings
                 .Where(e => e is not null)
                 .Cast<Embedding<T>>()
                 .Select(e => e.Vector)
-                .ToList()
-        ]);
-        double[,,] targetSeqs = MathFunctions.ToMatrix3D([
+                .ToArray()
+        ];
+        double[][][] targetSeqs = [
             targetEmbeddings
                 .Where(e => e is not null)
                 .Cast<Embedding<T>>()
                 .Select(e => e.Vector)
-                .ToList()
-        ]);
+                .ToArray()
+        ];
 
         Network.Train(inputSeqs, targetSeqs, epochs, learningRate);
         if (LoggingEnabled) Log(Name, Baseline, $"Training complete for input \'{string.Join(" ", input)}\'.");
@@ -98,10 +98,10 @@ public class NextWordGenerationModule<T> : IModule where T : notnull
             throw new ArgumentException("Some input words not found in embeddings: " + string.Join(", ", missingEnumerable));
         }
 
-        var inputSeq = inputEmbeddings.Select(e => e?.Vector!).ToList();
-        var outputSeq = Network.PredictSequence(MathFunctions.ToMatrix2D(inputSeq));
+        var inputSeq = inputEmbeddings.Select(e => e?.Vector!).ToArray();
+        var outputSeq = Network.Forward(inputSeq);
 
-        if (outputSeq.Count == 0)
+        if (outputSeq.Length == 0)
         {
             Log(Name, Baseline.Add(HighBaseline), "LSTM output sequence is empty.");
             throw new InvalidOperationException("LSTM output sequence is empty.");

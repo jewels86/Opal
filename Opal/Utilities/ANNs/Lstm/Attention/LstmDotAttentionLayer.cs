@@ -23,7 +23,7 @@ public class LstmDotAttentionLayer<TWeights, TBiases, TTensor> : LstmAttentionLa
         double[] scores = new double[hidden.Length];
         for (int i = 0; i < hidden.Length; i++)
         {
-            scores[i] = tensorOperations.Dot(hidden[i], prevState);
+            scores[i] = TensorOperations.Dot(hidden[i], prevState);
         }
         return scores;
     }
