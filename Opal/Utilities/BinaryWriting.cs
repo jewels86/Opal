@@ -37,4 +37,31 @@ public static class BinaryWriting
         for (int i = 0; i < len; i++) v[i] = reader.ReadDouble();
         return v;
     }
+    
+    public static void WriteShape(BinaryWriter writer, int[] shape)
+    {
+        writer.Write(shape.Length);
+        for (int i = 0; i < shape.Length; i++) writer.Write(shape[i]);
+    }
+
+    public static int[] ReadShape(BinaryReader reader)
+    {
+        int len = reader.ReadInt32();
+        var shape = new int[len];
+        for (int i = 0; i < len; i++) shape[i] = reader.ReadInt32();
+        return shape;
+    }
+    
+    public static void WriteString(BinaryWriter writer, string str)
+    {
+        writer.Write(str.Length);
+        writer.Write(str.ToCharArray());
+    }
+
+    public static string ReadString(BinaryReader reader)
+    {
+        int len = reader.ReadInt32();
+        char[] chars = reader.ReadChars(len);
+        return new string(chars);
+    }
 }

@@ -61,6 +61,18 @@ public class FfLayer<TWeights, TBiases, TInput, TOutput> : ILayer<TInput, TOutpu
         lastInput = TensorOperations.DefaultInput(InputShape);
         lastZ = TensorOperations.DefaultOutput(OutputShape);
     }
+
+    public virtual void Write(BinaryWriter writer)
+    {
+        TensorOperations.WriteWeights(writer, Weights);
+        TensorOperations.WriteBiases(writer, Biases);
+    }
+    
+    public virtual void Read(BinaryReader reader)
+    {
+        Weights = TensorOperations.ReadWeights(reader, OutputShape.Concat(InputShape).ToArray());
+        Biases = TensorOperations.ReadBiases(reader, OutputShape);
+    }
 }
 
 public interface IFfTensorOperations<TWeights, TBiases, TInput, TOutput>
@@ -78,4 +90,9 @@ public interface IFfTensorOperations<TWeights, TBiases, TInput, TOutput>
     TOutput DefaultOutput(int[] outputsShape);
     TWeights DefaultWeights(int[] outputShape, int[] inputShape);
     TBiases DefaultBiases(int[] outputShape);
+    
+    public void WriteWeights(BinaryWriter writer, TWeights weights);
+    public TWeights ReadWeights(BinaryReader reader, int[] shape);
+    public void WriteBiases(BinaryWriter writer, TBiases biases);
+    public TBiases ReadBiases(BinaryReader reader, int[] shape);
 }

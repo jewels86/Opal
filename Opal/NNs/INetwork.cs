@@ -13,4 +13,7 @@ public interface INetwork<in TInput, TOutput>
     public void Train(TInput[] inputs, TOutput[] targets, int epochs, double learningRate);
     public double EvaluateLoss(TInput[] inputs, TOutput[] targets);
     public void Reset();
+    
+    public void Save(string path);
+    public void Load(string path);
 }

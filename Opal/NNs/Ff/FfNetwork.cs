@@ -1,4 +1,5 @@
 ﻿using Opal.Mathematics;
+using Opal.Utilities;
 
 namespace Opal.NNs.Ff;
 
@@ -11,11 +12,11 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
     public List<FfLayer<TWeights, TBiases, THidden, THidden>> HiddenLayers { get; }
     public FfLayer<TWeights, TBiases, THidden, TOutput> OutputLayer { get; }
     
-    public string Name { get; }
+    public string Name { get; private set; }
     
-    public int[] InputShape { get; }
-    public int[] HiddenShape { get; }
-    public int[] OutputShape { get; }
+    public int[] InputShape { get; private set; }
+    public int[] HiddenShape { get; private set; }
+    public int[] OutputShape { get; private set; }
     
     public IFfTensorOperations<TWeights, TBiases, TInput, THidden> InputTensorOperations { get; }
     public IFfTensorOperations<TWeights, TBiases, THidden, THidden> HiddenTensorOperations { get; }
@@ -105,5 +106,41 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
         foreach (var layer in HiddenLayers)
             layer.Reset();
         OutputLayer.Reset();
+    }
+
+    public virtual void Save(string path)
+    {
+        BinaryWriter writer = new(File.OpenWrite(path));
+        
+        BinaryWriting.WriteString(writer, Name);
+        
+        BinaryWriting.WriteShape(writer, InputShape);
+        BinaryWriting.WriteShape(writer, HiddenShape);
+        BinaryWriting.WriteShape(writer, OutputShape);
+        
+        InputLayer.Write(writer);
+        writer.Write(HiddenLayers.Count);
+        foreach (var layer in HiddenLayers)
+            layer.Write(writer);
+        OutputLayer.Write(writer);
+    }
+
+    public virtual void Load(string path)
+    {
+        BinaryReader reader = new(File.OpenRead(path));
+
+        Name = BinaryWriting.ReadString(reader);
+
+        InputShape = BinaryWriting.ReadShape(reader);
+        HiddenShape = BinaryWriting.ReadShape(reader);
+        OutputShape = BinaryWriting.ReadShape(reader);
+        
+        InputLayer.Read(reader);
+        int count = reader.Read();
+        for (int i = 0; i < count; i++)
+            HiddenLayers.Add(new(InputShape, OutputShape, HiddenActivation, HiddenTensorOperations, Optimizer));
+        for (int i = 0; i < count; i++)
+            HiddenLayers[i].Read(reader);
+        OutputLayer.Read(reader);
     }
 }

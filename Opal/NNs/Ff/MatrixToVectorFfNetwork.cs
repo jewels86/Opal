@@ -1,4 +1,5 @@
 ﻿using Opal.Mathematics;
+using Opal.Utilities;
 
 namespace Opal.NNs.Ff;
 
@@ -58,6 +59,26 @@ public class MatrixToVectorFfTensorOperations : IFfTensorOperations<double[,], d
     {
         var inputFlat = Matrices.Flatten(lastInput);
         return Matrices.OuterProduct(gradZ, inputFlat);
+    }
+
+    public double[,] ReadBiases(BinaryReader reader, int[] shape)
+    {
+        return BinaryWriting.ReadMatrix(reader);
+    }
+
+    public double[,] ReadWeights(BinaryReader reader, int[] shape)
+    {
+        return BinaryWriting.ReadMatrix(reader);
+    }
+
+    public void WriteBiases(BinaryWriter writer, double[,] biases)
+    {
+        BinaryWriting.WriteMatrix(writer, biases);
+    }
+
+    public void WriteWeights(BinaryWriter writer, double[,] weights)
+    {
+        BinaryWriting.WriteMatrix(writer, weights);   
     }
 }
 

@@ -8,4 +8,7 @@ public interface ILayer<TInput, TOutput> where TInput : notnull where TOutput : 
     public TOutput Forward(TInput input);
     public TInput Backward(TOutput gradOutput, double learningRate);
     public void Reset();
+    
+    public void Write(BinaryWriter writer);
+    public void Read(BinaryReader reader);
 }
