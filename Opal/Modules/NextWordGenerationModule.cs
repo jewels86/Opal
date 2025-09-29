@@ -1,5 +1,5 @@
-﻿using Opal.Utilities;
-using Opal.Utilities.ANNs;
+﻿using Opal.NNs;
+using Opal.Utilities;
 using static Opal.Utilities.Logging.LogLevel;
 using static Opal.Utilities.Logging.AddedLogLevel;
 using static Opal.Utilities.Logging;

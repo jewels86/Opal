@@ -1,9 +1,8 @@
 ﻿using Opal;
 using Opal.Configurations;
 using Opal.Modules;
+using Opal.NNs.Lstm.Attention;
 using Opal.Utilities;
-using Opal.Utilities.ANNs.Lstm;
-using Opal.Utilities.ANNs.Lstm.Attention;
 using Spectre.Console;
 using static Testing.Utilities;
 

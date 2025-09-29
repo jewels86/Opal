@@ -1,6 +1,4 @@
-﻿using Opal.Utilities.ANNs;
-
-namespace Opal.Utilities;
+﻿namespace Opal.Utilities;
 
 public static class MathFunctions
 {

@@ -1,5 +1,5 @@
-﻿using Opal.Utilities.ANNs.Ff;
-using System;
+﻿using System;
+using Opal.NNs.Ff;
 
 namespace Opal.Mathematics.TensorOperations;
 
