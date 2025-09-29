@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs.Ff;
+namespace Opal.NNs.Ff;
 
 public interface IFfNetworkFactory<TWeights, TBiases, TInput, THidden, TOutput, TFfNetwork>
     where TWeights : notnull

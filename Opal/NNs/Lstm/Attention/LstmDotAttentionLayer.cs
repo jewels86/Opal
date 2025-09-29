@@ -1,7 +1,6 @@
 ﻿using Opal.Mathematics;
-using Opal.Utilities.ANNs.Lstm;
 
-namespace Opal.Utilities.ANNs.Lstm.Attention;
+namespace Opal.NNs.Lstm.Attention;
 
 public class LstmDotAttentionLayer<TWeights, TBiases, TTensor> : LstmAttentionLayer<TWeights, TBiases, TTensor>
     where TWeights : notnull

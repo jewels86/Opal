@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs.Lstm;
+namespace Opal.NNs.Lstm;
 
 public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTensor[]>
     where TWeights : notnull

@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs.Rnn;
+namespace Opal.NNs.Rnn;
 
 public class RecurrentLayer<TWeights, TBiases, TState, TIn, TOut> : ILayer<TIn, TOut> 
     where TIn : notnull where TOut : notnull

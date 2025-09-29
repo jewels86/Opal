@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs.Rnn;
+namespace Opal.NNs.Rnn;
 
 public class RecurrentNetwork<TWeights, TBiases, TState, TInput, THidden, TOutput> : INetwork<TInput, TOutput>
     where TInput : notnull where TOutput : notnull

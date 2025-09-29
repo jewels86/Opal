@@ -1,7 +1,7 @@
 ﻿using Opal.Mathematics;
 using Opal.Mathematics.TensorOperations;
 
-namespace Opal.Utilities.ANNs.Ff;
+namespace Opal.NNs.Ff;
 
 public class MatrixFfNetwork : FfNetwork<double[,], double[,], double[,], double[,], double[,]>
 {

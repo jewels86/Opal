@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs.Ff;
+namespace Opal.NNs.Ff;
 
 public class MatrixToVectorFfNetwork : FfNetwork<double[,], double[,], double[,], double[], double[]>
 {

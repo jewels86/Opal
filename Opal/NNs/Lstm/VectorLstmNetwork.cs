@@ -1,7 +1,7 @@
 ﻿using Opal.Mathematics;
 using Opal.Mathematics.TensorOperations;
 
-namespace Opal.Utilities.ANNs.Lstm;
+namespace Opal.NNs.Lstm;
 
 public class VectorLstmNetwork : LstmNetwork<double[,], double[], double[]>
 {

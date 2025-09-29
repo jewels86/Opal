@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs.Rnn;
+namespace Opal.NNs.Rnn;
 
 public class MatrixToVectorRecurrentNetwork : RecurrentNetwork<double[,], double[,], double[], double[,], double[], double[]>
 {

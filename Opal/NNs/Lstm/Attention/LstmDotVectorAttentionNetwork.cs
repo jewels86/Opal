@@ -1,7 +1,7 @@
 ﻿using Opal.Mathematics;
 using Opal.Mathematics.TensorOperations;
 
-namespace Opal.Utilities.ANNs.Lstm.Attention;
+namespace Opal.NNs.Lstm.Attention;
 
 public class LstmDotVectorAttentionNetwork : 
     LstmAttentionNetwork<double[,], double[], double[], 

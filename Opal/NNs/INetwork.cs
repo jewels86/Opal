@@ -1,4 +1,4 @@
-﻿namespace Opal.Utilities.ANNs;
+﻿namespace Opal.NNs;
 
 public interface INetwork<in TInput, TOutput>
     where TInput : notnull

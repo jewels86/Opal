@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs;
+namespace Opal.NNs;
 
 public interface IOptimizer<TWeights, TBiases>
 {

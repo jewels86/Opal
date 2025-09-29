@@ -1,4 +1,4 @@
-﻿namespace Opal.Utilities.ANNs;
+﻿namespace Opal.NNs;
 
 public interface ILayer<TInput, TOutput> where TInput : notnull where TOutput : notnull
 {

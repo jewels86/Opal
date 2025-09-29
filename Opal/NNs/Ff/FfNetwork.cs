@@ -1,6 +1,6 @@
 ﻿using Opal.Mathematics;
 
-namespace Opal.Utilities.ANNs.Ff;
+namespace Opal.NNs.Ff;
 
 public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : INetwork<TInput, TOutput>
     where TInput : notnull where TOutput : notnull
