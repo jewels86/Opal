@@ -30,3 +30,22 @@ public class LstmDotAttentionLayer<TWeights, TBiases, TTensor> : LstmAttentionLa
 
     public override void TrainAlignment(int timeStep, double[] gradScores, double learningRate) { }
 }
+
+public class LstmDotAttentionLayerFactory<TWeights, TBiases, TTensor> : ILstmAttentionLayerFactory<TWeights, TBiases, TTensor, LstmDotAttentionLayer<TWeights, TBiases, TTensor>>
+    where TWeights : notnull
+    where TBiases : notnull
+    where TTensor : notnull
+{
+    public LstmDotAttentionLayer<TWeights, TBiases, TTensor> Create(
+        int[] inputShape, int[] hiddenShape, int[] outputShape,
+        ILstmAttentionTensorOperations<TWeights, TBiases, TTensor> tensorOperations,
+        IOptimizer<TWeights, TBiases> optimizer,
+        ActivationFunction<TTensor> sigmoidActivation,
+        ActivationFunction<TTensor> tanhActivation)
+    {
+        return new LstmDotAttentionLayer<TWeights, TBiases, TTensor>(
+            inputShape, hiddenShape, outputShape,
+            tensorOperations, optimizer,
+            sigmoidActivation, tanhActivation);
+    }
+}

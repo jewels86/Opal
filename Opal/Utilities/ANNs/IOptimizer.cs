@@ -25,3 +25,9 @@ public class StandardVectorOptimizer : IOptimizer<double[,], double[]>
     public double[] UpdateBiases(double[] biases, double[] gradBiases, double learningRate) => Vectors.Subtract(biases, Vectors.Multiply(gradBiases, learningRate));
     public double[,] UpdateWeights(double[,] weights, double[,] gradWeights, double learningRate) => Matrices.Subtract(weights, Matrices.Multiply(gradWeights, learningRate));
 }
+
+public class VectorToScalarOptimizer : IOptimizer<double[], double[]>
+{
+    public double[] UpdateBiases(double[] biases, double[] gradBiases, double learningRate) => Vectors.Subtract(biases, Vectors.Multiply(gradBiases, learningRate));
+    public double[] UpdateWeights(double[] weights, double[] gradWeights, double learningRate) => Vectors.Subtract(weights, Vectors.Multiply(gradWeights, learningRate));
+}

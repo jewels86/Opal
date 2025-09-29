@@ -49,6 +49,7 @@ public class VectorToMatrixFfTensorOperations : IFfTensorOperations<double[,], d
     {
         return Matrices.MultiplyMatrixByVectorAsColumn(weights, input);
     }
+    public double[,] Multiply(double[,] a, double[,] b) => Matrices.Multiply(a, b);
     public double[] GradInput(double[,] weights, double[,] gradZ)
     {
         return Matrices.MultiplyMatrixTransposeByColumn(weights, gradZ);

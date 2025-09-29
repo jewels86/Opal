@@ -88,6 +88,7 @@ public class RecurrentLayer<TWeights, TBiases, TState, TIn, TOut> : ILayer<TIn, 
             gradBiases = tensorOperations.Add(gradBiases, tensorOperations.GradBiases(gradZ));
             
             gradOutput = tensorOperations.GradOutput(RecurrentWeights, gradZ);
+            prevState = state;
         }
         
         InputWeights = optimizer.UpdateWeights(InputWeights, gradInputWeights, learningRate);

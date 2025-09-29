@@ -65,6 +65,13 @@ public static class Vectors
     }
     public static double[] Multiply(double[] a, double scalar) => ApplyElementwise(a, x => x * scalar);
     public static double[] Divide(double[] a, double scalar) => ApplyElementwise(a, x => x / scalar);
+    public static double Sum(double[] a)
+    {
+        double sum = 0;
+        for (int i = 0; i < a.Length; i++)
+            sum += a[i];
+        return sum;
+    }
     #endregion
     #region Other Operations
     public static double[,] OuterProduct(double[] a, double[] b)

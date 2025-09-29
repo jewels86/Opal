@@ -44,6 +44,7 @@ public class MatrixToVectorFfTensorOperations : IFfTensorOperations<double[,], d
         var inputFlat = Matrices.Flatten(input);
         return Matrices.Multiply(weights, inputFlat);
     }
+    public double[] Multiply(double[] a, double[] b) => Vectors.Multiply(a, b);
     public double[,] GradBiases(double[] gradZ)
     {
         return Matrices.ToColumnVector(gradZ);
@@ -69,6 +70,7 @@ public class MatrixToVectorHiddenFfTensorOperations : IFfTensorOperations<double
     public double[,] DefaultWeights(int[] outputShape, int[] inputShape) => Matrices.RandomMatrix(outputShape[0], inputShape[0]);
     public double[] DefaultInput(int[] shape) => new double[shape[0]];
     public double[] Multiply(double[,] weights, double[] input) => Matrices.Multiply(weights, input);
+    public double[] Multiply(double[] a, double[] b) => Vectors.Multiply(a, b);
     public double[,] GradBiases(double[] gradZ)
     {
         int size = gradZ.Length;

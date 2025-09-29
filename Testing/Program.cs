@@ -71,7 +71,7 @@ internal static class Program
         AnsiConsole.MarkupLine("TF-IDF will be computed on demand.");
         var (embeddings, si) = GetEmbeddings();
         AnsiConsole.MarkupLine("Creating LSTM...");
-        LstmDotAttentionNetwork lstm = new("stopword-lstm");
+        LstmDotVectorAttentionNetwork lstm = new("stopword-lstm");
 
         int hiddenSize = AnsiConsole.Ask("What hidden size should the LSTM use?", 128);
         int layers = AnsiConsole.Ask("How many LSTM layers should be used?", 2);
