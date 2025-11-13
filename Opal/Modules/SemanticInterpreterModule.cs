@@ -16,20 +16,23 @@ namespace Opal.Modules
 	public class SemanticInterpreterModule<TType, TMemory> : IModule where TType : notnull where TMemory : ISemanticInterpreterMemoryModule<TType>
 	{
 		public string Name { get; }
-		public Logging.LogLevel Baseline { get; set; } = Logging.LogLevel.Info;
+		public LogLevel Baseline { get; set; } = Logging.LogLevel.Info;
 		public bool LoggingEnabled { get; set; } = true;
+		
+		public Func<int, int, double> DistanceFunction { get; set; } = (i, j) => 1 / (double)(i - j);
 
 		public TMemory Memory { get; }
-		public ConcurrentHashSet<TType> Added { get; set; } = [];
+		public ConcurrentHashSet<TType> Added { get; } = [];
 		public TType SpecialStart { get; }
 		public TType SpecialEnd { get; }
 
-		public SemanticInterpreterModule(TMemory memory, TType specialStart, TType specialEnd, string? name = null)
+		public SemanticInterpreterModule(TMemory memory, TType specialStart, TType specialEnd, Func<int, int, double>? dist = null, string? name = null)
 		{
 			Memory = memory;
-			Name = name ?? $"semantic-interpreter-{typeof(TType).Name.ToLower()} with {Memory.Name} memory";
+			Name = name ?? $"semantic interpreter {typeof(TType).Name.ToLower()} with {Memory.Name} memory";
 			SpecialStart = specialStart;
 			SpecialEnd = specialEnd;
+			DistanceFunction = dist ?? DistanceFunction;
 		}
 
 		#region Add/Remove Words
@@ -64,7 +67,7 @@ namespace Opal.Modules
 				{
 					if (i == j)
 						continue;
-					var distance = 1 / (i - j);
+					var distance = DistanceFunction(i, j);
 					if (distance < 0) Memory.Associate(sentence[i], sentence[j], distance * 0.5);
 					else Memory.Associate(sentence[j], sentence[i], distance);
 				}

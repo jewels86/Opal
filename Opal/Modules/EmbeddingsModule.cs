@@ -25,14 +25,16 @@ namespace Opal.Modules
 		public ConcurrentDictionary<int, ConcurrentDictionary<Guid, Embedding<T>>> Embeddings { get; } = [];
 		/// <summary>The embeddings stored in the module (id, embedding).</summary>
 		public ConcurrentDictionary<Guid, Embedding<T>> EmbeddingIDs { get; } = [];
+		/// <summary>The embeddings stored in the module (data, embedding).</summary>
 		public ConcurrentDictionary<T, Embedding<T>> EmbeddingData { get; } = [];
+		/// <summary>The SimHash generator used to hash embeddings.</summary>
 		public SimHashGenerator<double[]> HashGenerator { get; }
 
 		public bool LoggingEnabled { get; set; } = false;
 
 		public LogLevel Baseline { get; set; } = LowDebug;
 
-		private readonly Func<ulong, int> _reduce;
+		readonly private Func<ulong, int> _reduce;
 
 		/// <summary>
 		/// Creates a new EmbeddingsModule.
@@ -345,12 +347,10 @@ namespace Opal.Modules
 
 	public readonly record struct Embedding<T>(Guid Id, T Data, double[] Vector) where T : notnull
 	{
-		public bool Equals(Embedding<T> other)
-		{
-			return Id.Equals(other.Id)
-			       && EqualityComparer<T>.Default.Equals(Data, other.Data)
-			       && MathFunctions.Equals(Vector, other.Vector);
-		}
+		public bool Equals(Embedding<T> other) =>
+			Id.Equals(other.Id)
+			&& EqualityComparer<T>.Default.Equals(Data, other.Data)
+			&& MathFunctions.Equals(Vector, other.Vector);
 
 		public override int GetHashCode()
 		{
