@@ -1,4 +1,5 @@
 ﻿using Opal.Mathematics;
+using Opal.Utilities;
 
 namespace Opal.NNs.Rnn;
 
@@ -43,4 +44,11 @@ public class ScalarRecurrentTensorOperations : IRecurrentTensorOperations<double
 
     public double Multiply(double a, double b) => a * b;
     public double UpdateState(double output) => output;
+
+    public double ReadWeights(BinaryReader reader, int[] shape) => reader.ReadDouble();
+    public void WriteWeights(BinaryWriter writer, double weights) => writer.Write(weights);
+    public double ReadBiases(BinaryReader reader, int[] shape) => reader.ReadDouble();
+    public void WriteBiases(BinaryWriter writer, double biases) => writer.Write(biases);
+    public double ReadState(BinaryReader reader, int[] shape) => reader.ReadDouble();
+    public void WriteState(BinaryWriter writer, double state) => writer.Write(state);
 }

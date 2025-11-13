@@ -406,6 +406,52 @@ public class LstmLayer<TWeights, TBiases, TTensor> : ILayer<TTensor[], TTensor[]
         DecoderNewCellCache.Clear();
         DecoderNewHiddenCache.Clear();
     }
+
+    public void Write(BinaryWriter writer)
+    {
+        TensorOperations.WriteWeights(writer, EncoderForgetGateWeights);
+        TensorOperations.WriteWeights(writer, EncoderInputGateWeights);
+        TensorOperations.WriteWeights(writer, EncoderOutputGateWeights);
+        TensorOperations.WriteWeights(writer, EncoderCellGateWeights);
+        
+        TensorOperations.WriteBiases(writer, EncoderForgetGateBiases);
+        TensorOperations.WriteBiases(writer, EncoderInputGateBiases);
+        TensorOperations.WriteBiases(writer, EncoderOutputGateBiases);
+        TensorOperations.WriteBiases(writer, EncoderCellGateBiases);
+        
+        TensorOperations.WriteWeights(writer, DecoderForgetGateWeights);
+        TensorOperations.WriteWeights(writer, DecoderInputGateWeights);
+        TensorOperations.WriteWeights(writer, DecoderOutputGateWeights);
+        TensorOperations.WriteWeights(writer, DecoderCellGateWeights);
+        
+        TensorOperations.WriteBiases(writer, DecoderForgetGateBiases);
+        TensorOperations.WriteBiases(writer, DecoderInputGateBiases);
+        TensorOperations.WriteBiases(writer, DecoderOutputGateBiases);
+        TensorOperations.WriteBiases(writer, DecoderCellGateBiases);
+    }
+
+    public void Read(BinaryReader reader)
+    {
+        EncoderForgetGateWeights = TensorOperations.ReadWeights(reader, HiddenShape);
+        EncoderInputGateWeights = TensorOperations.ReadWeights(reader, HiddenShape);
+        EncoderOutputGateWeights = TensorOperations.ReadWeights(reader, HiddenShape);
+        EncoderCellGateWeights = TensorOperations.ReadWeights(reader, HiddenShape);
+        
+        EncoderForgetGateBiases = TensorOperations.ReadBiases(reader, HiddenShape);
+        EncoderInputGateBiases = TensorOperations.ReadBiases(reader, HiddenShape);
+        EncoderOutputGateBiases = TensorOperations.ReadBiases(reader, HiddenShape);
+        EncoderCellGateBiases = TensorOperations.ReadBiases(reader, HiddenShape);
+        
+        DecoderForgetGateWeights = TensorOperations.ReadWeights(reader, OutputShape);
+        DecoderInputGateWeights = TensorOperations.ReadWeights(reader, OutputShape);
+        DecoderOutputGateWeights = TensorOperations.ReadWeights(reader, OutputShape);
+        DecoderCellGateWeights = TensorOperations.ReadWeights(reader, OutputShape);
+        
+        DecoderForgetGateBiases = TensorOperations.ReadBiases(reader, OutputShape);
+        DecoderInputGateBiases = TensorOperations.ReadBiases(reader, OutputShape);
+        DecoderOutputGateBiases = TensorOperations.ReadBiases(reader, OutputShape);
+        DecoderCellGateBiases = TensorOperations.ReadBiases(reader, OutputShape);
+    }
 }
 
 public interface ILstmTensorOperations<TWeights, TBiases, TTensor>
@@ -425,4 +471,9 @@ public interface ILstmTensorOperations<TWeights, TBiases, TTensor>
     
     public void UpdateAccumulatedWeights(TWeights weights, TTensor dForgetGatePre, TTensor concat);
     public void UpdateAccumulatedBiases(TBiases biases, TTensor dForgetGatePre);
+    
+    public TWeights ReadWeights(BinaryReader reader, int[] shape);
+    public void WriteWeights(BinaryWriter writer, TWeights weights);
+    public TBiases ReadBiases(BinaryReader reader, int[] shape);
+    public void WriteBiases(BinaryWriter writer, TBiases biases);
 }

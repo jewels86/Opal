@@ -80,7 +80,6 @@ public interface IFfTensorOperations<TWeights, TBiases, TInput, TOutput>
     TOutput Multiply(TWeights weights, TInput input);
     TOutput Multiply(TOutput a, TOutput b);
     TOutput Add(TOutput output, TBiases biases);
-    TOutput Apply(TOutput output, Func<double, double> activation);
 
     TInput GradInput(TWeights weights, TOutput gradZ);
     TWeights GradWeights(TOutput gradZ, TInput lastInput);

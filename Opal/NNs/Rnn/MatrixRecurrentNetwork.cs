@@ -1,4 +1,5 @@
 ﻿using Opal.Mathematics;
+using Opal.Utilities;
 
 namespace Opal.NNs.Rnn;
 
@@ -45,4 +46,11 @@ public class RecurrentMatrixTensorOperations : IRecurrentTensorOperations<double
     public double[,] GradOutput(double[,] weights, double[,] gradZ) => Matrices.Multiply(Matrices.Transpose(weights), gradZ);
     public double[,] GradInput(double[,] weights, double[,] gradZ) => Matrices.Multiply(Matrices.Transpose(weights), gradZ);
     public double[,] UpdateState(double[,] output) => output;
+
+    public double[,] ReadWeights(BinaryReader reader, int[] shape) => BinaryWriting.ReadMatrix(reader);
+    public void WriteWeights(BinaryWriter writer, double[,] weights) => BinaryWriting.WriteMatrix(writer, weights);
+    public double[,] ReadBiases(BinaryReader reader, int[] shape) => BinaryWriting.ReadMatrix(reader);
+    public void WriteBiases(BinaryWriter writer, double[,] biases) => BinaryWriting.WriteMatrix(writer, biases);
+    public double[,] ReadState(BinaryReader reader, int[] shape) => BinaryWriting.ReadMatrix(reader);
+    public void WriteState(BinaryWriter writer, double[,] state) => BinaryWriting.WriteMatrix(writer, state);
 }

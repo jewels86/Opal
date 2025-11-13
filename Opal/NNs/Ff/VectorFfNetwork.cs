@@ -31,15 +31,3 @@ public class VectorFfNetwork : FfNetwork<double[,], double[], double[], double[]
     {
     }
 }
-
-public class VectorFfNetworkFactory : 
-    IFfNetworkFactory<double[,], double[], double[], double[], double[], VectorFfNetwork>
-{
-    public VectorFfNetwork Create(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
-        ActivationFunction<double[]> hiddenActivation, ActivationFunction<double[]> outputActivation,
-        LossFunction<double[]> lossFunction, IOptimizer<double[,], double[]> optimizer, string name = "FfNetwork")
-    {
-        return new VectorFfNetwork(inputShape, hiddenShape, outputShape, hiddenLayers, hiddenActivation,
-            outputActivation, lossFunction, optimizer, name);
-    }
-}

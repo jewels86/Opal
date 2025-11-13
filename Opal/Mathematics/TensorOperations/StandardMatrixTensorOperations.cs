@@ -1,5 +1,6 @@
 ﻿using Opal.NNs.Ff;
 using Opal.NNs.Lstm.Attention;
+using Opal.Utilities;
 
 namespace Opal.Mathematics.TensorOperations;
 
@@ -66,4 +67,9 @@ public class StandardMatrixTensorOperations :
             gradWeights[i, j] = gradZ[i, 0] * lastInput[j, 0];
         return gradWeights;
     }
+
+    public double[,] ReadBiases(BinaryReader reader, int[] shape) => BinaryWriting.ReadMatrix(reader);
+    public void WriteBiases(BinaryWriter writer, double[,] biases) => BinaryWriting.WriteMatrix(writer, biases);
+    public double[,] ReadWeights(BinaryReader reader, int[] shape) => BinaryWriting.ReadMatrix(reader);
+    public void WriteWeights(BinaryWriter writer, double[,] weights) => BinaryWriting.WriteMatrix(writer, weights);
 }

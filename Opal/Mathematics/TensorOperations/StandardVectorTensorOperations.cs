@@ -1,5 +1,6 @@
 ﻿using Opal.NNs.Ff;
 using Opal.NNs.Lstm.Attention;
+using Opal.Utilities;
 
 namespace Opal.Mathematics.TensorOperations;
 
@@ -64,4 +65,9 @@ public class StandardVectorTensorOperations :
         }
         return result;
     }
+
+    public double[] ReadBiases(BinaryReader reader, int[] shape) => BinaryWriting.ReadVector(reader);
+    public void WriteBiases(BinaryWriter writer, double[] biases) => BinaryWriting.WriteVector(writer, biases);
+    public double[,] ReadWeights(BinaryReader reader, int[] shape) => BinaryWriting.ReadMatrix(reader);
+    public void WriteWeights(BinaryWriter writer, double[,] weights) => BinaryWriting.WriteMatrix(writer, weights);
 }

@@ -114,6 +114,22 @@ public class RecurrentLayer<TWeights, TBiases, TState, TIn, TOut> : ILayer<TIn, 
         cachedOutputs.Clear();
         cachedSums.Clear();
     }
+
+    public void Read(BinaryReader reader)
+    {
+        InputWeights = tensorOperations.ReadWeights(reader, InputShape);
+        RecurrentWeights = tensorOperations.ReadWeights(reader, OutputShape);
+        Biases = tensorOperations.ReadBiases(reader, OutputShape);
+        HiddenState = tensorOperations.ReadState(reader, OutputShape);
+    }
+
+    public void Write(BinaryWriter writer)
+    {
+        tensorOperations.WriteWeights(writer, InputWeights);
+        tensorOperations.WriteWeights(writer, RecurrentWeights);
+        tensorOperations.WriteBiases(writer, Biases);
+        tensorOperations.WriteState(writer, HiddenState);
+    }
 }
 
 public interface IRecurrentTensorOperations<TWeights, TBiases, TInput, TOutput, TState>
@@ -139,6 +155,12 @@ public interface IRecurrentTensorOperations<TWeights, TBiases, TInput, TOutput, 
     public TOutput GradOutput(TWeights weights, TOutput gradZ);
     public TInput GradInput(TWeights weights, TOutput gradZ);
     
+    public TWeights ReadWeights(BinaryReader reader, int[] shape);
+    public void WriteWeights(BinaryWriter writer, TWeights weights);
+    public TBiases ReadBiases(BinaryReader reader, int[] shape);
+    public void WriteBiases(BinaryWriter writer, TBiases biases);
+    public TState ReadState(BinaryReader reader, int[] shape);
+    public void WriteState(BinaryWriter writer, TState state);
     
     public TState UpdateState(TOutput output);
 }

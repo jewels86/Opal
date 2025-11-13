@@ -1,4 +1,5 @@
 ﻿using Opal.Mathematics;
+using Opal.Utilities;
 
 namespace Opal.NNs.Rnn;
 
@@ -108,5 +109,45 @@ public class RecurrentNetwork<TWeights, TBiases, TState, TInput, THidden, TOutpu
         foreach (var layer in HiddenLayers)
             layer.Reset();
         OutputLayer.Reset();
+    }
+
+    public void Save(string path)
+    {
+        using var writer = new BinaryWriter(File.Open(path, FileMode.Create));
+        
+        BinaryWriting.WriteString(writer, Name);
+        BinaryWriting.WriteShape(writer, InputShape);
+        BinaryWriting.WriteShape(writer, HiddenShape);
+        BinaryWriting.WriteShape(writer, OutputShape);
+        writer.Write(HiddenLayers.Count);
+        
+        InputLayer.Write(writer);
+        foreach (var layer in HiddenLayers)
+            layer.Write(writer);
+        OutputLayer.Write(writer);
+    }
+
+    public void Load(string path)
+    {
+        using var reader = new BinaryReader(File.Open(path, FileMode.Open));
+        
+        string name = BinaryWriting.ReadString(reader);
+        int[] inputShape = BinaryWriting.ReadShape(reader);
+        int[] hiddenShape = BinaryWriting.ReadShape(reader);
+        int[] outputShape = BinaryWriting.ReadShape(reader);
+        int hiddenLayerCount = reader.ReadInt32();
+        
+        if (!inputShape.SequenceEqual(InputShape) || 
+            !hiddenShape.SequenceEqual(HiddenShape) || 
+            !outputShape.SequenceEqual(OutputShape) ||
+            hiddenLayerCount != HiddenLayers.Count)
+        {
+            throw new InvalidOperationException("Network architecture mismatch. Cannot load weights.");
+        }
+        
+        InputLayer.Read(reader);
+        foreach (var layer in HiddenLayers)
+            layer.Read(reader);
+        OutputLayer.Read(reader);
     }
 }

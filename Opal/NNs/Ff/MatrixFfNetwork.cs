@@ -31,15 +31,3 @@ public class MatrixFfNetwork : FfNetwork<double[,], double[,], double[,], double
     {
     }
 }
-
-public class MatrixFfNetworkFactory : 
-    IFfNetworkFactory<double[,], double[,], double[,], double[,], double[,], MatrixFfNetwork>
-{
-    public MatrixFfNetwork Create(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
-        ActivationFunction<double[,]> hiddenActivation, ActivationFunction<double[,]> outputActivation,
-        LossFunction<double[,]> lossFunction, IOptimizer<double[,], double[,]> optimizer, string name = "FfNetwork")
-    {
-        return new MatrixFfNetwork(inputShape, hiddenShape, outputShape, hiddenLayers, hiddenActivation,
-            outputActivation, lossFunction, optimizer, name);
-    }
-}
