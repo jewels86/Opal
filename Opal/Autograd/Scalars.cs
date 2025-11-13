@@ -1,4 +1,6 @@
-﻿namespace Opal.Autograd;
+﻿using Opal.Mathematics;
+
+namespace Opal.Autograd;
 
 public static partial class Operations
 {
@@ -41,6 +43,20 @@ public static partial class Operations
         {
             scalar.Gradient -= output.Gradient;
             other.Gradient += output.Gradient;
+        }
+    }
+    
+    public static Tensor<double[]> VectorFromScalars(params Tensor<double>[] scalars)
+    {
+        var result = scalars.Select(s => s.Value).ToArray();
+        List<object> inputs = scalars.Cast<object>().ToList();
+    
+        return new Tensor<double[]>(result, inputs, Backwards, Vectors.Zeros(result.Length));
+    
+        void Backwards(Tensor<double[]> output)
+        {
+            for (int i = 0; i < scalars.Length; i++)
+                scalars[i].Gradient += output.Gradient[i];
         }
     }
     

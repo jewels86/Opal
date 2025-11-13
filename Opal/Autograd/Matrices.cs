@@ -19,4 +19,10 @@ public static partial class Operations
             matrix.Gradient = Matrices.Add(matrix.Gradient, gradMatrix);
         }
     }
+    
+    public static Tensor<double[]> Multiply(Tensor<double[]> input, Tensor<double[]>[] weights)
+    {
+        var dots = weights.Select(w => Operations.Dot(w, input)).ToArray();
+        return VectorFromScalars(dots);
+    }
 }
