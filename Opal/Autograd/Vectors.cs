@@ -34,4 +34,16 @@ public static partial class Operations
             }
         }
     }
+
+    public static Tensor<double[]> Subtract(Tensor<double[]> vector, Tensor<double[]> other)
+    {
+        var result = Vectors.Subtract(vector.Value, other.Value);
+        return new(result, new List<object> {vector, other}, Backwards, Vectors.Zeros(result.Length));
+        
+        void Backwards(Tensor<double[]> output)
+        {
+            vector.Gradient = Vectors.Add(vector.Gradient, output.Gradient);
+            other.Gradient = Vectors.Subtract(other.Gradient, output.Gradient);
+        }
+    }
 }

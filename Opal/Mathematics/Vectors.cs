@@ -88,6 +88,7 @@ public static class Vectors
             sum += a[i];
         return sum;
     }
+    public static double[] Negate(double[] a) => ApplyElementwise(a, x => -x);
     #endregion
     #region Other Operations
     public static double[,] OuterProduct(double[] a, double[] b)
