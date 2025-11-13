@@ -42,6 +42,14 @@ public static class Matrices
             throw new ArgumentException("Matrices must be of the same dimensions.");
         return ApplyElementwise(a, (x, i, j) => x + b[i, j]);
     }
+
+    public static double[,] Add(params List<double[,]> matrices)
+    {
+        var result = matrices[0];
+        for (int i = 1; i < matrices.Count; i++)
+            result = Add(result, matrices[i]);
+        return result;
+    }
     public static double[,] Subtract(double[,] a, double[,] b)
     {
         if (a.GetLength(0) != b.GetLength(0) || a.GetLength(1) != b.GetLength(1))
@@ -64,6 +72,14 @@ public static class Matrices
                 sum += a[i, k] * b[k, j];
             result[i, j] = sum;
         }
+        return result;
+    }
+
+    public static double[,] Multiply(params List<double[,]> matrices)
+    {
+        var result = matrices[0];
+        for (int i = 1; i < matrices.Count; i++)
+            result = Multiply(result, matrices[i]);
         return result;
     }
     #endregion

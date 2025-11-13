@@ -8,9 +8,9 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
     where THidden : notnull
     where TWeights : notnull where TBiases : notnull
 {
-    public FfLayer<TWeights, TBiases, TInput, THidden> InputLayer { get; }
-    public List<FfLayer<TWeights, TBiases, THidden, THidden>> HiddenLayers { get; }
-    public FfLayer<TWeights, TBiases, THidden, TOutput> OutputLayer { get; }
+    public LegacyFfLayer<TWeights, TBiases, TInput, THidden> InputLayer { get; }
+    public List<LegacyFfLayer<TWeights, TBiases, THidden, THidden>> HiddenLayers { get; }
+    public LegacyFfLayer<TWeights, TBiases, THidden, TOutput> OutputLayer { get; }
     
     public string Name { get; private set; }
     
