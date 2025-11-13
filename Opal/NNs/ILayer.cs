@@ -1,13 +1,9 @@
 ﻿namespace Opal.NNs;
 
-public interface ILayer<TInput, TOutput> where TInput : notnull where TOutput : notnull
+public interface ILayer<in TIn, out TOut>
+    where TIn : notnull where TOut : notnull
 {
-    public int[] InputShape { get; }
-    public int[] OutputShape { get; }
-    
-    public TOutput Forward(TInput input);
-    public TInput Backward(TOutput gradOutput, double learningRate);
-    public void Reset();
+    public TOut Forward(TIn input);
     
     public void Write(BinaryWriter writer);
     public void Read(BinaryReader reader);

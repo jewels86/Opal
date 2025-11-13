@@ -42,6 +42,14 @@ public static class Vectors
             throw new ArgumentException("Vectors must be of the same length.");
         return ApplyElementwise(a, (x, i) => x + b[i]);
     }
+
+    public static double[] Add(params List<double[]> vectors)
+    {
+        var resultant = vectors[0];
+        for (int i = 1; i < vectors.Count; i++)
+            resultant = Add(resultant, vectors[i]);
+        return resultant;
+    }
     public static double[] Subtract(double[] a, double[] b)
     {
         if (a.Length != b.Length)
@@ -63,6 +71,14 @@ public static class Vectors
             throw new ArgumentException("Vectors must be of the same length.");
         return ApplyElementwise(a, (x, i) => x * b[i]);
     }
+
+    public static double[] Multiply(params List<double[]> vectors)
+    {
+        var result = vectors[0];
+        for (int i = 1; i < vectors.Count; i++)
+            result = Multiply(result, vectors[i]);
+        return result;
+    }
     public static double[] Multiply(double[] a, double scalar) => ApplyElementwise(a, x => x * scalar);
     public static double[] Divide(double[] a, double scalar) => ApplyElementwise(a, x => x / scalar);
     public static double Sum(double[] a)
@@ -72,6 +88,7 @@ public static class Vectors
             sum += a[i];
         return sum;
     }
+    public static double[] Negate(double[] a) => ApplyElementwise(a, x => -x);
     #endregion
     #region Other Operations
     public static double[,] OuterProduct(double[] a, double[] b)
@@ -84,5 +101,7 @@ public static class Vectors
         return result;
     }
     public static double[] Concat(double[] a, double[] b) => a.Concat(b).ToArray();
+    public static double[] Zeros(int size) => new double[size]; 
+    public static double[] Ones(int size) => new double[size].Select(_ => 1.0).ToArray();
     #endregion
 }

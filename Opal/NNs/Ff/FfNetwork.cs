@@ -1,62 +1,41 @@
-﻿using Opal.Mathematics;
+﻿using Opal.Autograd;
+using Opal.Mathematics;
 using Opal.Utilities;
 
 namespace Opal.NNs.Ff;
 
-public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : INetwork<TInput, TOutput>
-    where TInput : notnull where TOutput : notnull
-    where THidden : notnull
-    where TWeights : notnull where TBiases : notnull
+public abstract class FfNetwork<TInput, THidden, TOutput, TWeightIn, TWeightHidden, TWeightOut>
+    : INetwork<TInput, TOutput>
+    where TInput : notnull where TOutput : notnull where THidden : notnull
+    where TWeightIn : notnull where TWeightHidden : notnull where TWeightOut : notnull
 {
-    public FfLayer<TWeights, TBiases, TInput, THidden> InputLayer { get; }
-    public List<FfLayer<TWeights, TBiases, THidden, THidden>> HiddenLayers { get; }
-    public FfLayer<TWeights, TBiases, THidden, TOutput> OutputLayer { get; }
+    public FfLayer<TInput, THidden, TWeightIn> InputLayer { get; }
+    public List<FfLayer<THidden, THidden, TWeightHidden>> HiddenLayers { get; }
+    public FfLayer<THidden, TOutput, TWeightOut> OutputLayer { get; }
     
-    public string Name { get; private set; }
-    
-    public int[] InputShape { get; private set; }
-    public int[] HiddenShape { get; private set; }
-    public int[] OutputShape { get; private set; }
-    
-    public IFfTensorOperations<TWeights, TBiases, TInput, THidden> InputTensorOperations { get; }
-    public IFfTensorOperations<TWeights, TBiases, THidden, THidden> HiddenTensorOperations { get; }
-    public IFfTensorOperations<TWeights, TBiases, THidden, TOutput> OutputTensorOperations { get; }
-    
-    public ActivationFunction<TOutput> OutputActivation { get; }
-    public ActivationFunction<THidden> HiddenActivation { get; }
-    
+    public string Name { get; set; }
     public LossFunction<TOutput> LossFunction { get; }
-    public IOptimizer<TWeights, TBiases> Optimizer { get; }
     
-    protected FfNetwork(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
-        ActivationFunction<THidden> hiddenActivation, ActivationFunction<TOutput> outputActivation,
-        LossFunction<TOutput> lossFunction, IOptimizer<TWeights, TBiases> optimizer, 
-        IFfTensorOperations<TWeights, TBiases, TInput, THidden> inputTensorOperations,
-        IFfTensorOperations<TWeights, TBiases, THidden, THidden> hiddenTensorOperations,
-        IFfTensorOperations<TWeights, TBiases, THidden, TOutput> outputTensorOperations,
+    protected int HiddenSize { get; }
+    protected ActivationFunction<THidden> HiddenActivation { get; }
+    
+    protected FfNetwork(
+        FfLayer<TInput, THidden, TWeightIn> inputLayer,
+        List<FfLayer<THidden, THidden, TWeightHidden>> hiddenLayers,
+        FfLayer<THidden, TOutput, TWeightOut> outputLayer,
+        LossFunction<TOutput> lossFunction,
+        int hiddenSize,
+        ActivationFunction<THidden> hiddenActivation,
         string name = "FfNetwork")
     {
-        InputShape = inputShape;
-        HiddenShape = hiddenShape;
-        OutputShape = outputShape;
-        Name = name;
-        
-        InputTensorOperations = inputTensorOperations;
-        HiddenTensorOperations = hiddenTensorOperations;
-        OutputTensorOperations = outputTensorOperations;
-
-        OutputActivation = outputActivation;
-        HiddenActivation = hiddenActivation;
+        InputLayer = inputLayer;
+        HiddenLayers = hiddenLayers;
+        OutputLayer = outputLayer;
         LossFunction = lossFunction;
-        Optimizer = optimizer;
-        
-        InputLayer = new(InputShape, HiddenShape, HiddenActivation, InputTensorOperations, Optimizer);
-        HiddenLayers = [];
-        for (int i = 0; i < hiddenLayers; i++)
-            HiddenLayers.Add(new(HiddenShape, HiddenShape, HiddenActivation, HiddenTensorOperations, Optimizer));
-        OutputLayer = new(HiddenShape, OutputShape, OutputActivation, OutputTensorOperations, Optimizer);
+        HiddenSize = hiddenSize;
+        HiddenActivation = hiddenActivation;
+        Name = name;
     }
-    
 
     public TOutput Forward(TInput input)
     {
@@ -72,19 +51,22 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
         {
             for (int i = 0; i < inputs.Length; i++)
             {
-                var input = inputs[i];
-                var target = targets[i];
-                var hidden = InputLayer.Forward(input);
+                var inputTensor = new Tensor<TInput>(inputs[i], null, _ => { }, 
+                    InputLayer.Catalog.ZeroGradient(inputs[i]));
+            
+                var hiddenTensor = InputLayer.Forward(inputTensor);
                 foreach (var layer in HiddenLayers)
-                    hidden = layer.Forward(hidden);
-                var output = OutputLayer.Forward(hidden);
+                    hiddenTensor = layer.Forward(hiddenTensor);
+                var outputTensor = OutputLayer.Forward(hiddenTensor);
 
-                var lossGrad = LossFunction.Derivative(output, target);
+                var lossTensor = LossFunction.Function(outputTensor, targets[i]);
 
-                var grad = OutputLayer.Backward(lossGrad, learningRate);
-                for (int h = HiddenLayers.Count - 1; h >= 0; h--)
-                    grad = HiddenLayers[h].Backward(grad, learningRate);
-                InputLayer.Backward(grad, learningRate);
+                lossTensor.Backward(1.0);
+
+                InputLayer.UpdateParameters(learningRate);
+                foreach (var layer in HiddenLayers)
+                    layer.UpdateParameters(learningRate);
+                OutputLayer.UpdateParameters(learningRate);
             }
         }
     }
@@ -94,29 +76,25 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
         double totalLoss = 0.0;
         for (int i = 0; i < inputs.Length; i++)
         {
-            var predicted = Forward(inputs[i]);
-            var actual = targets[i];
-            totalLoss += LossFunction.Function(predicted, actual);
+            var inputTensor = new Tensor<TInput>(inputs[i], null, _ => { }, 
+                InputLayer.Catalog.ZeroGradient(inputs[i]));
+        
+            var hiddenTensor = InputLayer.Forward(inputTensor);
+            foreach (var layer in HiddenLayers)
+                hiddenTensor = layer.Forward(hiddenTensor);
+            var outputTensor = OutputLayer.Forward(hiddenTensor);
+        
+            var lossTensor = LossFunction.Function(outputTensor, targets[i]);
+            totalLoss += lossTensor.Value;
         }
         return totalLoss / inputs.Length;
     }
-    public void Reset()
-    {
-        InputLayer.Reset();
-        foreach (var layer in HiddenLayers)
-            layer.Reset();
-        OutputLayer.Reset();
-    }
 
-    public virtual void Save(string path)
+    public void Save(string path)
     {
-        BinaryWriter writer = new(File.OpenWrite(path));
+        using BinaryWriter writer = new(File.OpenWrite(path));
         
         BinaryWriting.WriteString(writer, Name);
-        
-        BinaryWriting.WriteShape(writer, InputShape);
-        BinaryWriting.WriteShape(writer, HiddenShape);
-        BinaryWriting.WriteShape(writer, OutputShape);
         
         InputLayer.Write(writer);
         writer.Write(HiddenLayers.Count);
@@ -125,22 +103,23 @@ public abstract class FfNetwork<TWeights, TBiases, TInput, THidden, TOutput> : I
         OutputLayer.Write(writer);
     }
 
-    public virtual void Load(string path)
+    public void Load(string path)
     {
-        BinaryReader reader = new(File.OpenRead(path));
-
-        Name = BinaryWriting.ReadString(reader);
-
-        InputShape = BinaryWriting.ReadShape(reader);
-        HiddenShape = BinaryWriting.ReadShape(reader);
-        OutputShape = BinaryWriting.ReadShape(reader);
+        using BinaryReader reader = new(File.OpenRead(path));
         
+        Name = BinaryWriting.ReadString(reader);
+    
         InputLayer.Read(reader);
-        int count = reader.Read();
+        int count = reader.ReadInt32();
+        HiddenLayers.Clear();
         for (int i = 0; i < count; i++)
-            HiddenLayers.Add(new(InputShape, OutputShape, HiddenActivation, HiddenTensorOperations, Optimizer));
-        for (int i = 0; i < count; i++)
-            HiddenLayers[i].Read(reader);
+        {
+            var layer = CreateHiddenLayer();
+            layer.Read(reader);
+            HiddenLayers.Add(layer);
+        }
         OutputLayer.Read(reader);
     }
+    
+    protected abstract FfLayer<THidden, THidden, TWeightHidden> CreateHiddenLayer();
 }
