@@ -41,8 +41,8 @@ public static partial class Operations
         
         void Backwards(Tensor<double> output)
         {
-            scalar.Gradient -= output.Gradient;
-            other.Gradient += output.Gradient;
+            scalar.Gradient += output.Gradient;
+            other.Gradient -= output.Gradient;
         }
     }
     
