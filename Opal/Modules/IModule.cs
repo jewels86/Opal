@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Opal.Utilities;
+﻿using Opal.Utilities;
 
-namespace Opal
+namespace Opal.Modules
 {
 	public interface IModule
 	{
