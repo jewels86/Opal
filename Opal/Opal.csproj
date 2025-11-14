@@ -16,17 +16,14 @@
 
   <ItemGroup>
     <Compile Remove="NNs\Lstm\**" />
-    <Compile Remove="NNs\Rnn\**" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Remove="NNs\Lstm\**" />
-    <EmbeddedResource Remove="NNs\Rnn\**" />
   </ItemGroup>
 
   <ItemGroup>
     <None Remove="NNs\Lstm\**" />
-    <None Remove="NNs\Rnn\**" />
   </ItemGroup>
 
 </Project>
