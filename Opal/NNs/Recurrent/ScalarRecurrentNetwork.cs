@@ -2,7 +2,7 @@
 using Opal.Autograd.Catalogs;
 using Opal.Mathematics;
 
-namespace Opal.NNs.Rnn;
+namespace Opal.NNs.Recurrent;
 
 public class ScalarRecurrentNetwork : RecurrentNetwork<double, double, double, double, double, double, double>
 {

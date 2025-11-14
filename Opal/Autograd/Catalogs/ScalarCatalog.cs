@@ -1,5 +1,5 @@
 ﻿using Opal.NNs.Ff;
-using Opal.NNs.Rnn;
+using Opal.NNs.Recurrent;
 
 namespace Opal.Autograd.Catalogs;
 
