@@ -1,66 +1,43 @@
-﻿using Opal.Mathematics;
+﻿using Opal.Autograd;
+using Opal.Mathematics;
 using Opal.Utilities;
 
 namespace Opal.NNs.Rnn;
 
-public class RecurrentNetwork<TWeights, TBiases, TState, TInput, THidden, TOutput> : INetwork<TInput, TOutput>
-    where TInput : notnull where TOutput : notnull
-    where THidden : notnull
-    where TWeights : notnull
-    where TBiases : notnull
+public abstract class RecurrentNetwork<TInput, THidden, TOutput, TWeightIn, TWeightHidden, TWeightOut, TState>
+    : INetwork<TInput, TOutput>
+    where TInput : notnull where TOutput : notnull where THidden : notnull
+    where TWeightIn : notnull where TWeightHidden : notnull where TWeightOut : notnull
     where TState : notnull
-
 {
-    public RecurrentLayer<TWeights, TBiases, TState, TInput, THidden> InputLayer { get; }
-    public List<RecurrentLayer<TWeights, TBiases, TState, THidden, THidden>> HiddenLayers { get; }
-    public RecurrentLayer<TWeights, TBiases, TState, THidden, TOutput> OutputLayer { get; }
+    public RecurrentLayer<TInput, THidden, TWeightIn, TState> InputLayer { get; }
+    public List<RecurrentLayer<THidden, THidden, TWeightHidden, TState>> HiddenLayers { get; }
+    public RecurrentLayer<THidden, TOutput, TWeightOut, TState> OutputLayer { get; }
     
-    public string Name { get; }
-    
-    public int[] InputShape { get; }
-    public int[] HiddenShape { get; }
-    public int[] OutputShape { get; }
-    
-    public IRecurrentTensorOperations<TWeights, TBiases, TInput, THidden, TState> InputTensorOperations { get; }
-    public IRecurrentTensorOperations<TWeights, TBiases, THidden, THidden, TState> HiddenTensorOperations { get; }
-    public IRecurrentTensorOperations<TWeights, TBiases, THidden, TOutput, TState> OutputTensorOperations { get; }
-    
-    public ActivationFunction<TOutput> OutputActivation { get; }
-    public ActivationFunction<THidden> HiddenActivation { get; }
-    
+    public string Name { get; set; }
     public LossFunction<TOutput> LossFunction { get; }
-    public IOptimizer<TWeights, TBiases> Optimizer { get; }
     
-    public RecurrentNetwork(int[] inputShape, int[] hiddenShape, int[] outputShape, int hiddenLayers,
-        ActivationFunction<THidden> hiddenActivation, ActivationFunction<TOutput> outputActivation,
-        LossFunction<TOutput> lossFunction, IOptimizer<TWeights, TBiases> optimizer, 
-        IRecurrentTensorOperations<TWeights, TBiases, TInput, THidden, TState> inputTensorOperations,
-        IRecurrentTensorOperations<TWeights, TBiases, THidden, THidden, TState> hiddenTensorOperations,
-        IRecurrentTensorOperations<TWeights, TBiases, THidden, TOutput, TState> outputTensorOperations,
-        string name = "RecurrentNetwork")
+    protected int HiddenSize { get; }
+    protected ActivationFunction<THidden> HiddenActivation { get; }
+    
+    protected RecurrentNetwork(
+        RecurrentLayer<TInput, THidden, TWeightIn, TState> inputLayer,
+        List<RecurrentLayer<THidden, THidden, TWeightHidden, TState>> hiddenLayers,
+        RecurrentLayer<THidden, TOutput, TWeightOut, TState> outputLayer,
+        LossFunction<TOutput> lossFunction,
+        int hiddenSize,
+        ActivationFunction<THidden> hiddenActivation,
+        string name = "RnnNetwork")
     {
-        InputShape = inputShape;
-        HiddenShape = hiddenShape;
-        OutputShape = outputShape;
-        Name = name;
-        
-        InputTensorOperations = inputTensorOperations;
-        HiddenTensorOperations = hiddenTensorOperations;
-        OutputTensorOperations = outputTensorOperations;
-
-        OutputActivation = outputActivation;
-        HiddenActivation = hiddenActivation;
+        InputLayer = inputLayer;
+        HiddenLayers = hiddenLayers;
+        OutputLayer = outputLayer;
         LossFunction = lossFunction;
-        Optimizer = optimizer;
-        
-        InputLayer = new(InputShape, HiddenShape, HiddenActivation, InputTensorOperations, Optimizer);
-        HiddenLayers = [];
-        for (int i = 0; i < hiddenLayers; i++)
-            HiddenLayers.Add(new(HiddenShape, HiddenShape, HiddenActivation, HiddenTensorOperations, Optimizer));
-        OutputLayer = new(HiddenShape, OutputShape, OutputActivation, OutputTensorOperations, Optimizer);
+        HiddenSize = hiddenSize;
+        HiddenActivation = hiddenActivation;
+        Name = name;
     }
-    
-    
+
     public TOutput Forward(TInput input)
     {
         THidden hidden = InputLayer.Forward(input);
@@ -75,19 +52,22 @@ public class RecurrentNetwork<TWeights, TBiases, TState, TInput, THidden, TOutpu
         {
             for (int i = 0; i < inputs.Length; i++)
             {
-                var input = inputs[i];
-                var target = targets[i];
-                var hidden = InputLayer.Forward(input);
+                var inputTensor = new Tensor<TInput>(inputs[i], null, _ => { }, 
+                    InputLayer.Catalog.ZeroGradient(inputs[i]));
+            
+                var hiddenTensor = InputLayer.Forward(inputTensor);
                 foreach (var layer in HiddenLayers)
-                    hidden = layer.Forward(hidden);
-                var output = OutputLayer.Forward(hidden);
+                    hiddenTensor = layer.Forward(hiddenTensor);
+                var outputTensor = OutputLayer.Forward(hiddenTensor);
 
-                var lossGrad = LossFunction.Derivative(output, target);
+                var lossTensor = LossFunction.Function(outputTensor, targets[i]);
 
-                var grad = OutputLayer.Backward(lossGrad, learningRate);
-                for (int h = HiddenLayers.Count - 1; h >= 0; h--)
-                    grad = HiddenLayers[h].Backward(grad, learningRate);
-                InputLayer.Backward(grad, learningRate);
+                lossTensor.Backward(1.0);
+
+                InputLayer.UpdateParameters(learningRate);
+                foreach (var layer in HiddenLayers)
+                    layer.UpdateParameters(learningRate);
+                OutputLayer.UpdateParameters(learningRate);
             }
         }
     }
@@ -97,31 +77,52 @@ public class RecurrentNetwork<TWeights, TBiases, TState, TInput, THidden, TOutpu
         double totalLoss = 0.0;
         for (int i = 0; i < inputs.Length; i++)
         {
-            var predicted = Forward(inputs[i]);
-            var actual = targets[i];
-            totalLoss += LossFunction.Function(predicted, actual);
+            var inputTensor = new Tensor<TInput>(inputs[i], null, _ => { }, 
+                InputLayer.Catalog.ZeroGradient(inputs[i]));
+        
+            var hiddenTensor = InputLayer.Forward(inputTensor);
+            foreach (var layer in HiddenLayers)
+                hiddenTensor = layer.Forward(hiddenTensor);
+            var outputTensor = OutputLayer.Forward(hiddenTensor);
+        
+            var lossTensor = LossFunction.Function(outputTensor, targets[i]);
+            totalLoss += lossTensor.Value;
         }
         return totalLoss / inputs.Length;
     }
-    public void Reset()
+
+    public void ResetState()
     {
-        InputLayer.Reset();
+        InputLayer.State = new Tensor<TState>(
+            InputLayer.Catalog.ZeroGradient(InputLayer.State.Value), 
+            null, 
+            _ => { }, 
+            InputLayer.Catalog.ZeroGradient(InputLayer.State.Value));
+        
         foreach (var layer in HiddenLayers)
-            layer.Reset();
-        OutputLayer.Reset();
+        {
+            layer.State = new Tensor<TState>(
+                layer.Catalog.ZeroGradient(layer.State.Value), 
+                null, 
+                _ => { }, 
+                layer.Catalog.ZeroGradient(layer.State.Value));
+        }
+        
+        OutputLayer.State = new Tensor<TState>(
+            OutputLayer.Catalog.ZeroGradient(OutputLayer.State.Value), 
+            null, 
+            _ => { }, 
+            OutputLayer.Catalog.ZeroGradient(OutputLayer.State.Value));
     }
 
     public void Save(string path)
     {
-        using var writer = new BinaryWriter(File.Open(path, FileMode.Create));
+        using BinaryWriter writer = new(File.OpenWrite(path));
         
         BinaryWriting.WriteString(writer, Name);
-        BinaryWriting.WriteShape(writer, InputShape);
-        BinaryWriting.WriteShape(writer, HiddenShape);
-        BinaryWriting.WriteShape(writer, OutputShape);
-        writer.Write(HiddenLayers.Count);
         
         InputLayer.Write(writer);
+        writer.Write(HiddenLayers.Count);
         foreach (var layer in HiddenLayers)
             layer.Write(writer);
         OutputLayer.Write(writer);
@@ -129,25 +130,21 @@ public class RecurrentNetwork<TWeights, TBiases, TState, TInput, THidden, TOutpu
 
     public void Load(string path)
     {
-        using var reader = new BinaryReader(File.Open(path, FileMode.Open));
+        using BinaryReader reader = new(File.OpenRead(path));
         
-        string name = BinaryWriting.ReadString(reader);
-        int[] inputShape = BinaryWriting.ReadShape(reader);
-        int[] hiddenShape = BinaryWriting.ReadShape(reader);
-        int[] outputShape = BinaryWriting.ReadShape(reader);
-        int hiddenLayerCount = reader.ReadInt32();
-        
-        if (!inputShape.SequenceEqual(InputShape) || 
-            !hiddenShape.SequenceEqual(HiddenShape) || 
-            !outputShape.SequenceEqual(OutputShape) ||
-            hiddenLayerCount != HiddenLayers.Count)
-        {
-            throw new InvalidOperationException("Network architecture mismatch. Cannot load weights.");
-        }
-        
+        Name = BinaryWriting.ReadString(reader);
+    
         InputLayer.Read(reader);
-        foreach (var layer in HiddenLayers)
+        int count = reader.ReadInt32();
+        HiddenLayers.Clear();
+        for (int i = 0; i < count; i++)
+        {
+            var layer = CreateHiddenLayer();
             layer.Read(reader);
+            HiddenLayers.Add(layer);
+        }
         OutputLayer.Read(reader);
     }
+    
+    protected abstract RecurrentLayer<THidden, THidden, TWeightHidden, TState> CreateHiddenLayer();
 }

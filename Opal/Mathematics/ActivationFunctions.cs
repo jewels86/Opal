@@ -109,6 +109,42 @@ public static class ActivationFunctions
             }
         }
     );
+    
+    public static readonly ActivationFunction<double[]> IdentityVector = new( 
+        x => 
+        { 
+            var result = (double[])x.Value.Clone(); 
+            return new Tensor<double[]>(result, [x], Backwards, Vectors.Zeros(result.Length));
+            void Backwards(Tensor<double[]> output)
+            {
+                x.Gradient = Vectors.Add(x.Gradient, output.Gradient);
+            }
+        }
+    );
+
+    public static readonly ActivationFunction<double[]> SoftmaxVector = new(x =>
+        {
+            var expValues = x.Value.Select(Math.Exp).ToArray();
+            var sum = expValues.Sum();
+            var result = expValues.Select(e => e / sum).ToArray();
+            return new Tensor<double[]>(result, [x], Backwards, Vectors.Zeros(result.Length));
+
+            void Backwards(Tensor<double[]> output)
+            {
+                var softmax = result;
+                var grad = new double[softmax.Length];
+                for (int i = 0; i < softmax.Length; i++)
+                {
+                    for (int j = 0; j < softmax.Length; j++)
+                    {
+                        var delta = i == j ? 1.0 : 0.0;
+                        grad[i] += output.Gradient[j] * softmax[i] * (delta - softmax[j]);
+                    }
+                }
+                x.Gradient = Vectors.Add(x.Gradient, grad);
+            }
+        }
+    );
     #endregion
     #region Matrices
     public static readonly ActivationFunction<double[,]> ReLuMatrix = new(

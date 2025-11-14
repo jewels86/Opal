@@ -8,7 +8,7 @@ public static partial class Operations
     public static Tensor<double[]> Sum(params List<Tensor<double[]>> vectors)
     {
         var result = Vectors.Add(vectors.Select(v => v.Value).ToList());
-        return new(result, vectors.Cast<object>().ToList(), Backwards, Vectors.Ones(result.Length));
+        return new(result, vectors.Cast<object>().ToList(), Backwards, Vectors.Zeros(result.Length));
         
         void Backwards(Tensor<double[]> output)
         {

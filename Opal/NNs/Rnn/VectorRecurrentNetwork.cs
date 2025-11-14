@@ -1,96 +1,88 @@
-﻿using Opal.Mathematics;
-using Opal.Utilities;
+﻿using Opal.Autograd;
+using Opal.Autograd.Catalogs;
+using Opal.Mathematics;
 
 namespace Opal.NNs.Rnn;
 
-public class VectorRecurrentNetwork : RecurrentNetwork<double[,], double[], double[], double[], double[], double[]>
+public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], double[], double[], double[], double[], double[]>
 {
     public VectorRecurrentNetwork(
-        int[] inputShape,
-        int[] hiddenShape,
-        int[] outputShape,
-        int hiddenLayers,
-        ActivationFunction<double[]>? hiddenActivation = null,
-        ActivationFunction<double[]>? outputActivation = null,
-        LossFunction<double[]>? lossFunction = null,
-        IOptimizer<double[,], double[]>? optimizer = null,
+        int inputSize,
+        int hiddenSize,
+        int outputSize,
+        int numHiddenLayers,
+        ActivationFunction<double[]> hiddenActivation,
+        ActivationFunction<double[]> outputActivation,
+        LossFunction<double[]> lossFunction,
         string name = "VectorRecurrentNetwork")
         : base(
-            inputShape,
-            hiddenShape,
-            outputShape,
-            hiddenLayers,
-            hiddenActivation ?? ActivationFunctions.ReLuVector,
-            outputActivation ?? ActivationFunctions.ReLuVector,
-            lossFunction ?? LossFunctions.CrossEntropy,
-            optimizer ?? new StandardVectorOptimizer(),
-            new VectorRecurrentTensorOperations(),
-            new VectorRecurrentTensorOperations(),
-            new VectorRecurrentTensorOperations(),
+            CreateLayer(inputSize, hiddenSize, hiddenActivation),
+            CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
+            CreateLayer(hiddenSize, outputSize, outputActivation),
+            lossFunction,
+            hiddenSize,
+            hiddenActivation,
             name)
     {
     }
+
+    protected override RecurrentLayer<double[], double[], double[], double[]> CreateHiddenLayer() =>
+        CreateLayer(HiddenSize, HiddenSize, HiddenActivation);
+
+    private static RecurrentLayer<double[], double[], double[], double[]> CreateLayer(
+        int inputSize,
+        int outputSize,
+        ActivationFunction<double[]> activation)
+    {
+        var catalog = new VectorCatalog();
+        var random = new Random();
+        
+        // Create input weights
+        var inputWeights = new Tensor<double[]>[outputSize];
+        for (int i = 0; i < outputSize; i++) 
+        {
+            var weight = new double[inputSize];  
+            for (int j = 0; j < inputSize; j++)
+                weight[j] = random.NextDouble() * 2 - 1;
+            inputWeights[i] = new Tensor<double[]>(weight, null, _ => { }, Vectors.Zeros(inputSize));
+        }
+        
+        // Create recurrent weights
+        var recurrentWeights = new Tensor<double[]>[outputSize];
+        for (int i = 0; i < outputSize; i++) 
+        {
+            var weight = new double[outputSize];  
+            for (int j = 0; j < outputSize; j++)
+                weight[j] = random.NextDouble() * 2 - 1;
+            recurrentWeights[i] = new Tensor<double[]>(weight, null, _ => { }, Vectors.Zeros(outputSize));
+        }
+        
+        // Create biases
+        Tensor<double[]> biases = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize));
+        
+        // Create initial state
+        Tensor<double[]> state = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize));
+    
+        return new RecurrentLayer<double[], double[], double[], double[]>
+        {
+            InputWeights = inputWeights,
+            RecurrentWeights = recurrentWeights,
+            Biases = biases,
+            State = state,
+            Activation = activation,
+            Catalog = catalog
+        };
+    }
+
+    private static List<RecurrentLayer<double[], double[], double[], double[]>> CreateHiddenLayers(
+        int numLayers,
+        int hiddenSize,
+        ActivationFunction<double[]> activation)
+    {
+        var layers = new List<RecurrentLayer<double[], double[], double[], double[]>>();
+        for (int i = 0; i < numLayers; i++)
+            layers.Add(CreateLayer(hiddenSize, hiddenSize, activation));
+        return layers;
+    }
 }
 
-public class VectorRecurrentTensorOperations : IRecurrentTensorOperations<double[,], double[], double[], double[], double[]>
-{
-    public double[,] DefaultWeights(int[] outputShape, int[] inputShape) => Matrices.RandomMatrix(outputShape[0], inputShape[0]);
-    public double[] DefaultBiases(int[] outputShape) => new double[outputShape[0]];
-    public double[] DefaultState(int[] outputsShape) => new double[outputsShape[0]];
-
-    public double[] Add(double[] a, double[] b) => Vectors.Add(a, b);
-    public double[,] Add(double[,] a, double[,] b)
-    {
-        int rows = a.GetLength(0);
-        int cols = a.GetLength(1);
-        var result = new double[rows, cols];
-        for (int i = 0; i < rows; i++)
-            for (int j = 0; j < cols; j++)
-                result[i, j] = a[i, j] + b[i, j];
-        return result;
-    }
-
-    public double[] Multiply(double[,] weights, double[] input) => Matrices.Multiply(weights, input);
-    public double[] Multiply(double[] a, double[] b) => Vectors.Multiply(a, b);
-
-    public double[,] GradInputWeights(double[] gradZ, double[] input) => Vectors.OuterProduct(gradZ, input);
-    public double[,] GradRecurrentWeights(double[] gradZ, double[] state) => Vectors.OuterProduct(gradZ, state);
-    public double[] GradBiases(double[] gradZ) => gradZ;
-    public double[] GradOutput(double[,] weights, double[] gradZ) => 
-        Matrices.Multiply(Matrices.Transpose(weights), gradZ);
-    
-    public double[] GradInput(double[,] weights, double[] gradZ) => 
-        Matrices.Multiply(Matrices.Transpose(weights), gradZ);
-    
-    public double[] UpdateState(double[] output) => output;
-
-    public double[,] ReadWeights(BinaryReader reader, int[] shape)
-    {
-        return BinaryWriting.ReadMatrix(reader);
-    }
-
-    public void WriteWeights(BinaryWriter writer, double[,] weights)
-    {
-        BinaryWriting.WriteMatrix(writer, weights);
-    }
-
-    public double[] ReadBiases(BinaryReader reader, int[] shape)
-    {
-        return BinaryWriting.ReadVector(reader);
-    }
-
-    public void WriteBiases(BinaryWriter writer, double[] biases)
-    {
-        BinaryWriting.WriteVector(writer, biases);
-    }
-
-    public double[] ReadState(BinaryReader reader, int[] shape)
-    {
-        return BinaryWriting.ReadVector(reader);
-    }
-
-    public void WriteState(BinaryWriter writer, double[] state)
-    {
-        BinaryWriting.WriteVector(writer, state);
-    }
-}

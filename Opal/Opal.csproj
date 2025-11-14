@@ -14,4 +14,16 @@
     <Folder Include="Modules\Refinement\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="NNs\Lstm\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="NNs\Lstm\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="NNs\Lstm\**" />
+  </ItemGroup>
+
 </Project>

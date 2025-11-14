@@ -7,7 +7,7 @@ public static partial class Operations
     public static Tensor<double> Sum(params List<Tensor<double>> scalars)
     {
         var result = scalars.Sum(s => s.Value);
-        return new(result, scalars.Cast<object>().ToList(), Backwards, 1.0);
+        return new(result, scalars.Cast<object>().ToList(), Backwards, 0.0);
 
         void Backwards(Tensor<double> output)
         {

@@ -1,166 +1,120 @@
-﻿using Opal.Mathematics;
+﻿using Opal.Autograd;
+using Opal.Mathematics;
 
 namespace Opal.NNs.Rnn;
 
-public class RecurrentLayer<TWeights, TBiases, TState, TIn, TOut> : ILayer<TIn, TOut> 
+public class RecurrentLayer<TIn, TOut, TWeight, TState> : ILayer<TIn, TOut>
     where TIn : notnull where TOut : notnull
-    where TWeights : notnull
-    where TBiases : notnull
-    where TState : notnull
+    where TWeight : notnull where TState : notnull
 {
-    public int[] InputShape { get; }
-    public int[] OutputShape { get; }
-    
-    public TWeights InputWeights { get; set; }
-    public TWeights RecurrentWeights { get; set; }
-    public TBiases Biases { get; set; }
-    
-    public TState HiddenState { get; set; }
-    public ActivationFunction<TOut> Activation { get; }
+    public Tensor<TWeight>[] InputWeights { get; set; } 
+    public Tensor<TWeight>[] RecurrentWeights { get; set; }
+    public Tensor<TOut> Biases { get; set; }
+    public Tensor<TState> State { get; set; }
+    public ActivationFunction<TOut> Activation { get; set; }
+    public IRecurrentCatalog<TIn, TOut, TWeight, TState> Catalog { get; set; }
 
-    private readonly IRecurrentTensorOperations<TWeights, TBiases, TIn, TOut, TState> tensorOperations;
-    private readonly IOptimizer<TWeights, TBiases> optimizer;
-
-    private List<TIn> cachedInputs;
-    private List<TState> cachedStates;
-    private List<TOut> cachedOutputs;
-    private List<TOut> cachedSums;
-
-    public RecurrentLayer(int[] inputShape, int[] outputShape, ActivationFunction<TOut> activation, 
-        IRecurrentTensorOperations<TWeights, TBiases, TIn, TOut, TState> tensorOperations, IOptimizer<TWeights, TBiases> optimizer)
+    public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        InputShape = inputShape;
-        OutputShape = outputShape;
-        Activation = activation;
-        
-        InputWeights = tensorOperations.DefaultWeights(outputShape, inputShape);
-        RecurrentWeights = tensorOperations.DefaultWeights(outputShape, outputShape);
-        Biases = tensorOperations.DefaultBiases(outputShape);
-        HiddenState = tensorOperations.DefaultState(outputShape);
-        
-        this.tensorOperations = tensorOperations;
-        this.optimizer = optimizer;
-        cachedInputs = [];
-        cachedStates = [];
-        cachedOutputs = [];
-        cachedSums = [];
-    }
-    
-    public TOut Forward(TIn input, bool cache)
-    {
-        var inputPart = tensorOperations.Multiply(InputWeights, input);
-        var hiddenPart = tensorOperations.Multiply(RecurrentWeights, HiddenState);
-        
-        var sum = tensorOperations.Add(tensorOperations.Add(inputPart, hiddenPart), Biases);
-        var output = Activation.Function(sum);
-        HiddenState = tensorOperations.UpdateState(output);
-
-        if (cache)
-        {
-            cachedInputs.Add(input);
-            cachedStates.Add(HiddenState);
-            cachedOutputs.Add(output);
-            cachedSums.Add(sum);
-        }
-        
+        var inputPart = Catalog.Multiply(InputWeights, input);
+        var hiddenPart = Catalog.Multiply(RecurrentWeights, State);
+        var sum1 = Catalog.Add(inputPart, hiddenPart);
+        var sum2 = Catalog.Add(sum1, Biases);
+        var output = Activation.Function(sum2);
         return output;
     }
-    public TOut Forward(TIn input) => Forward(input, true);
 
-    public TIn Backward(TOut gradOutput, double learningRate)
+    public TOut Forward(TIn input) => Forward(new Tensor<TIn>(input, null, _ => { }, Catalog.ZeroGradient(input))).Value;
+
+    public void UpdateParameters(double lr)
     {
-        var gradInputWeights = tensorOperations.DefaultWeights(OutputShape, InputShape);
-        var gradRecurrentWeights = tensorOperations.DefaultWeights(OutputShape, OutputShape);
-        var gradBiases = tensorOperations.DefaultBiases(OutputShape);
-        TState prevState = HiddenState;
-
-        for (int t = cachedInputs.Count - 1; t >= 0; t--)
+        foreach (var weight in InputWeights) 
         {
-            var sum = cachedSums[t];
-            var input = cachedInputs[t];
-            var state = cachedStates[t];
-            var output = cachedOutputs[t];
-            
-            var gradZ = tensorOperations.Multiply(gradOutput, Activation.Derivative(sum));
-            
-            gradInputWeights = tensorOperations.Add(gradInputWeights, tensorOperations.GradInputWeights(gradZ, input));
-            gradRecurrentWeights = tensorOperations.Add(gradRecurrentWeights, tensorOperations.GradRecurrentWeights(gradZ, prevState));
-            gradBiases = tensorOperations.Add(gradBiases, tensorOperations.GradBiases(gradZ));
-            
-            gradOutput = tensorOperations.GradOutput(RecurrentWeights, gradZ);
-            prevState = state;
+            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
+            weight.Gradient = Catalog.ZeroGradient(weight.Value);
+        }
+        foreach (var weight in RecurrentWeights)
+        {
+            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
+            weight.Gradient = Catalog.ZeroGradient(weight.Value);
         }
         
-        InputWeights = optimizer.UpdateWeights(InputWeights, gradInputWeights, learningRate);
-        RecurrentWeights = optimizer.UpdateWeights(RecurrentWeights, gradRecurrentWeights, learningRate);
-        Biases = optimizer.UpdateBiases(Biases, gradBiases, learningRate);
-        
-        cachedInputs.Clear();
-        cachedStates.Clear();
-        cachedOutputs.Clear();
-        cachedSums.Clear();
-        
-        return tensorOperations.GradInput(InputWeights, gradOutput);
+        Biases.Value = Catalog.Subtract(Biases.Value, Catalog.Scale(Biases.Gradient, lr));
+        Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
     }
 
-    public void Reset()
+    public void ZeroGradients()
     {
-        HiddenState = tensorOperations.DefaultState(OutputShape);
-        InputWeights = tensorOperations.DefaultWeights(OutputShape, InputShape);
-        RecurrentWeights = tensorOperations.DefaultWeights(OutputShape, OutputShape);
-        Biases = tensorOperations.DefaultBiases(OutputShape);
-        cachedInputs.Clear();
-        cachedStates.Clear();
-        cachedOutputs.Clear();
-        cachedSums.Clear();
-    }
-
-    public void Read(BinaryReader reader)
-    {
-        InputWeights = tensorOperations.ReadWeights(reader, InputShape);
-        RecurrentWeights = tensorOperations.ReadWeights(reader, OutputShape);
-        Biases = tensorOperations.ReadBiases(reader, OutputShape);
-        HiddenState = tensorOperations.ReadState(reader, OutputShape);
+        foreach (var weight in InputWeights)
+            weight.Gradient = Catalog.ZeroGradient(weight.Value);
+        foreach (var weight in RecurrentWeights)
+            weight.Gradient = Catalog.ZeroGradient(weight.Value);
+        Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
     }
 
     public void Write(BinaryWriter writer)
     {
-        tensorOperations.WriteWeights(writer, InputWeights);
-        tensorOperations.WriteWeights(writer, RecurrentWeights);
-        tensorOperations.WriteBiases(writer, Biases);
-        tensorOperations.WriteState(writer, HiddenState);
+        writer.Write(InputWeights.Length);
+        foreach (var weight in InputWeights)
+            Catalog.WriteWeight(writer, weight.Value);
+        
+        writer.Write(RecurrentWeights.Length);
+        foreach (var weight in RecurrentWeights)
+            Catalog.WriteWeight(writer, weight.Value);
+        
+        Catalog.WriteBias(writer, Biases.Value);
+        Catalog.WriteState(writer, State.Value);
+    }
+
+    public void Read(BinaryReader reader)
+    {
+        int inputWeightCount = reader.ReadInt32();
+        InputWeights = new Tensor<TWeight>[inputWeightCount];
+        for (int i = 0; i < inputWeightCount; i++)
+        {
+            var weightValue = Catalog.ReadWeight(reader);
+            InputWeights[i] = new Tensor<TWeight>(weightValue, null, _ => { }, Catalog.ZeroGradient(weightValue));
+        }
+        
+        int recurrentWeightCount = reader.ReadInt32();
+        RecurrentWeights = new Tensor<TWeight>[recurrentWeightCount];
+        for (int i = 0; i < recurrentWeightCount; i++)
+        {
+            var weightValue = Catalog.ReadWeight(reader);
+            RecurrentWeights[i] = new Tensor<TWeight>(weightValue, null, _ => { }, Catalog.ZeroGradient(weightValue));
+        }
+        
+        var biasValue = Catalog.ReadBias(reader);
+        Biases = new Tensor<TOut>(biasValue, null, _ => { }, Catalog.ZeroGradient(biasValue));
+        
+        var stateValue = Catalog.ReadState(reader);
+        State = new Tensor<TState>(stateValue, null, _ => { }, Catalog.ZeroGradient(stateValue));
     }
 }
 
-public interface IRecurrentTensorOperations<TWeights, TBiases, TInput, TOutput, TState>
-    where TInput : notnull where TOutput : notnull
-    where TWeights : notnull
-    where TBiases : notnull
-    where TState : notnull
+public interface IRecurrentCatalog<TIn, TOut, TWeight, TState>
+    where TIn : notnull where TOut : notnull
+    where TWeight : notnull where TState : notnull
 {
-    public TWeights DefaultWeights(int[] outputShape, int[] inputShape);
-    public TBiases DefaultBiases(int[] outputShape);
-    public TState DefaultState(int[] outputsShape);
+    public Tensor<TOut> Multiply(Tensor<TWeight>[] weights, Tensor<TIn> input);
+    public Tensor<TOut> Multiply(Tensor<TWeight>[] weights, Tensor<TState> state);
+    public Tensor<TOut> Add(Tensor<TOut> a, Tensor<TOut> b);
+    public TWeight Subtract(TWeight a, TWeight b);
+    public TOut Subtract(TOut a, TOut b);
     
-    public TOutput Add(TOutput a, TBiases b);
-    public TOutput Add(TOutput a, TOutput b);
-    public TWeights Add(TWeights a, TWeights b);
-    public TBiases Add(TBiases a, TBiases b);
-    public TOutput Multiply(TWeights weights, TInput input);
-    public TOutput Multiply(TWeights weights, TState state);
-    public TOutput Multiply(TOutput a, TOutput b);
-    public TWeights GradInputWeights(TOutput gradZ, TInput input);
-    public TWeights GradRecurrentWeights(TOutput gradZ, TState state);
-    public TBiases GradBiases(TOutput gradZ);
-    public TOutput GradOutput(TWeights weights, TOutput gradZ);
-    public TInput GradInput(TWeights weights, TOutput gradZ);
+    public TWeight Scale(TWeight a, double scale);
+    public TOut Scale(TOut a, double scale);
     
-    public TWeights ReadWeights(BinaryReader reader, int[] shape);
-    public void WriteWeights(BinaryWriter writer, TWeights weights);
-    public TBiases ReadBiases(BinaryReader reader, int[] shape);
-    public void WriteBiases(BinaryWriter writer, TBiases biases);
-    public TState ReadState(BinaryReader reader, int[] shape);
+    public TIn ZeroGradient(TIn a);
+    public TWeight ZeroGradient(TWeight a);
+    public TState ZeroGradient(TState a);
+    public TOut ZeroGradient(TOut a);
+    
+    public void WriteWeight(BinaryWriter writer, TWeight weight);
+    public void WriteBias(BinaryWriter writer, TOut bias);
     public void WriteState(BinaryWriter writer, TState state);
     
-    public TState UpdateState(TOutput output);
+    public TWeight ReadWeight(BinaryReader reader);
+    public TOut ReadBias(BinaryReader reader);
+    public TState ReadState(BinaryReader reader);
 }
