@@ -4,7 +4,7 @@ using Opal.Mathematics;
 
 namespace Opal.NNs.Recurrent;
 
-public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], double[], double[], double[], double[], double[]>
+public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], double[], double[], double[], double[]>
 {
     public VectorRecurrentNetwork(
         int inputSize,
@@ -26,10 +26,10 @@ public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], doubl
     {
     }
 
-    protected override RecurrentLayer<double[], double[], double[], double[]> CreateHiddenLayer() =>
+    protected override RecurrentLayer<double[], double[], double[]> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, HiddenActivation);
 
-    private static RecurrentLayer<double[], double[], double[], double[]> CreateLayer(
+    private static RecurrentLayer<double[], double[], double[]> CreateLayer(
         int inputSize,
         int outputSize,
         ActivationFunction<double[]> activation)
@@ -37,7 +37,6 @@ public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], doubl
         var catalog = new VectorCatalog();
         var random = new Random();
         
-        // Create input weights
         var inputWeights = new Tensor<double[]>[outputSize];
         for (int i = 0; i < outputSize; i++) 
         {
@@ -47,7 +46,6 @@ public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], doubl
             inputWeights[i] = new Tensor<double[]>(weight, null, _ => { }, Vectors.Zeros(inputSize));
         }
         
-        // Create recurrent weights
         var recurrentWeights = new Tensor<double[]>[outputSize];
         for (int i = 0; i < outputSize; i++) 
         {
@@ -57,13 +55,11 @@ public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], doubl
             recurrentWeights[i] = new Tensor<double[]>(weight, null, _ => { }, Vectors.Zeros(outputSize));
         }
         
-        // Create biases
         Tensor<double[]> biases = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize));
         
-        // Create initial state
         Tensor<double[]> state = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize));
     
-        return new RecurrentLayer<double[], double[], double[], double[]>
+        return new RecurrentLayer<double[], double[], double[]>
         {
             InputWeights = inputWeights,
             RecurrentWeights = recurrentWeights,
@@ -74,12 +70,12 @@ public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], doubl
         };
     }
 
-    private static List<RecurrentLayer<double[], double[], double[], double[]>> CreateHiddenLayers(
+    private static List<RecurrentLayer<double[], double[], double[]>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
         ActivationFunction<double[]> activation)
     {
-        var layers = new List<RecurrentLayer<double[], double[], double[], double[]>>();
+        var layers = new List<RecurrentLayer<double[], double[], double[]>>();
         for (int i = 0; i < numLayers; i++)
             layers.Add(CreateLayer(hiddenSize, hiddenSize, activation));
         return layers;

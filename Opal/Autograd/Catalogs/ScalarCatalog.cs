@@ -3,7 +3,7 @@ using Opal.NNs.Recurrent;
 
 namespace Opal.Autograd.Catalogs;
 
-public class ScalarCatalog : IFfCatalog<double, double, double>, IRecurrentCatalog<double, double, double, double>
+public class ScalarCatalog : IFfCatalog<double, double, double>, IRecurrentCatalog<double, double, double>
 {
     public Tensor<double> Multiply(Tensor<double> input, Tensor<double>[] weights)
     {

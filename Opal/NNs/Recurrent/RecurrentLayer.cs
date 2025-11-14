@@ -3,16 +3,16 @@ using Opal.Mathematics;
 
 namespace Opal.NNs.Recurrent;
 
-public class RecurrentLayer<TIn, TOut, TWeight, TState> : ILayer<TIn, TOut>
+public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     where TIn : notnull where TOut : notnull
-    where TWeight : notnull where TState : notnull
+    where TWeight : notnull 
 {
     public Tensor<TWeight>[] InputWeights { get; set; } 
     public Tensor<TWeight>[] RecurrentWeights { get; set; }
     public Tensor<TOut> Biases { get; set; }
-    public Tensor<TState> State { get; set; }
+    public Tensor<TOut> State { get; set; }
     public ActivationFunction<TOut> Activation { get; set; }
-    public IRecurrentCatalog<TIn, TOut, TWeight, TState> Catalog { get; set; }
+    public IRecurrentCatalog<TIn, TOut, TWeight> Catalog { get; set; }
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
@@ -21,6 +21,7 @@ public class RecurrentLayer<TIn, TOut, TWeight, TState> : ILayer<TIn, TOut>
         var sum1 = Catalog.Add(inputPart, hiddenPart);
         var sum2 = Catalog.Add(sum1, Biases);
         var output = Activation.Function(sum2);
+        State = output;
         return output;
     }
 
@@ -88,16 +89,16 @@ public class RecurrentLayer<TIn, TOut, TWeight, TState> : ILayer<TIn, TOut>
         Biases = new Tensor<TOut>(biasValue, null, _ => { }, Catalog.ZeroGradient(biasValue));
         
         var stateValue = Catalog.ReadState(reader);
-        State = new Tensor<TState>(stateValue, null, _ => { }, Catalog.ZeroGradient(stateValue));
+        State = new Tensor<TOut>(stateValue, null, _ => { }, Catalog.ZeroGradient(stateValue));
     }
 }
 
-public interface IRecurrentCatalog<TIn, TOut, TWeight, TState>
+public interface IRecurrentCatalog<TIn, TOut, TWeight>
     where TIn : notnull where TOut : notnull
-    where TWeight : notnull where TState : notnull
+    where TWeight : notnull
 {
     public Tensor<TOut> Multiply(Tensor<TWeight>[] weights, Tensor<TIn> input);
-    public Tensor<TOut> Multiply(Tensor<TWeight>[] weights, Tensor<TState> state);
+    public Tensor<TOut> Multiply(Tensor<TWeight>[] weights, Tensor<TOut> state);
     public Tensor<TOut> Add(Tensor<TOut> a, Tensor<TOut> b);
     public TWeight Subtract(TWeight a, TWeight b);
     public TOut Subtract(TOut a, TOut b);
@@ -107,14 +108,13 @@ public interface IRecurrentCatalog<TIn, TOut, TWeight, TState>
     
     public TIn ZeroGradient(TIn a);
     public TWeight ZeroGradient(TWeight a);
-    public TState ZeroGradient(TState a);
     public TOut ZeroGradient(TOut a);
     
     public void WriteWeight(BinaryWriter writer, TWeight weight);
     public void WriteBias(BinaryWriter writer, TOut bias);
-    public void WriteState(BinaryWriter writer, TState state);
+    public void WriteState(BinaryWriter writer, TOut state);
     
     public TWeight ReadWeight(BinaryReader reader);
     public TOut ReadBias(BinaryReader reader);
-    public TState ReadState(BinaryReader reader);
+    public TOut ReadState(BinaryReader reader);
 }

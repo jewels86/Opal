@@ -4,7 +4,7 @@ using Opal.NNs.Recurrent;
 
 namespace Opal.Autograd.Catalogs;
 
-public class VectorCatalog : IFfCatalog<double[], double[], double[]>, IRecurrentCatalog<double[], double[], double[], double[]>
+public class VectorCatalog : IFfCatalog<double[], double[], double[]>, IRecurrentCatalog<double[], double[], double[]>
 {
     public Tensor<double[]> Multiply(Tensor<double[]> a, Tensor<double[]>[] b) => Operations.Multiply(a, b);
     public Tensor<double[]> Multiply(Tensor<double[]>[] a, Tensor<double[]> b) => Operations.Multiply(b, a);

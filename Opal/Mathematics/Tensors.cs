@@ -2,7 +2,7 @@
 
 public static class Tensors
 {
-    private static readonly Random Random = new();
+    readonly private static Random Random = new();
     
     public static double RandomDouble(double min = -1, double max = 1)
     {

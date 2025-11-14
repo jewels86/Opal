@@ -4,7 +4,7 @@ using Opal.Mathematics;
 
 namespace Opal.NNs.Recurrent;
 
-public class ScalarRecurrentNetwork : RecurrentNetwork<double, double, double, double, double, double, double>
+public class ScalarRecurrentNetwork : RecurrentNetwork<double, double, double, double, double, double>
 {
     public ScalarRecurrentNetwork(
         int inputSize,
@@ -26,10 +26,10 @@ public class ScalarRecurrentNetwork : RecurrentNetwork<double, double, double, d
     {
     }
 
-    protected override RecurrentLayer<double, double, double, double> CreateHiddenLayer() =>
+    protected override RecurrentLayer<double, double, double> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenActivation);
 
-    private static RecurrentLayer<double, double, double, double> CreateLayer(
+    private static RecurrentLayer<double, double, double> CreateLayer(
         int outputSize,
         ActivationFunction<double> activation)
     {
@@ -53,7 +53,7 @@ public class ScalarRecurrentNetwork : RecurrentNetwork<double, double, double, d
         Tensor<double> biases = new(0.0, null, _ => { }, 0.0);
         Tensor<double> state = new(0.0, null, _ => { }, 0.0);
     
-        return new RecurrentLayer<double, double, double, double>
+        return new RecurrentLayer<double, double, double>
         {
             InputWeights = inputWeights,
             RecurrentWeights = recurrentWeights,
@@ -64,12 +64,12 @@ public class ScalarRecurrentNetwork : RecurrentNetwork<double, double, double, d
         };
     }
 
-    private static List<RecurrentLayer<double, double, double, double>> CreateHiddenLayers(
+    private static List<RecurrentLayer<double, double, double>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
         ActivationFunction<double> activation)
     {
-        var layers = new List<RecurrentLayer<double, double, double, double>>();
+        var layers = new List<RecurrentLayer<double, double, double>>();
         for (int i = 0; i < numLayers; i++)
             layers.Add(CreateLayer(hiddenSize, activation));
         return layers;

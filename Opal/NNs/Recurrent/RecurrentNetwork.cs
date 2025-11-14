@@ -4,15 +4,14 @@ using Opal.Utilities;
 
 namespace Opal.NNs.Recurrent;
 
-public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightIn, TWeightHidden, TWeightOut, TState>
+public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightIn, TWeightHidden, TWeightOut>
     : INetwork<TIn, TOut>, ISequentialNetwork<TIn, TOut>
     where TIn : notnull where TOut : notnull where THidden : notnull
     where TWeightIn : notnull where TWeightHidden : notnull where TWeightOut : notnull
-    where TState : notnull
 {
-    public RecurrentLayer<TIn, THidden, TWeightIn, TState> InputLayer { get; }
-    public List<RecurrentLayer<THidden, THidden, TWeightHidden, TState>> HiddenLayers { get; }
-    public RecurrentLayer<THidden, TOut, TWeightOut, TState> OutputLayer { get; }
+    public RecurrentLayer<TIn, THidden, TWeightIn> InputLayer { get; }
+    public List<RecurrentLayer<THidden, THidden, TWeightHidden>> HiddenLayers { get; }
+    public RecurrentLayer<THidden, TOut, TWeightOut> OutputLayer { get; }
     
     public string Name { get; set; }
     public LossFunction<TOut> LossFunction { get; }
@@ -21,9 +20,9 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightIn, TWeightHid
     protected ActivationFunction<THidden> HiddenActivation { get; }
     
     protected RecurrentNetwork(
-        RecurrentLayer<TIn, THidden, TWeightIn, TState> inputLayer,
-        List<RecurrentLayer<THidden, THidden, TWeightHidden, TState>> hiddenLayers,
-        RecurrentLayer<THidden, TOut, TWeightOut, TState> outputLayer,
+        RecurrentLayer<TIn, THidden, TWeightIn> inputLayer,
+        List<RecurrentLayer<THidden, THidden, TWeightHidden>> hiddenLayers,
+        RecurrentLayer<THidden, TOut, TWeightOut> outputLayer,
         LossFunction<TOut> lossFunction,
         int hiddenSize,
         ActivationFunction<THidden> hiddenActivation,
@@ -167,25 +166,27 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightIn, TWeightHid
 
     public void ResetState()
     {
-        InputLayer.State = new Tensor<TState>(
-            InputLayer.Catalog.ZeroGradient(InputLayer.State.Value), 
-            null, 
-            _ => { }, 
-            InputLayer.Catalog.ZeroGradient(InputLayer.State.Value));
+        var inputZero = InputLayer.Catalog.ZeroGradient(InputLayer.State.Value);
+        InputLayer.State = new Tensor<THidden>(
+            inputZero,
+            null,
+            _ => { },
+            inputZero);
         
         foreach (var layer in HiddenLayers)
         {
-            layer.State = new Tensor<TState>(
-                layer.Catalog.ZeroGradient(layer.State.Value), 
-                null, 
-                _ => { }, 
-                layer.Catalog.ZeroGradient(layer.State.Value));
+            layer.State = new Tensor<THidden>(
+                inputZero,
+                null,
+                _ => { },
+                inputZero);
         }
         
-        OutputLayer.State = new Tensor<TState>(
-            OutputLayer.Catalog.ZeroGradient(OutputLayer.State.Value), 
-            null, 
-            _ => { }, 
+        
+        OutputLayer.State = new Tensor<TOut>(
+            OutputLayer.Catalog.ZeroGradient(OutputLayer.State.Value),
+            null,
+            _ => { },
             OutputLayer.Catalog.ZeroGradient(OutputLayer.State.Value));
     }
 
@@ -220,5 +221,5 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightIn, TWeightHid
         OutputLayer.Read(reader);
     }
     
-    protected abstract RecurrentLayer<THidden, THidden, TWeightHidden, TState> CreateHiddenLayer();
+    protected abstract RecurrentLayer<THidden, THidden, TWeightHidden> CreateHiddenLayer();
 }
