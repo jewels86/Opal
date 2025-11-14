@@ -22,7 +22,7 @@ public static partial class Operations
     
     public static Tensor<double[]> Multiply(Tensor<double[]> input, Tensor<double[]>[] weights)
     {
-        var dots = weights.Select(w => Operations.Dot(w, input)).ToArray();
+        var dots = weights.Select(w => Dot(w, input)).ToArray();
         return VectorFromScalars(dots);
     }
 }
