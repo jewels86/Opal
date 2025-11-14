@@ -3,7 +3,7 @@ using Opal.Mathematics;
 
 namespace Opal.NNs.Rnn;
 
-public class RnnLayer<TIn, TOut, TWeight, TState> : ILayer<TIn, TOut>
+public class RecurrentLayer<TIn, TOut, TWeight, TState> : ILayer<TIn, TOut>
     where TIn : notnull where TOut : notnull
     where TWeight : notnull where TState : notnull
 {
@@ -12,7 +12,7 @@ public class RnnLayer<TIn, TOut, TWeight, TState> : ILayer<TIn, TOut>
     public Tensor<TOut> Biases { get; set; }
     public Tensor<TState> State { get; set; }
     public ActivationFunction<TOut> Activation { get; set; }
-    public IRnnCatalog<TIn, TOut, TWeight, TState> Catalog { get; set; }
+    public IRecurrentCatalog<TIn, TOut, TWeight, TState> Catalog { get; set; }
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
@@ -90,11 +90,9 @@ public class RnnLayer<TIn, TOut, TWeight, TState> : ILayer<TIn, TOut>
         var stateValue = Catalog.ReadState(reader);
         State = new Tensor<TState>(stateValue, null, _ => { }, Catalog.ZeroGradient(stateValue));
     }
-    
-    
 }
 
-public interface IRnnCatalog<TIn, TOut, TWeight, TState>
+public interface IRecurrentCatalog<TIn, TOut, TWeight, TState>
     where TIn : notnull where TOut : notnull
     where TWeight : notnull where TState : notnull
 {

@@ -1,11 +1,13 @@
 ﻿using Opal.Mathematics;
 using Opal.NNs.Ff;
+using Opal.NNs.Rnn;
 
 namespace Opal.Autograd.Catalogs;
 
-public class VectorCatalog : IFfCatalog<double[], double[], double[]>
+public class VectorCatalog : IFfCatalog<double[], double[], double[]>, IRecurrentCatalog<double[], double[], double[], double[]>
 {
     public Tensor<double[]> Multiply(Tensor<double[]> a, Tensor<double[]>[] b) => Operations.Multiply(a, b);
+    public Tensor<double[]> Multiply(Tensor<double[]>[] a, Tensor<double[]> b) => Operations.Multiply(b, a);
 
     public Tensor<double[]> Add(Tensor<double[]> a, Tensor<double[]> b) => 
         Operations.Sum(a, b);
@@ -46,6 +48,22 @@ public class VectorCatalog : IFfCatalog<double[], double[], double[]>
         for (int i = 0; i < length; i++)
             bias[i] = reader.ReadDouble();
         return bias;
+    }
+    
+    public void WriteState(BinaryWriter writer, double[] state)
+    {
+        writer.Write(state.Length);
+        foreach (var s in state)
+            writer.Write(s);
+    }
+
+    public double[] ReadState(BinaryReader reader)
+    {
+        int length = reader.ReadInt32();
+        var state = new double[length];
+        for (int i = 0; i < length; i++)
+            state[i] = reader.ReadDouble();
+        return state;
     }
 }
 

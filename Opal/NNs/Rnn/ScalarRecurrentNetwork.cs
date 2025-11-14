@@ -1,54 +1,77 @@
-﻿using Opal.Mathematics;
-using Opal.Utilities;
+﻿using Opal.Autograd;
+using Opal.Autograd.Catalogs;
+using Opal.Mathematics;
 
 namespace Opal.NNs.Rnn;
 
-public class ScalarRecurrentNetwork : RecurrentNetwork<double, double, double, double, double, double>
+public class ScalarRecurrentNetwork : RecurrentNetwork<double, double, double, double, double, double, double>
 {
     public ScalarRecurrentNetwork(
-        ActivationFunction<double>? hiddenActivation = null,
-        ActivationFunction<double>? outputActivation = null,
-        LossFunction<double>? lossFunction = null,
-        IOptimizer<double, double>? optimizer = null,
+        int inputSize,
+        int hiddenSize,
+        int outputSize,
+        int numHiddenLayers,
+        ActivationFunction<double> hiddenActivation,
+        ActivationFunction<double> outputActivation,
+        LossFunction<double> lossFunction,
         string name = "ScalarRecurrentNetwork")
         : base(
-            [ 1 ],
-            [ 1 ],
-            [ 1 ],
-            1,
-            hiddenActivation ?? ActivationFunctions.Identity,
-            outputActivation ?? ActivationFunctions.Identity,
-            lossFunction ?? LossFunctions.MeanSquaredError,
-            optimizer ?? new StandardScalarOptimizer(),
-            new ScalarRecurrentTensorOperations(),
-            new ScalarRecurrentTensorOperations(),
-            new ScalarRecurrentTensorOperations(),
+            CreateLayer(hiddenSize, hiddenActivation),
+            CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
+            CreateLayer(outputSize, outputActivation),
+            lossFunction,
+            hiddenSize,
+            hiddenActivation,
             name)
     {
     }
-}
 
-public class ScalarRecurrentTensorOperations : IRecurrentTensorOperations<double, double, double, double, double>
-{
-    public double DefaultWeights(int[] outputShape, int[] inputShape) => Tensors.RandomDouble();
-    public double DefaultBiases(int[] outputShape) => 0.0;
-    public double DefaultState(int[] outputsShape) => 0.0;
+    protected override RecurrentLayer<double, double, double, double> CreateHiddenLayer() =>
+        CreateLayer(HiddenSize, HiddenActivation);
 
-    public double Add(double a, double b) => a + b;
-    public double Add(double a, double b, double c) => a + b + c;
-    public double GradInputWeights(double gradZ, double input) => gradZ * input;
-    public double GradRecurrentWeights(double gradZ, double state) => gradZ * state;
-    public double GradBiases(double gradZ) => gradZ;
-    public double GradOutput(double weights, double gradZ) => weights * gradZ;
-    public double GradInput(double weights, double gradZ) => weights * gradZ;
+    private static RecurrentLayer<double, double, double, double> CreateLayer(
+        int outputSize,
+        ActivationFunction<double> activation)
+    {
+        var catalog = new ScalarCatalog();
+        var random = new Random();
+        
+        var inputWeights = new Tensor<double>[outputSize];
+        for (int i = 0; i < outputSize; i++) 
+        {
+            var weight = random.NextDouble() * 2 - 1;
+            inputWeights[i] = new Tensor<double>(weight, null, _ => { }, 0.0);
+        }
+        
+        var recurrentWeights = new Tensor<double>[outputSize];
+        for (int i = 0; i < outputSize; i++) 
+        {
+            var weight = random.NextDouble() * 2 - 1;
+            recurrentWeights[i] = new Tensor<double>(weight, null, _ => { }, 0.0);
+        }
+        
+        Tensor<double> biases = new(0.0, null, _ => { }, 0.0);
+        Tensor<double> state = new(0.0, null, _ => { }, 0.0);
+    
+        return new RecurrentLayer<double, double, double, double>
+        {
+            InputWeights = inputWeights,
+            RecurrentWeights = recurrentWeights,
+            Biases = biases,
+            State = state,
+            Activation = activation,
+            Catalog = catalog
+        };
+    }
 
-    public double Multiply(double a, double b) => a * b;
-    public double UpdateState(double output) => output;
-
-    public double ReadWeights(BinaryReader reader, int[] shape) => reader.ReadDouble();
-    public void WriteWeights(BinaryWriter writer, double weights) => writer.Write(weights);
-    public double ReadBiases(BinaryReader reader, int[] shape) => reader.ReadDouble();
-    public void WriteBiases(BinaryWriter writer, double biases) => writer.Write(biases);
-    public double ReadState(BinaryReader reader, int[] shape) => reader.ReadDouble();
-    public void WriteState(BinaryWriter writer, double state) => writer.Write(state);
+    private static List<RecurrentLayer<double, double, double, double>> CreateHiddenLayers(
+        int numLayers,
+        int hiddenSize,
+        ActivationFunction<double> activation)
+    {
+        var layers = new List<RecurrentLayer<double, double, double, double>>();
+        for (int i = 0; i < numLayers; i++)
+            layers.Add(CreateLayer(hiddenSize, activation));
+        return layers;
+    }
 }
