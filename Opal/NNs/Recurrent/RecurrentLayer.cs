@@ -7,12 +7,12 @@ public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     where TIn : notnull where TOut : notnull
     where TWeight : notnull 
 {
-    public Tensor<TWeight>[] InputWeights { get; set; } 
-    public Tensor<TWeight>[] RecurrentWeights { get; set; }
-    public Tensor<TOut> Biases { get; set; }
-    public Tensor<TOut> State { get; set; }
-    public ActivationFunction<TOut> Activation { get; set; }
-    public IRecurrentCatalog<TIn, TOut, TWeight> Catalog { get; set; }
+    public required Tensor<TWeight>[] InputWeights { get; set; } 
+    public required Tensor<TWeight>[] RecurrentWeights { get; set; }
+    public required Tensor<TOut> Biases { get; set; }
+    public required Tensor<TOut> State { get; set; }
+    public required ActivationFunction<TOut> Activation { get; set; }
+    public required IRecurrentCatalog<TIn, TOut, TWeight> Catalog { get; set; }
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {

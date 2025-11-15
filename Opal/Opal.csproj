@@ -15,7 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Include="NNs\Lstm\LegacyLstmLayer.cs" />
     <Compile Include="NNs\Lstm\LstmLayer.cs" />
   </ItemGroup>
 
