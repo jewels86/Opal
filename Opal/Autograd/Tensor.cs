@@ -25,7 +25,7 @@ public class CpuStorage<T> : ITensorStorage<T> where T : notnull
     public void CopyFrom(T source) => Data = source;
 }
 
-public class GpuVectorStorage : ITensorStorage<double[]>
+public class GpuVectorStorage : ITensorStorage<double[]>, IDisposable
 {
     public MemoryBuffer1D<double, Stride1D.Dense> GpuData { get; set; }
     public int[] Shape => [(int)GpuData.Length];
@@ -44,9 +44,11 @@ public class GpuVectorStorage : ITensorStorage<double[]>
         Operations.Sync();
         GpuData.CopyFromCPU(data);
     }
+    
+    public void Dispose() => GpuData.Dispose();
 }
 
-public class GpuMatrixStorage : ITensorStorage<double[,]>
+public class GpuMatrixStorage : ITensorStorage<double[,]>, IDisposable
 {
     public MemoryBuffer2D<double, Stride2D.DenseX> GpuData { get; set; }
     public int[] Shape => [(int)GpuData.Extent.X, (int)GpuData.Extent.Y];
@@ -65,6 +67,8 @@ public class GpuMatrixStorage : ITensorStorage<double[,]>
         Operations.Sync();
         GpuData.CopyFromCPU(data);
     }
+    
+    public void Dispose() => GpuData.Dispose();
 }
 
 public class Tensor<T> where T : notnull
@@ -99,6 +103,51 @@ public class Tensor<T> where T : notnull
         }
 
         topo.Add(node);
+    }
+    
+    public void Dispose()
+    {
+        (Value as IDisposable)?.Dispose();
+        (Gradient as IDisposable)?.Dispose();
+    }
+}
+
+public static class TensorStorageExtensions
+{
+    public static ITensorStorage<double[]> ToGpu(this ITensorStorage<double[]> storage)
+    {
+        if (storage is GpuVectorStorage)
+            return storage;
+        
+        var data = storage.ToHost();
+        return VectorTensor.GpuVectorStorage(data);
+    }
+    
+    public static ITensorStorage<double[,]> ToGpu(this ITensorStorage<double[,]> storage)
+    {
+        if (storage is GpuMatrixStorage)
+            return storage;
+        
+        var data = storage.ToHost();
+        return MatrixTensor.GpuMatrixStorage(data);
+    }
+    
+    public static ITensorStorage<double[]> ToCpu(this ITensorStorage<double[]> storage)
+    {
+        if (storage is CpuStorage<double[]>)
+            return storage;
+        
+        var data = storage.ToHost();
+        return VectorTensor.CpuVectorStorage(data);
+    }
+    
+    public static ITensorStorage<double[,]> ToCpu(this ITensorStorage<double[,]> storage)
+    {
+        if (storage is CpuStorage<double[,]>)
+            return storage;
+        
+        var data = storage.ToHost();
+        return MatrixTensor.CpuMatrixStorage(data);
     }
 }
 
@@ -141,8 +190,14 @@ public static partial class Operations
         Func<double[], double[], double[]> cpuFallback,
         Action<VectorTensor, VectorTensor, VectorTensor> gradientFn)
     {
-        if (a.Value is GpuVectorStorage gpuA && b.Value is GpuVectorStorage gpuB)
+        if (GpuAvailable && 
+            (a.Value is GpuVectorStorage || b.Value is GpuVectorStorage))
         {
+            var gpuA = (a.Value as GpuVectorStorage) ?? 
+                       (GpuVectorStorage)a.Value.ToGpu();
+            var gpuB = (b.Value as GpuVectorStorage) ?? 
+                       (GpuVectorStorage)b.Value.ToGpu();
+        
             var resultBuffer = Accelerator.Allocate1D<double>(gpuA.GpuData.Length);
         
             Queue.Enqueue(() => gpuKernel((int)gpuA.GpuData.Length, gpuA.GpuData.View, gpuB.GpuData.View, resultBuffer.View));
