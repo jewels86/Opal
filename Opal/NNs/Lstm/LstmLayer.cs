@@ -29,6 +29,9 @@ public class LstmLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     public required ActivationFunction<TOut> SigmoidActivation { get; set; }
     public required ActivationFunction<TOut> TanhActivation { get; set; }
     public required ILstmCatalog<TIn, TOut, TWeight> Catalog { get; set; }
+    
+    public required Tensor<TOut> DefaultState { get; set; }
+    public required Tensor<TOut> DefaultHidden { get; set; }
 
     #region Encoder/Decoder
     public virtual (Tensor<TOut> hidden, Tensor<TOut> state) Encoder(Tensor<TIn> input, Tensor<TOut> state, Tensor<TOut> prevHidden)
@@ -105,19 +108,19 @@ public class LstmLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     public TOut Forward(TIn input)
     {
         Tensor<TIn> tensorInput = new(input, null, _ => { }, Catalog.ZeroGradient(input));
-        Tensor<TOut> initialHidden = Catalog.DefaultHidden();
-        Tensor<TOut> initialState = Catalog.DefaultState();
+        Tensor<TOut> initialHidden = DefaultHidden;
+        Tensor<TOut> initialState = DefaultState;
         
         return ForwardCore(tensorInput, initialHidden, initialState).Value;
     }
     
     public Tensor<TOut> Forward(Tensor<TIn> input, Tensor<TOut> initialHidden, Tensor<TOut> initialState) => ForwardCore(input, initialHidden, initialState);
-    public Tensor<TOut> Forward(Tensor<TIn> input) => ForwardCore(input, Catalog.DefaultHidden(), Catalog.DefaultState());
+    public Tensor<TOut> Forward(Tensor<TIn> input) => ForwardCore(input, DefaultHidden, DefaultState);
 
     public TOut ForwardSequence(TIn[] inputs)
     {
-        Tensor<TOut> initialHidden = Catalog.DefaultHidden();
-        Tensor<TOut> initialState = Catalog.DefaultState();
+        Tensor<TOut> initialHidden = DefaultHidden;
+        Tensor<TOut> initialState = DefaultState;
         
         var tensorInputs = inputs.Select(i => new Tensor<TIn>(i, null, _ => { }, Catalog.ZeroGradient(i))).ToArray();
         var encoderOutputs = EncoderSequence(tensorInputs, initialHidden, initialState);
@@ -332,9 +335,6 @@ public interface ILstmCatalog<TIn, TOut, TWeight>
     Tensor<TOut> Multiply(Tensor<TOut> concat, Tensor<TWeight>[] weights);
     
     Tensor<TOut> Multiply(Tensor<TOut> a, Tensor<TOut> b);
-    
-    Tensor<TOut> DefaultHidden();
-    Tensor<TOut> DefaultState();
     
     TIn ZeroGradient(TIn a);
     TOut ZeroGradient(TOut a);

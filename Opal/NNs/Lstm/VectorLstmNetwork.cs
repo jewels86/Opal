@@ -98,6 +98,8 @@ public class VectorLstmNetwork : LstmNetwork<double[], double[], double[], doubl
             DecoderOutputBiases = decoderOutputBiases,
             SigmoidActivation = sigmoidActivation,
             TanhActivation = tanhActivation,
+            DefaultHidden = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize)),
+            DefaultState = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize)),
             Catalog = catalog
         };
     }

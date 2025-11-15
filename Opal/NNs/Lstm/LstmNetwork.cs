@@ -25,6 +25,7 @@ public abstract class LstmNetwork<TIn, THidden, TOut, TWeightIn, TWeightHidden, 
     protected ActivationFunction<THidden> TanhHiddenActivation { get; }
     protected ActivationFunction<THidden> SigmoidHiddenActivation { get; }
     
+    
     protected LstmNetwork(
         LstmLayer<TIn, THidden, TWeightIn> inputLayer,
         List<LstmLayer<THidden, THidden, TWeightHidden>> hiddenLayers,
