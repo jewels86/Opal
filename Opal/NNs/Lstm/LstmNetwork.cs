@@ -14,9 +14,9 @@ public class LstmNetwork<TWeights, TBiases, TTensor> : INetwork<TTensor[], TTens
     public int[] HiddenShape { get; }
     public int[] OutputShape { get; }
     
-    public LstmLayer<TWeights, TBiases, TTensor> InputLayer { get; }
-    public List<LstmLayer<TWeights, TBiases, TTensor>> HiddenLayers { get; }
-    public LstmLayer<TWeights, TBiases, TTensor> OutputLayer { get; }
+    public LegacyLstmLayer<TWeights, TBiases, TTensor> InputLayer { get; }
+    public List<LegacyLstmLayer<TWeights, TBiases, TTensor>> HiddenLayers { get; }
+    public LegacyLstmLayer<TWeights, TBiases, TTensor> OutputLayer { get; }
     
     protected readonly ILstmTensorOperations<TWeights, TBiases, TTensor> TensorOperations;
     protected readonly IOptimizer<TWeights, TBiases> Optimizer;
