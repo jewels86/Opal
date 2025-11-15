@@ -71,8 +71,13 @@ public static partial class Operations
     
         void Backwards(Tensor<double[]> output)
         {
-            a.Gradient = Vectors.Add(a.Gradient, output.Gradient);
-            b.Gradient = Vectors.Add(b.Gradient, output.Gradient);
+            var aLength = a.Value.Length;
+        
+            var gradA = output.Gradient[..aLength];
+            var gradB = output.Gradient[aLength..];
+        
+            a.Gradient = Vectors.Add(a.Gradient, gradA);
+            b.Gradient = Vectors.Add(b.Gradient, gradB);
         }
     }
 }

@@ -104,12 +104,12 @@ public abstract class LstmNetwork<TIn, THidden, TOut, TWeightIn, TWeightHidden, 
             for (int i = 0; i < sequences.Length; i++)
             {
                 Tensor<TOut> outputTensor = null!;
-                
+
                 foreach (var input in sequences[i])
                 {
-                    var inputTensor = new Tensor<TIn>(input, null, _ => { }, 
+                    var inputTensor = new Tensor<TIn>(input, null, _ => { },
                         InputLayer.Catalog.ZeroGradient(input));
-                
+
                     var hiddenTensor = InputLayer.Forward(inputTensor);
                     foreach (var layer in HiddenLayers)
                         hiddenTensor = layer.Forward(hiddenTensor);
@@ -152,18 +152,18 @@ public abstract class LstmNetwork<TIn, THidden, TOut, TWeightIn, TWeightHidden, 
         for (int i = 0; i < sequences.Length; i++)
         {
             Tensor<TOut> outputTensor = null!;
-            
+
             foreach (var input in sequences[i])
             {
-                var inputTensor = new Tensor<TIn>(input, null, _ => { }, 
+                var inputTensor = new Tensor<TIn>(input, null, _ => { },
                     InputLayer.Catalog.ZeroGradient(input));
-            
+
                 var hiddenTensor = InputLayer.Forward(inputTensor);
                 foreach (var layer in HiddenLayers)
                     hiddenTensor = layer.Forward(hiddenTensor);
                 outputTensor = OutputLayer.Forward(hiddenTensor);
             }
-        
+
             var lossTensor = LossFunction.Function(outputTensor, targets[i]);
             totalLoss += lossTensor.Value;
         }
