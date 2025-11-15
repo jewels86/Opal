@@ -6,8 +6,9 @@ internal static class Program
 {
     public static void Main()
     {
-        AutogradTests.RunAll();
-        FfTests.RunAll();
-        RecurrentTests.RunAll();
+        //AutogradTests.RunAll();
+        //FfTests.RunAll();
+        //RecurrentTests.RunAll();
+        LstmTests.RunAll();
     }
 }

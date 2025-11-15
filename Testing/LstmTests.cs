@@ -1,0 +1,242 @@
+﻿using Opal.Mathematics;
+using Opal.NNs.Lstm;
+
+namespace Testing;
+
+public class LstmTests
+{
+    public static void SequenceMemoryTest()
+    {
+        Console.WriteLine("Testing LSTM sequence memory (remembering first input)...");
+        
+        // Task: output the first value seen in the sequence
+        var sequences = new[]
+        {
+            new[] { new[] { 0.5 }, new[] { 0.1 }, new[] { 0.2 } },
+            new[] { new[] { -0.3 }, new[] { 0.4 }, new[] { 0.1 } },
+            new[] { new[] { 0.8 }, new[] { -0.2 }, new[] { 0.3 } },
+            new[] { new[] { -0.6 }, new[] { 0.2 }, new[] { -0.1 } }
+        };
+        
+        var targets = new[]
+        {
+            new[] { 0.5 },
+            new[] { -0.3 },
+            new[] { 0.8 },
+            new[] { -0.6 }
+        };
+
+        var network = new VectorLstmNetwork(
+            1, 8, 1, 1,
+            ActivationFunctions.SigmoidVector,
+            ActivationFunctions.TanhVector,
+            LossFunctions.MeanSquaredErrorVector);
+
+        double initialLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Initial loss: {initialLoss}");
+        
+        network.TrainSequences(sequences, targets, 2000, 0.01);
+        
+        double finalLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Final loss: {finalLoss}");
+        Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}%");
+        
+        Console.WriteLine("\nPredictions:");
+        for (int i = 0; i < sequences.Length; i++)
+        {
+            var prediction = network.ForwardSequence(sequences[i]);
+            var seqString = string.Join(", ", sequences[i].Select(x => x[0].ToString("F1")));
+            Console.WriteLine($"  [{seqString}] → {prediction[0]:F4} (expected {targets[i][0]:F1})");
+        }
+    }
+
+    public static void CountingTest()
+    {
+        Console.WriteLine("\nTesting LSTM counting (count 1s in binary sequence)...");
+        
+        // Task: count how many 1s appear in a binary sequence
+        var sequences = new[]
+        {
+            new[] { new[] { 0.0 }, new[] { 0.0 }, new[] { 0.0 } },  // 0 ones
+            new[] { new[] { 1.0 }, new[] { 0.0 }, new[] { 0.0 } },  // 1 one
+            new[] { new[] { 0.0 }, new[] { 1.0 }, new[] { 0.0 } },  // 1 one
+            new[] { new[] { 1.0 }, new[] { 1.0 }, new[] { 0.0 } },  // 2 ones
+            new[] { new[] { 1.0 }, new[] { 0.0 }, new[] { 1.0 } },  // 2 ones
+            new[] { new[] { 1.0 }, new[] { 1.0 }, new[] { 1.0 } },  // 3 ones
+            new[] { new[] { 0.0 }, new[] { 0.0 }, new[] { 1.0 } },  // 1 one
+            new[] { new[] { 0.0 }, new[] { 1.0 }, new[] { 1.0 } }   // 2 ones
+        };
+        
+        var targets = new[]
+        {
+            new[] { 0.0 }, new[] { 1.0 }, new[] { 1.0 }, new[] { 2.0 },
+            new[] { 2.0 }, new[] { 3.0 }, new[] { 1.0 }, new[] { 2.0 }
+        };
+
+        var network = new VectorLstmNetwork(
+            1, 16, 1, 1,
+            ActivationFunctions.SigmoidVector,
+            ActivationFunctions.TanhVector,
+            LossFunctions.MeanSquaredErrorVector);
+
+        double initialLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Initial loss: {initialLoss}");
+        
+        network.TrainSequences(sequences, targets, 3000, 0.05);
+        
+        double finalLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Final loss: {finalLoss}");
+        
+        Console.WriteLine("\nPredictions:");
+        for (int i = 0; i < sequences.Length; i++)
+        {
+            var prediction = network.ForwardSequence(sequences[i]);
+            var seqString = string.Join(", ", sequences[i].Select(x => x[0].ToString("F0")));
+            Console.WriteLine($"  [{seqString}] → {prediction[0]:F2} (expected {targets[i][0]:F0})");
+        }
+    }
+
+    public static void SequenceSumTest()
+    {
+        Console.WriteLine("\nTesting LSTM sequence sum...");
+        
+        // Task: sum all values in the sequence
+        var sequences = new[]
+        {
+            new[] { new[] { 0.1 }, new[] { 0.2 }, new[] { 0.3 } },     // 0.6
+            new[] { new[] { 0.5 }, new[] { 0.5 }, new[] { 0.0 } },     // 1.0
+            new[] { new[] { -0.2 }, new[] { 0.3 }, new[] { 0.1 } },    // 0.2
+            new[] { new[] { 0.4 }, new[] { -0.1 }, new[] { 0.2 } },    // 0.5
+            new[] { new[] { 0.0 }, new[] { 0.0 }, new[] { 0.5 } },     // 0.5
+            new[] { new[] { 0.3 }, new[] { 0.3 }, new[] { 0.3 } }      // 0.9
+        };
+        
+        var targets = sequences.Select(seq => new[] { seq.Sum(x => x[0]) }).ToArray();
+
+        var network = new VectorLstmNetwork(
+            1, 8, 1, 1,
+            ActivationFunctions.SigmoidVector,
+            ActivationFunctions.TanhVector,
+            LossFunctions.MeanSquaredErrorVector);
+
+        double initialLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Initial loss: {initialLoss}");
+        
+        network.TrainSequences(sequences, targets, 2000, 0.05);
+        
+        double finalLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Final loss: {finalLoss}");
+        
+        Console.WriteLine("\nPredictions:");
+        for (int i = 0; i < sequences.Length; i++)
+        {
+            var prediction = network.ForwardSequence(sequences[i]);
+            var seqString = string.Join(", ", sequences[i].Select(x => x[0].ToString("F1")));
+            Console.WriteLine($"  [{seqString}] → {prediction[0]:F3} (expected {targets[i][0]:F1})");
+        }
+    }
+
+    public static void SequenceClassificationTest()
+    {
+        Console.WriteLine("\nTesting LSTM sequence classification...");
+        
+        // Task: classify sequences as "increasing" [1,0] or "decreasing" [0,1]
+        var sequences = new[]
+        {
+            new[] { new[] { 0.1 }, new[] { 0.3 }, new[] { 0.5 } },  // increasing
+            new[] { new[] { 0.2 }, new[] { 0.4 }, new[] { 0.6 } },  // increasing
+            new[] { new[] { 0.8 }, new[] { 0.5 }, new[] { 0.2 } },  // decreasing
+            new[] { new[] { 0.9 }, new[] { 0.6 }, new[] { 0.3 } },  // decreasing
+            new[] { new[] { 0.0 }, new[] { 0.2 }, new[] { 0.4 } },  // increasing
+            new[] { new[] { 0.7 }, new[] { 0.4 }, new[] { 0.1 } }   // decreasing
+        };
+        
+        var targets = new[]
+        {
+            new[] { 1.0, 0.0 },
+            new[] { 1.0, 0.0 },
+            new[] { 0.0, 1.0 },
+            new[] { 0.0, 1.0 },
+            new[] { 1.0, 0.0 },
+            new[] { 0.0, 1.0 }
+        };
+
+        var network = new VectorLstmNetwork(
+            1, 8, 2, 1,
+            ActivationFunctions.SigmoidVector,
+            ActivationFunctions.TanhVector,
+            LossFunctions.CrossEntropy);
+
+        double initialLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Initial loss: {initialLoss}");
+        
+        network.TrainSequences(sequences, targets, 2000, 0.1);
+        
+        double finalLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Final loss: {finalLoss}");
+        
+        Console.WriteLine("\nPredictions:");
+        for (int i = 0; i < sequences.Length; i++)
+        {
+            var output = network.ForwardSequence(sequences[i]);
+            string predicted = output[0] > output[1] ? "increasing" : "decreasing";
+            string expected = targets[i][0] > targets[i][1] ? "increasing" : "decreasing";
+            Console.WriteLine($"  Sequence {i + 1}: {predicted} (confidence: {Math.Max(output[0], output[1]):F3}) - expected {expected}");
+        }
+    }
+
+    public static void LongTermMemoryTest()
+    {
+        Console.WriteLine("\nTesting LSTM long-term memory (remember first of 5 values)...");
+        
+        // Task: remember the first value over a longer sequence (LSTM should excel at this)
+        var sequences = new[]
+        {
+            new[] { new[] { 0.9 }, new[] { 0.1 }, new[] { 0.2 }, new[] { 0.3 }, new[] { 0.4 } },
+            new[] { new[] { -0.8 }, new[] { 0.5 }, new[] { 0.2 }, new[] { 0.1 }, new[] { 0.3 } },
+            new[] { new[] { 0.7 }, new[] { -0.3 }, new[] { 0.4 }, new[] { 0.2 }, new[] { 0.1 } },
+            new[] { new[] { -0.5 }, new[] { 0.2 }, new[] { -0.1 }, new[] { 0.4 }, new[] { 0.3 } }
+        };
+        
+        var targets = new[]
+        {
+            new[] { 0.9 },
+            new[] { -0.8 },
+            new[] { 0.7 },
+            new[] { -0.5 }
+        };
+
+        var network = new VectorLstmNetwork(
+            1, 12, 1, 1,
+            ActivationFunctions.SigmoidVector,
+            ActivationFunctions.TanhVector,
+            LossFunctions.MeanSquaredErrorVector);
+
+        double initialLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Initial loss: {initialLoss}");
+        
+        network.TrainSequences(sequences, targets, 3000, 0.01);
+        
+        double finalLoss = network.EvaluateLossSequences(sequences, targets);
+        Console.WriteLine($"Final loss: {finalLoss}");
+        Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}%");
+        
+        Console.WriteLine("\nPredictions:");
+        for (int i = 0; i < sequences.Length; i++)
+        {
+            var prediction = network.ForwardSequence(sequences[i]);
+            var seqString = string.Join(", ", sequences[i].Select(x => x[0].ToString("F1")));
+            Console.WriteLine($"  [{seqString}] → {prediction[0]:F4} (expected {targets[i][0]:F1})");
+        }
+    }
+
+    public static void RunAll()
+    {
+        SequenceMemoryTest();
+        CountingTest();
+        SequenceSumTest();
+        SequenceClassificationTest();
+        LongTermMemoryTest();
+        Console.WriteLine("\n✓ All LSTM tests completed!");
+    }
+}

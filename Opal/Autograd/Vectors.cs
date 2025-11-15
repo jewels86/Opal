@@ -61,4 +61,18 @@ public static partial class Operations
             b.Gradient = Vectors.Add(b.Gradient, Vectors.Multiply(a.Value, output.Gradient));
         }
     }
+
+    public static Tensor<double[]> Concat(Tensor<double[]> a, Tensor<double[]> b)
+    {
+        var result = Vectors.Concat(a.Value, b.Value);
+        List<object> inputs = [a, b];
+    
+        return new Tensor<double[]>(result, inputs, Backwards, Vectors.Zeros(result.Length));
+    
+        void Backwards(Tensor<double[]> output)
+        {
+            a.Gradient = Vectors.Add(a.Gradient, output.Gradient);
+            b.Gradient = Vectors.Add(b.Gradient, output.Gradient);
+        }
+    }
 }

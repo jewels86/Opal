@@ -1,10 +1,12 @@
 ﻿using Opal.Mathematics;
 using Opal.NNs.Ff;
+using Opal.NNs.Lstm;
 using Opal.NNs.Recurrent;
 
 namespace Opal.Autograd.Catalogs;
 
-public class VectorCatalog : IFfCatalog<double[], double[], double[]>, IRecurrentCatalog<double[], double[], double[]>
+public class VectorCatalog : IFfCatalog<double[], double[], double[]>, IRecurrentCatalog<double[], double[], double[]>,
+    ILstmCatalog<double[], double[], double[]>
 {
     public Tensor<double[]> Multiply(Tensor<double[]> a, Tensor<double[]>[] b) => Operations.Multiply(a, b);
     public Tensor<double[]> Multiply(Tensor<double[]>[] a, Tensor<double[]> b) => Operations.Multiply(b, a);
@@ -17,6 +19,16 @@ public class VectorCatalog : IFfCatalog<double[], double[], double[]>, IRecurren
     public double[] Scale(double[] a, double scale) => Vectors.Multiply(a, scale);
     
     public double[] ZeroGradient(double[] a) => Vectors.Zeros(a.Length);
+
+    public Tensor<double[]> ConcatHidden(Tensor<double[]> input, Tensor<double[]> prevHidden) => Operations.Concat(input, prevHidden);
+
+    public Tensor<double[]> ConcatInputHidden(Tensor<double[]> input, Tensor<double[]> prevHidden) => Operations.Concat(input, prevHidden);
+
+    public Tensor<double[]> DefaultHidden() => new(Vectors.Zeros(1), null, _ => { }, Vectors.Zeros(1));
+
+    public Tensor<double[]> Multiply(Tensor<double[]> a, Tensor<double[]> b) => Operations.Multiply(a, b);
+
+    public Tensor<double[]> DefaultState() => new(Vectors.Zeros(1), null, _ => { }, Vectors.Zeros(1));
 
     public void WriteWeight(BinaryWriter writer, double[] weight)
     {

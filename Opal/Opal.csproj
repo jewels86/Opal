@@ -14,8 +14,4 @@
     <Folder Include="Modules\Refinement\" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Include="NNs\Lstm\LstmLayer.cs" />
-  </ItemGroup>
-
 </Project>
