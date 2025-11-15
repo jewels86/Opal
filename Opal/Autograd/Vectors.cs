@@ -1,11 +1,44 @@
 ﻿using System.Runtime.CompilerServices;
+using ILGPU;
+using ILGPU.Runtime;
+using ILGPU.Runtime.CPU;
 using Opal.Mathematics;
 
 namespace Opal.Autograd;
 
+public class VectorTensor : Tensor<ITensorStorage<double[]>>
+{
+    public VectorTensor(
+        ITensorStorage<double[]> storage, 
+        List<object>? inputs, 
+        Action<Tensor<ITensorStorage<double[]>>>? backward,
+        ITensorStorage<double[]> gradient)
+        : base(storage, inputs, backward ?? (_ => { }), gradient) {}
+
+    public static ITensorStorage<double[]> CpuVectorStorage(double[] vector) => 
+        new CpuStorage<double[]> { Data = vector, Shape = [vector.Length], TotalElements = vector.Length };
+
+    public static ITensorStorage<double[]> GpuVectorStorage(double[] vector)
+    {
+        var buffer = Operations.Accelerator.Allocate1D<double>(vector.Length);
+        buffer.CopyFromCPU(vector);
+        return new GpuVectorStorage(buffer);
+    }
+}
+
 public static partial class Operations
 {
-    public static Tensor<double[]> Sum(params List<Tensor<double[]>> vectors)
+    public static VectorTensor Add(VectorTensor a, VectorTensor b) => 
+        BinaryOp(
+            a, b, 
+            AddKernel, Vectors.Add, 
+            (_, _, output) =>
+            {
+                AccumulateGradient(a.Gradient, output.Gradient);
+                AccumulateGradient(b.Gradient, output.Gradient);
+            });
+    
+    public static VectorTensor Sum(params List<VectorTensor> vectors)
     {
         var result = Vectors.Add(vectors.Select(v => v.Value).ToList());
         return new(result, vectors.Cast<object>().ToList(), Backwards, Vectors.Zeros(result.Length));

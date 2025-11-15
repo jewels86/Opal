@@ -1,4 +1,6 @@
-﻿using Opal.Mathematics;
+﻿using ILGPU;
+using ILGPU.Runtime;
+using Opal.Mathematics;
 
 namespace Opal.Autograd;
 
