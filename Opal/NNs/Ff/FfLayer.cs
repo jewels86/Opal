@@ -21,7 +21,7 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        Tensor<TOut> weightedSum = Catalog.Multiply(input, Weights);
+        Tensor<TOut> weightedSum = Catalog.Multiply(Weights, input);
         Tensor<TOut> preActivation = Catalog.Add(weightedSum, Biases);
         Tensor<TOut> output = Activation.Function(preActivation);
         return output;
@@ -61,18 +61,16 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
 public interface IFfCatalog<TIn, TOut, TWeights>
     where TIn : notnull where TOut : notnull where TWeights : notnull
 {
-    public Tensor<TOut> Multiply(Tensor<TIn> a, Tensor<TWeights> b);
+    public Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TIn> b);
     public Tensor<TOut> Add(Tensor<TOut> a, Tensor<TOut> b);
-    
     public TWeights Subtract(TWeights a, TWeights b);
-    public TWeights Scale(TWeights a, double scale);
-    public TWeights ZeroGradient(TWeights a);
-    
     public TOut Subtract(TOut a, TOut b);
+    public TWeights Scale(TWeights a, double scale);
     public TOut Scale(TOut a, double scale);
-    public TOut ZeroGradient(TOut a);
     
+    public TOut ZeroGradient(TOut a);
     public TIn ZeroGradient(TIn a);
+    public TWeights ZeroGradient(TWeights a);
     
     public void WriteWeights(BinaryWriter writer, TWeights weight);
     public TWeights ReadWeights(BinaryReader reader);

@@ -4,23 +4,16 @@ using Opal.Mathematics;
 
 namespace Opal.Autograd;
 
-public class MatrixTensor : Tensor<ITensorStorage<double[,]>>
+public static partial class Operations
 {
-    public MatrixTensor(
-        ITensorStorage<double[,]> storage,
-        List<object>? inputs,
-        Action<Tensor<ITensorStorage<double[,]>>>? backward,
-        ITensorStorage<double[,]> gradient)
-        : base(storage, inputs, backward ?? (_ => { }), gradient) { }
-
-    public static ITensorStorage<double[,]> CpuMatrixStorage(double[,] matrix)
+    #region Matrix Tensor Helpers
+    public static ITensorStorage<double[,]> NewCpuMatrixStorage(double[,] matrix)
     {
         int rows = matrix.GetLength(0);
         int cols = matrix.GetLength(1);
         return new CpuStorage<double[,]>(matrix, [rows, cols], rows * cols);
     }
-
-    public static ITensorStorage<double[,]> GpuMatrixStorage(double[,] matrix)
+    public static ITensorStorage<double[,]> NewGpuMatrixStorage(double[,] matrix)
     {
         int rows = matrix.GetLength(0);
         int cols = matrix.GetLength(1);
@@ -28,12 +21,13 @@ public class MatrixTensor : Tensor<ITensorStorage<double[,]>>
         buffer.CopyFromCPU(matrix);
         return new GpuMatrixStorage(buffer);
     }
-
-    public static VectorTensor operator *(MatrixTensor a, VectorTensor b) => Operations.Multiply(a, b);
-}
-
-public static partial class Operations
-{
+    public static ITensorStorage<double[,]> NewDefaultMatrixStorage(double[,] matrix) => GpuAvailable ? NewGpuMatrixStorage(matrix) : NewCpuMatrixStorage(matrix);
+    
+    public static MatrixTensor NewMatrix(ITensorStorage<double[,]> storage, List<object>? inputs, Action<Tensor<ITensorStorage<double[,]>>> backwards,
+        ITensorStorage<double[,]> gradient) => new(storage, inputs, backwards, gradient);
+    public static MatrixTensor NewMatrix(double[,] matrix, double[,] gradient) =>
+        NewMatrix(NewDefaultMatrixStorage(matrix), null, _ => { }, NewDefaultMatrixStorage(gradient));
+    #endregion
     #region Kernels
     public static Action<Index1D, ArrayView2D<double, Stride2D.DenseX>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>> MatrixVectorMultiplyKernel { get; private set; }
@@ -43,10 +37,14 @@ public static partial class Operations
         ArrayView1D<double, Stride1D.Dense>, ArrayView2D<double, Stride2D.DenseX>> OuterProductKernel { get; private set; }
     public static Action<Index2D, ArrayView2D<double, Stride2D.DenseX>, 
         ArrayView2D<double, Stride2D.DenseX>, ArrayView2D<double, Stride2D.DenseX>> MatrixAddKernel { get; private set; }
+    public static Action<Index2D, ArrayView2D<double, Stride2D.DenseX>, 
+        ArrayView2D<double, Stride2D.DenseX>, ArrayView2D<double, Stride2D.DenseX>> MatrixSubtractKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>,
         ArrayView2D<double, Stride2D.DenseX>, int> CopyVectorToRowKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>,
         ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>, int> ScaleVectorByRowKernel { get; private set; }
+    public static Action<Index2D, ArrayView2D<double, Stride2D.DenseX>, 
+        ArrayView1D<double, Stride1D.Dense>, ArrayView2D<double, Stride2D.DenseX>> MatrixScalarMultiplyKernel { get; private set; }
     #endregion
     #region Helpers
     public static MatrixTensor BinaryOp(
@@ -84,10 +82,10 @@ public static partial class Operations
     
         var result = cpuFallback(a.Value.ToHost(), b.Value.ToHost());
         return new MatrixTensor(
-            MatrixTensor.CpuMatrixStorage(result),
+            NewCpuMatrixStorage(result),
             [a, b],
             output => gradientFn(a, b, (MatrixTensor)output),
-            MatrixTensor.CpuMatrixStorage(
+            NewCpuMatrixStorage(
                 new double[result.GetLength(0), result.GetLength(1)]));
     }
     
@@ -115,6 +113,52 @@ public static partial class Operations
             var incomingData = incomingGrad.ToHost();
             gradient.CopyFrom(Matrices.Add(gradData, incomingData));
         }
+    }
+    #endregion
+    #region Storage Operations
+    public static ITensorStorage<double[,]> AddStorage(ITensorStorage<double[,]> a, ITensorStorage<double[,]> b)
+    {
+        if (!GpuAvailable || (a is not Autograd.GpuMatrixStorage && b is not Autograd.GpuMatrixStorage)) return NewCpuMatrixStorage(Matrices.Add(a.ToHost(), b.ToHost()));
+        var gpuA = (a as GpuMatrixStorage) ?? (GpuMatrixStorage)a.ToGpu();
+        var gpuB = (b as GpuMatrixStorage) ?? (GpuMatrixStorage)b.ToGpu();
+        var result = Accelerator.Allocate2DDenseX<double>(gpuA.GpuData.Extent);
+            
+        Queue.Enqueue(() => MatrixAddKernel(
+            gpuA.GpuData.IntExtent,
+            gpuA.GpuData.View,
+            gpuB.GpuData.View,
+            result.View));
+        return new GpuMatrixStorage(result);
+    }
+
+    public static ITensorStorage<double[,]> SubtractStorage(ITensorStorage<double[,]> a, ITensorStorage<double[,]> b)
+    {
+        if (!GpuAvailable || (a is not Autograd.GpuMatrixStorage && b is not Autograd.GpuMatrixStorage)) return NewCpuMatrixStorage(Matrices.Add(a.ToHost(), b.ToHost()));
+        var gpuA = (a as GpuMatrixStorage) ?? (GpuMatrixStorage)a.ToGpu();
+        var gpuB = (b as GpuMatrixStorage) ?? (GpuMatrixStorage)b.ToGpu();
+        var result = Accelerator.Allocate2DDenseX<double>(gpuA.GpuData.Extent);
+            
+        Queue.Enqueue(() => MatrixSubtractKernel(
+            gpuA.GpuData.IntExtent,
+            gpuA.GpuData.View,
+            gpuB.GpuData.View,
+            result.View));
+        return new GpuMatrixStorage(result);
+    }
+
+    public static ITensorStorage<double[,]> ScaleMatrixStorage(ITensorStorage<double[,]> matrix, ITensorStorage<double> scalar)
+    {
+        if (!GpuAvailable || matrix is not GpuMatrixStorage) return NewCpuMatrixStorage(Matrices.Multiply(matrix.ToHost(), scalar.ToHost()));
+        var gpuMatrix = (matrix as GpuMatrixStorage) ?? (GpuMatrixStorage)matrix.ToGpu();
+        var gpuScalar = (scalar as GpuScalarStorage) ?? (GpuScalarStorage)scalar.ToGpu();
+        var result = Accelerator.Allocate2DDenseX<double>(gpuMatrix.GpuData.Extent);
+        
+        Queue.Enqueue(() => MatrixScalarMultiplyKernel(
+            gpuMatrix.GpuData.IntExtent,
+            gpuMatrix.GpuData.View,
+            gpuScalar.GpuData.View,
+            result.View));
+        return new GpuMatrixStorage(result);;
     }
     #endregion
     
@@ -168,10 +212,10 @@ public static partial class Operations
         {
             var result = Matrices.Multiply(matrix.Value.ToHost(), vector.Value.ToHost());
             return new VectorTensor(
-                VectorTensor.CpuVectorStorage(result),
+                NewCpuVectorStorage(result),
                 [matrix, vector],
                 Backward,
-                VectorTensor.CpuVectorStorage(new double[result.Length]));
+                NewCpuVectorStorage(new double[result.Length]));
             
             void Backward(Tensor<ITensorStorage<double[]>> output)
             {
@@ -180,10 +224,10 @@ public static partial class Operations
                 var vectorVal = vector.Value.ToHost();
                 
                 var gradVector = Matrices.Multiply(Matrices.Transpose(matrixVal), outGrad);
-                AccumulateGradient(vector.Gradient, VectorTensor.CpuVectorStorage(gradVector));
+                AccumulateGradient(vector.Gradient, NewCpuVectorStorage(gradVector));
                 
                 var gradMatrix = Matrices.OuterProduct(outGrad, vectorVal);
-                AccumulateGradient(matrix.Gradient, MatrixTensor.CpuMatrixStorage(gradMatrix));
+                AccumulateGradient(matrix.Gradient, NewCpuMatrixStorage(gradMatrix));
             }
         }
     }

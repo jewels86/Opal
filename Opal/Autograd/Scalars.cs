@@ -3,40 +3,36 @@ using Opal.Mathematics;
 
 namespace Opal.Autograd;
 
-public class ScalarTensor : Tensor<ITensorStorage<double>>
+public static partial class Operations
 {
-    public ScalarTensor(
-        ITensorStorage<double> storage, 
-        List<object>? inputs, 
-        Action<Tensor<ITensorStorage<double>>>? backward,
-        ITensorStorage<double> gradient)
-        : base(storage, inputs, backward ?? (_ => { }), gradient) {}
-    
-    public static ITensorStorage<double> CpuScalarStorage(double value) => 
+    #region Scalar Tensor Helpers
+    public static ITensorStorage<double> NewCpuScalarStorage(double value) => 
         new CpuStorage<double>(value, [1], 1);
     
-    public static ITensorStorage<double> GpuScalarStorage(double value)
+    public static ITensorStorage<double> NewGpuScalarStorage(double value)
     {
         var buffer = Operations.Accelerator.Allocate1D<double>(1);
         buffer.CopyFromCPU([value]);
         return new GpuScalarStorage(buffer);
     }
-    
-    public static ScalarTensor operator +(ScalarTensor a, ScalarTensor b) => Operations.Add(a, b);
-    public static ScalarTensor operator -(ScalarTensor a, ScalarTensor b) => Operations.Subtract(a, b);
-    public static ScalarTensor operator *(ScalarTensor a, ScalarTensor b) => Operations.Multiply(a, b);
-}
-
-public static partial class Operations
-{
+    public static ITensorStorage<double> NewDefaultScalarStorage(double value) => NewCpuScalarStorage(value);
+    public static ScalarTensor NewScalar(ITensorStorage<double> storage, List<object>? inputs, Action<Tensor<ITensorStorage<double>>> backwards,
+        ITensorStorage<double> gradient) => new(storage, inputs, backwards, gradient);
+    public static ScalarTensor NewScalar(double value, double gradient) => NewScalar(NewDefaultScalarStorage(value), null, _ => { }, NewDefaultScalarStorage(gradient));
+    #endregion
+    #region Storage Operations
+    public static ITensorStorage<double> SubtractStorage(ITensorStorage<double> a, ITensorStorage<double> b) => NewCpuScalarStorage(a.ToHost() - b.ToHost());
+    public static ITensorStorage<double> MultiplyStorage(ITensorStorage<double> a, ITensorStorage<double> b) => NewCpuScalarStorage(a.ToHost() * b.ToHost());
+    public static ITensorStorage<double> AddStorage(ITensorStorage<double> a, ITensorStorage<double> b) => NewCpuScalarStorage(a.ToHost() + b.ToHost());
+    #endregion
     public static ScalarTensor Add(ScalarTensor a, ScalarTensor b)
     {
         var result = a.Value.ToHost() + b.Value.ToHost();
         return new ScalarTensor(
-            ScalarTensor.CpuScalarStorage(result),
+            NewCpuScalarStorage(result),
             [a, b],
             Backward,
-            ScalarTensor.CpuScalarStorage(0.0));
+            NewCpuScalarStorage(0.0));
     
         void Backward(Tensor<ITensorStorage<double>> output)
         {
@@ -52,12 +48,12 @@ public static partial class Operations
         var bHost = b.Value.ToHost();
         var result = aHost * bHost;
         return new ScalarTensor(
-            ScalarTensor.CpuScalarStorage(result),
+            NewCpuScalarStorage(result),
             [a, b],
             Backward,
-            ScalarTensor.CpuScalarStorage(0.0));
+            NewCpuScalarStorage(0.0));
     
-        void Backward(Tensor<ITensorStorage<double>> output)
+        void Backward(ScalarTensor output)
         {
             var outGrad = output.Gradient.ToHost();
             a.Gradient.CopyFrom(a.Gradient.ToHost() + outGrad * bHost);
@@ -69,12 +65,12 @@ public static partial class Operations
     {
         var result = a.Value.ToHost() - b.Value.ToHost();
         return new ScalarTensor(
-            ScalarTensor.CpuScalarStorage(result),
+            NewCpuScalarStorage(result),
             [a, b],
             Backward,
-            ScalarTensor.CpuScalarStorage(0.0));
+            NewCpuScalarStorage(0.0));
     
-        void Backward(Tensor<ITensorStorage<double>> output)
+        void Backward(ScalarTensor output)
         {
             var outGrad = output.Gradient.ToHost();
             a.Gradient.CopyFrom(a.Gradient.ToHost() - outGrad);

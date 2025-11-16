@@ -42,8 +42,14 @@ public class VectorFfNetwork : FfNetwork<ITensorStorage<double[]>, ITensorStorag
         for (int j = 0; j < inputSize; j++)
             _weights[i, j] = random.NextDouble() * 2 - 1;
 
-        MatrixTensor weights = new(MatrixTensor.CpuMatrixStorage(_weights), null, _ => { }, MatrixTensor.CpuMatrixStorage(Matrices.Zeros(outputSize, inputSize)));
-        VectorTensor biases = new(VectorTensor.CpuVectorStorage(Vectors.Zeros(outputSize)), null, _ => { }, VectorTensor.CpuVectorStorage(Vectors.Zeros(outputSize)));
+        MatrixTensor weights = new(
+            Operations.NewDefaultMatrixStorage(_weights), 
+            null, _ => { }, 
+            Operations.NewDefaultMatrixStorage(Matrices.Zeros(outputSize, inputSize)));
+        VectorTensor biases = new(
+            Operations.NewDefaultVectorStorage(Vectors.Zeros(outputSize)), 
+            null, _ => { }, 
+            Operations.NewDefaultVectorStorage(Vectors.Zeros(outputSize)));
     
         return new(weights, biases, activation, catalog);
     }

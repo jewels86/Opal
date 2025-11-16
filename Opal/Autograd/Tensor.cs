@@ -146,13 +146,21 @@ public class Tensor<T> where T : notnull
 
 public static class TensorStorageExtensions
 {
+    public static ITensorStorage<double> ToGpu(this ITensorStorage<double> storage)
+    {
+        if (storage is GpuScalarStorage)
+            return storage;
+        
+        var data = storage.ToHost();
+        return Operations.NewGpuScalarStorage(data);
+    }
     public static ITensorStorage<double[]> ToGpu(this ITensorStorage<double[]> storage)
     {
         if (storage is GpuVectorStorage)
             return storage;
         
         var data = storage.ToHost();
-        return VectorTensor.GpuVectorStorage(data);
+        return Operations.NewGpuVectorStorage(data);
     }
     
     public static ITensorStorage<double[,]> ToGpu(this ITensorStorage<double[,]> storage)
@@ -161,7 +169,16 @@ public static class TensorStorageExtensions
             return storage;
         
         var data = storage.ToHost();
-        return MatrixTensor.GpuMatrixStorage(data);
+        return Operations.NewGpuMatrixStorage(data);
+    }
+
+    public static ITensorStorage<double> ToCpu(this ITensorStorage<double> storage)
+    {
+        if (storage is CpuStorage<double>)
+            return storage;
+        
+        var data = storage.ToHost();
+        return Operations.NewCpuScalarStorage(data);
     }
     
     public static ITensorStorage<double[]> ToCpu(this ITensorStorage<double[]> storage)
@@ -170,7 +187,7 @@ public static class TensorStorageExtensions
             return storage;
         
         var data = storage.ToHost();
-        return VectorTensor.CpuVectorStorage(data);
+        return Operations.NewCpuVectorStorage(data);
     }
     
     public static ITensorStorage<double[,]> ToCpu(this ITensorStorage<double[,]> storage)
@@ -179,7 +196,7 @@ public static class TensorStorageExtensions
             return storage;
         
         var data = storage.ToHost();
-        return MatrixTensor.CpuMatrixStorage(data);
+        return Operations.NewCpuMatrixStorage(data);
     }
 }
 
@@ -217,6 +234,9 @@ public static partial class Operations
             ArrayView1D<double, Stride1D.Dense>, int>(GpuKernels.VectorSliceKernel);
         VectorNegateKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>,
             ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorNegateKernel);
+        VectorSubtractKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorSubtractKernel);
+        VectorFillKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, double>(GpuKernels.VectorFillKernel);
         
         MatrixVectorMultiplyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView2D<double, Stride2D.DenseX>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.MatrixVectorMultiplyKernel);
@@ -230,6 +250,10 @@ public static partial class Operations
             ArrayView2D<double, Stride2D.DenseX>, int>(GpuKernels.CopyVectorToRowKernel);
         ScaleVectorByRowKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>,
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>, int>(GpuKernels.ScaleVectorByRowKernel);
+        MatrixSubtractKernel = Accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView2D<double, Stride2D.DenseX>, 
+            ArrayView2D<double, Stride2D.DenseX>, ArrayView2D<double, Stride2D.DenseX>>(GpuKernels.MatrixSubtractKernel);
+        MatrixScalarMultiplyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView2D<double, Stride2D.DenseX>, 
+            ArrayView1D<double, Stride1D.Dense>, ArrayView2D<double, Stride2D.DenseX>>(GpuKernels.MatrixScalarMultiplyKernel);
     }
     
     public static void Sync() => Queue.Execute();

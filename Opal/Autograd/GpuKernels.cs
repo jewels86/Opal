@@ -12,6 +12,12 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> b,
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = a[index] + b[index];
+    public static void VectorSubtractKernel(
+        Index1D index, 
+        ArrayView1D<double, Stride1D.Dense> a, 
+        ArrayView1D<double, Stride1D.Dense> b,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = a[index] - b[index];
     
     public static void VectorMultiplyKernel(
         Index1D index, 
@@ -50,6 +56,19 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> vector, 
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = -vector[index];
+    public static void ScaleVectorByRowKernel(
+        Index1D col,
+        ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> scalars,
+        ArrayView1D<double, Stride1D.Dense> result,
+        int scalarIndex) =>
+        result[col] = vector[col] * scalars[scalarIndex];
+    
+    public static void VectorFillKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> array,
+        double value) =>
+        array[index] = value;
     #endregion
     #region Matrices
     public static void MatrixAddKernel(
@@ -58,6 +77,12 @@ public static class GpuKernels
         ArrayView2D<double, Stride2D.DenseX> b,
         ArrayView2D<double, Stride2D.DenseX> result) =>
         result[index] = a[index] + b[index];
+    public static void MatrixSubtractKernel(
+        Index2D index,
+        ArrayView2D<double, Stride2D.DenseX> a,
+        ArrayView2D<double, Stride2D.DenseX> b,
+        ArrayView2D<double, Stride2D.DenseX> result) =>
+        result[index] = a[index] - b[index];
     
     public static void MatrixMultiplyKernel(Index2D index,
         ArrayView2D<double, Stride2D.DenseX> a,
@@ -72,10 +97,7 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> result)
     {
         double sum = 0;
-        for (int col = 0; col < matrix.Extent.X; col++)
-        {
-            sum += matrix[col, row] * vector[col];
-        }
+        for (int col = 0; col < matrix.Extent.X; col++) sum += matrix[col, row] * vector[col];
         result[row] = sum;
     }
     public static void MatrixTransposeVectorMultiplyKernel(
@@ -85,10 +107,7 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> result)
     {
         double sum = 0;
-        for (int row = 0; row < matrix.Extent.Y; row++)
-        {
-            sum += matrix[col, row] * vector[row];
-        }
+        for (int row = 0; row < matrix.Extent.Y; row++) sum += matrix[col, row] * vector[row];
         result[col] = sum;
     }
     public static void OuterProductKernel(
@@ -105,12 +124,11 @@ public static class GpuKernels
         int row) =>
         matrix[col, row] = vector[col];
 
-    public static void ScaleVectorByRowKernel(
-        Index1D col,
-        ArrayView1D<double, Stride1D.Dense> vector,
-        ArrayView1D<double, Stride1D.Dense> scalars,
-        ArrayView1D<double, Stride1D.Dense> result,
-        int scalarIndex) =>
-        result[col] = vector[col] * scalars[scalarIndex];
+    public static void MatrixScalarMultiplyKernel(
+        Index2D index,
+        ArrayView2D<double, Stride2D.DenseX> matrix,
+        ArrayView1D<double, Stride1D.Dense> scalar,
+        ArrayView2D<double, Stride2D.DenseX> result) =>
+        result[index] = matrix[index] * scalar[0];
     #endregion
 }

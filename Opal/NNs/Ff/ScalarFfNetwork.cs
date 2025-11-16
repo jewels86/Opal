@@ -5,15 +5,15 @@ using Opal.Utilities;
 
 namespace Opal.NNs.Ff;
 
-public class ScalarFfNetwork : FfNetwork<double, double, double, double, double, double>
+public class ScalarFfNetwork : FfNetwork<ScalarTensorStorage, ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage, VectorTensorStorage, VectorTensorStorage>
 {
     public ScalarFfNetwork(
         int inputSize,
         int hiddenSize,
         int numHiddenLayers,
-        ActivationFunction<double> hiddenActivation,
-        ActivationFunction<double> outputActivation,
-        LossFunction<double> lossFunction,
+        ActivationFunction<ScalarTensorStorage> hiddenActivation,
+        ActivationFunction<ScalarTensorStorage> outputActivation,
+        LossFunction<ScalarTensorStorage> lossFunction,
         string name = "ScalarFfNetwork")
         : base(
             CreateLayer(inputSize, hiddenActivation),
@@ -26,34 +26,31 @@ public class ScalarFfNetwork : FfNetwork<double, double, double, double, double,
     {
     }
 
-    protected override FfLayer<double, double, double> CreateHiddenLayer() =>
+    protected override FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenActivation);
     
-    private static FfLayer<double, double, double> CreateLayer(
+    private static FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage> CreateLayer(
         int inputSize, 
-        ActivationFunction<double> activation)
+        ActivationFunction<ScalarTensorStorage> activation)
     {
         var catalog = new ScalarCatalog();
-        var weights = new Tensor<double>[inputSize];
+        var _weights = new double[inputSize];
         
         var random = new Random();
-        for (int i = 0; i < inputSize; i++)
-        {
-            double weight = random.NextDouble() * 2 - 1;
-            weights[i] = new Tensor<double>(weight, null, _ => { }, 0.0);
-        }
+        for (int i = 0; i < inputSize; i++) _weights[i] = random.NextDouble() * 2 - 1;
+
+        var weights = Operations.NewVector(_weights, Vectors.Zeros(inputSize));
+        var bias = Operations.NewScalar(0.0, 0.0);
         
-        var biases = new Tensor<double>(0.0, null, _ => { }, 0.0);
-        
-        return new FfLayer<double, double, double>(weights, biases, activation, catalog);
+        return new(weights, bias, activation, catalog);
     }
 
-    private static List<FfLayer<double, double, double>> CreateHiddenLayers(
+    private static List<FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
-        ActivationFunction<double> activation)
+        ActivationFunction<ScalarTensorStorage> activation)
     {
-        var layers = new List<FfLayer<double, double, double>>();
+        var layers = new List<FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage>>();
         for (int i = 0; i < numLayers; i++)
             layers.Add(CreateLayer(hiddenSize, activation));
         return layers;
