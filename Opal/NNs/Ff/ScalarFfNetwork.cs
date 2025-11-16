@@ -11,9 +11,9 @@ public class ScalarFfNetwork : FfNetwork<ScalarTensorStorage, ScalarTensorStorag
         int inputSize,
         int hiddenSize,
         int numHiddenLayers,
-        ActivationFunction<ScalarTensorStorage> hiddenActivation,
-        ActivationFunction<ScalarTensorStorage> outputActivation,
-        LossFunction<ScalarTensorStorage> lossFunction,
+        Func<ScalarTensor, ScalarTensor> hiddenActivation,
+        Func<ScalarTensor, ScalarTensor> outputActivation,
+        Func<ScalarTensor, ScalarTensorStorage, ScalarTensor> lossFunction,
         string name = "ScalarFfNetwork")
         : base(
             CreateLayer(inputSize, hiddenActivation),
@@ -31,7 +31,7 @@ public class ScalarFfNetwork : FfNetwork<ScalarTensorStorage, ScalarTensorStorag
     
     private static FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage> CreateLayer(
         int inputSize, 
-        ActivationFunction<ScalarTensorStorage> activation)
+        Func<ScalarTensor, ScalarTensor> activation)
     {
         var catalog = new ScalarCatalog();
 
@@ -44,7 +44,7 @@ public class ScalarFfNetwork : FfNetwork<ScalarTensorStorage, ScalarTensorStorag
     private static List<FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
-        ActivationFunction<ScalarTensorStorage> activation)
+        Func<ScalarTensor, ScalarTensor> activation)
     {
         var layers = new List<FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage>>();
         for (int i = 0; i < numLayers; i++)

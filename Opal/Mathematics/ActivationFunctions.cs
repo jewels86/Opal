@@ -1,202 +1,135 @@
 ﻿using Opal.Autograd;
-using static Opal.Mathematics.Matrices;
+using static Opal.Autograd.Operations;
 
 namespace Opal.Mathematics;
 
 public static class ActivationFunctions
 {
     #region Scalars
-    public static readonly ActivationFunction<double> ReLu = new(
-        x =>
+    public static ScalarTensor ReLu(ScalarTensor x)
+    {
+        var xVal = x.Value.ToHost();
+        var result = Math.Max(0, xVal);
+        return new ScalarTensor(
+            NewCpuScalarStorage(result),
+            [x],
+            Backwards,
+            NewCpuScalarStorage(0.0));
+        
+        void Backwards(ScalarTensor output)
         {
-            var result = Math.Max(0, x.Value);
-            return new Tensor<double>(result, [x], Backwards, 0.0);
-            
-            void Backwards(Tensor<double> output)
-            {
-                x.Gradient += x.Value > 0 ? output.Gradient : 0;
-            }
+            var grad = xVal > 0 ? output.Gradient.ToHost() : 0;
+            x.Gradient.CopyFrom(x.Gradient.ToHost() + grad);
         }
-    );
+    }
 
-    public static readonly ActivationFunction<double> Sigmoid = new(
-        x =>
+    public static ScalarTensor Sigmoid(ScalarTensor x)
+    {
+        var xVal = x.Value.ToHost();
+        var s = 1.0 / (1.0 + Math.Exp(-xVal));
+        return new ScalarTensor(
+            NewCpuScalarStorage(s),
+            [x],
+            Backwards,
+            NewCpuScalarStorage(0.0));
+        
+        void Backwards(ScalarTensor output)
         {
-            var s = 1.0 / (1.0 + Math.Exp(-x.Value));
-            return new Tensor<double>(s, [x], Backwards, 0.0);
-            
-            void Backwards(Tensor<double> output)
-            {
-                var sig = output.Value;
-                x.Gradient += output.Gradient * sig * (1 - sig);
-            }
+            var sig = output.Value.ToHost();
+            var grad = output.Gradient.ToHost() * sig * (1 - sig);
+            x.Gradient.CopyFrom(x.Gradient.ToHost() + grad);
         }
-    );
+    }
 
-    public static readonly ActivationFunction<double> Tanh = new(
-        x =>
+    public static ScalarTensor Tanh(ScalarTensor x)
+    {
+        var xVal = x.Value.ToHost();
+        var result = Math.Tanh(xVal);
+        return new ScalarTensor(
+            NewCpuScalarStorage(result),
+            [x],
+            Backwards,
+            NewCpuScalarStorage(0.0));
+        
+        void Backwards(ScalarTensor output)
         {
-            var result = Math.Tanh(x.Value);
-            return new Tensor<double>(result, [x], Backwards, 0.0);
-            
-            void Backwards(Tensor<double> output)
-            {
-                var t = Math.Tanh(x.Value);
-                x.Gradient += output.Gradient * (1 - t * t);
-            }
+            var t = Math.Tanh(xVal);
+            var grad = output.Gradient.ToHost() * (1 - t * t);
+            x.Gradient.CopyFrom(x.Gradient.ToHost() + grad);
         }
-    );
+    }
     
-    public static readonly ActivationFunction<double> Identity = new(
-        x =>
+    public static ScalarTensor Identity(ScalarTensor x)
+    {
+        return new ScalarTensor(
+            NewCpuScalarStorage(x.Value.ToHost()),
+            [x],
+            Backwards,
+            NewCpuScalarStorage(0.0));
+        
+        void Backwards(ScalarTensor output)
         {
-            return new Tensor<double>(x.Value, [x], Backwards, 0.0);
-            
-            void Backwards(Tensor<double> output)
-            {
-                x.Gradient += output.Gradient;
-            }
+            x.Gradient.CopyFrom(x.Gradient.ToHost() + output.Gradient.ToHost());
         }
-    );
+    }
     #endregion
     #region Vectors
-    public static readonly ActivationFunction<double[]> ReLuVector = new(
-        x =>
-        {
-            var result = x.Value.Select(v => Math.Max(0, v)).ToArray();
-            return new Tensor<double[]>(result, [x], Backwards, Vectors.Zeros(result.Length));
-            
-            void Backwards(Tensor<double[]> output)
-            {
-                var grad = x.Value.Zip(output.Gradient, (v, g) => v > 0 ? g : 0).ToArray();
-                x.Gradient = Vectors.Add(x.Gradient, grad);
-            }
-        }
-    );
+    public static VectorTensor ReLuVector(VectorTensor x) => Operations.ReLuVector(x);
 
-    public static readonly ActivationFunction<double[]> SigmoidVector = new(
-        x =>
-        {
-            var result = x.Value.Select(v => 1.0 / (1.0 + Math.Exp(-v))).ToArray();
-            return new Tensor<double[]>(result, [x], Backwards, Vectors.Zeros(result.Length));
-            
-            void Backwards(Tensor<double[]> output)
-            {
-                var grad = x.Value.Zip(output.Gradient, (v, g) =>
-                {
-                    var s = 1.0 / (1.0 + Math.Exp(-v));
-                    return g * s * (1 - s);
-                }).ToArray();
-                x.Gradient = Vectors.Add(x.Gradient, grad);
-            }
-        }
-    );
+    public static VectorTensor SigmoidVector(VectorTensor x)
+    {
+        var negX = Negate(x);
+        var expNegX = Exp(negX);
+        var onePlusExp = Add(Fill(x.Value.TotalElements, 1.0, 0.0), expNegX);
+        var ones = Fill(x.Value.TotalElements, 1.0, 0.0);
+        return Divide(ones, onePlusExp);
+    }
 
-    public static readonly ActivationFunction<double[]> TanhVector = new(
-        x =>
-        {
-            var result = x.Value.Select(Math.Tanh).ToArray();
-            return new Tensor<double[]>(result, [x], Backwards, Vectors.Zeros(result.Length));
-            
-            void Backwards(Tensor<double[]> output)
-            {
-                var grad = x.Value.Zip(output.Gradient, (v, g) =>
-                {
-                    var t = Math.Tanh(v);
-                    return g * (1 - t * t);
-                }).ToArray();
-                x.Gradient = Vectors.Add(x.Gradient, grad);
-            }
-        }
-    );
+    public static VectorTensor TanhVector(VectorTensor x) => Operations.Tanh(x);
     
-    public static readonly ActivationFunction<double[]> IdentityVector = new( 
-        x => 
-        { 
-            var result = (double[])x.Value.Clone(); 
-            return new Tensor<double[]>(result, [x], Backwards, Vectors.Zeros(result.Length));
-            void Backwards(Tensor<double[]> output)
-            {
-                x.Gradient = Vectors.Add(x.Gradient, output.Gradient);
-            }
-        }
-    );
-
-    public static readonly ActivationFunction<double[]> SoftmaxVector = new(x =>
+    public static VectorTensor IdentityVector(VectorTensor x)
+    {
+        var result = x.Value.ToHost();
+        return new VectorTensor(
+            NewCpuVectorStorage(result),
+            [x],
+            Backwards,
+            NewCpuVectorStorage(Vectors.Zeros(result.Length)));
+        
+        void Backwards(VectorTensor output)
         {
-            var expValues = x.Value.Select(Math.Exp).ToArray();
-            var sum = expValues.Sum();
-            var result = expValues.Select(e => e / sum).ToArray();
-            return new Tensor<double[]>(result, [x], Backwards, Vectors.Zeros(result.Length));
+            AccumulateGradient(x.Gradient, output.Gradient);
+        }
+    }
 
-            void Backwards(Tensor<double[]> output)
+    public static VectorTensor SoftmaxVector(VectorTensor x)
+    {
+        var expX = Exp(x);
+        var sumExp = Sum(expX);
+        var ones = Fill(x.Value.TotalElements, 1.0, 0.0);
+        var sumVector = Multiply(ones, sumExp);
+    
+        return new VectorTensor(
+            DivideStorage(expX.Value, sumVector.Value),
+            [x],
+            Backwards,
+            NewDefaultVectorStorage(Vectors.Zeros(x.Value.TotalElements)));
+
+        void Backwards(VectorTensor output)
+        {
+            var softmax = output.Value.ToHost();
+            var grad = new double[softmax.Length];
+            var outGrad = output.Gradient.ToHost();
+            for (int i = 0; i < softmax.Length; i++)
             {
-                var softmax = result;
-                var grad = new double[softmax.Length];
-                for (int i = 0; i < softmax.Length; i++)
+                for (int j = 0; j < softmax.Length; j++)
                 {
-                    for (int j = 0; j < softmax.Length; j++)
-                    {
-                        var delta = i == j ? 1.0 : 0.0;
-                        grad[i] += output.Gradient[j] * softmax[i] * (delta - softmax[j]);
-                    }
+                    var delta = i == j ? 1.0 : 0.0;
+                    grad[i] += outGrad[j] * softmax[i] * (delta - softmax[j]);
                 }
-                x.Gradient = Vectors.Add(x.Gradient, grad);
             }
+            AccumulateGradient(x.Gradient, NewDefaultVectorStorage(grad));
         }
-    );
-    #endregion
-    #region Matrices
-    public static readonly ActivationFunction<double[,]> ReLuMatrix = new(
-        x =>
-        {
-            var result = ApplyElementwise(x.Value, v => Math.Max(0, v));
-            return new Tensor<double[,]>(result, [x], Backwards, new double[result.GetLength(0), result.GetLength(1)]);
-            
-            void Backwards(Tensor<double[,]> output)
-            {
-                var grad = ApplyElementwise(x.Value, (v, i, j) => v > 0 ? output.Gradient[i, j] : 0);
-                x.Gradient = Add(x.Gradient, grad);
-            }
-        }
-    );
-
-    public static readonly ActivationFunction<double[,]> SigmoidMatrix = new(
-        x =>
-        {
-            var result = ApplyElementwise(x.Value, v => 1.0 / (1.0 + Math.Exp(-v)));
-            return new Tensor<double[,]>(result, [x], Backwards, new double[result.GetLength(0), result.GetLength(1)]);
-            
-            void Backwards(Tensor<double[,]> output)
-            {
-                var grad = ApplyElementwise(x.Value, (v, i, j) =>
-                {
-                    var s = 1.0 / (1.0 + Math.Exp(-v));
-                    return output.Gradient[i, j] * s * (1 - s);
-                });
-                x.Gradient = Add(x.Gradient, grad);
-            }
-        }
-    );
-
-    public static readonly ActivationFunction<double[,]> TanhMatrix = new(
-        x =>
-        {
-            var result = ApplyElementwise(x.Value, Math.Tanh);
-            return new Tensor<double[,]>(result, [x], Backwards, new double[result.GetLength(0), result.GetLength(1)]);
-            
-            void Backwards(Tensor<double[,]> output)
-            {
-                var grad = ApplyElementwise(x.Value, (v, i, j) =>
-                {
-                    var t = Math.Tanh(v);
-                    return output.Gradient[i, j] * (1 - t * t);
-                });
-                x.Gradient = Add(x.Gradient, grad);
-            }
-        }
-    );
+    }
     #endregion
 }
-
-public record struct ActivationFunction<T>(Func<Tensor<T>, Tensor<T>> Function) where T : notnull;

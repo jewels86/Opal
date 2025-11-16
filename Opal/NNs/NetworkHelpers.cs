@@ -7,7 +7,7 @@ namespace Opal.NNs;
 public static class NetworkHelpers
 {
     public static void Train<TIn, TOut>(
-        Func<TIn, TIn> zeroInput, Func<Tensor<TIn>, Tensor<TOut>> forward, LossFunction<TOut> lossFunction, Action updateParameters,
+        Func<TIn, TIn> zeroInput, Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction, Action updateParameters,
         TIn[] inputs, TOut[] targets, int epochs)
     where TIn : notnull where TOut : notnull
     {
@@ -19,8 +19,8 @@ public static class NetworkHelpers
                     zeroInput(inputs[i]));
             
                 var outputTensor = forward(inputTensor);
-                var lossTensor = lossFunction.Function(outputTensor, targets[i]);
-                lossTensor.Backward(1.0);
+                var lossTensor = lossFunction(outputTensor, targets[i]);
+                lossTensor.Backward(Operations.NewDefaultScalarStorage(1.0));
             
                 updateParameters();
             }
@@ -28,11 +28,11 @@ public static class NetworkHelpers
     }
     
     public static double EvaluateLoss<TIn, TOut>(
-        Func<TIn, TIn> zeroInput, Func<Tensor<TIn>, Tensor<TOut>> forward, LossFunction<TOut> lossFunction,
+        Func<TIn, TIn> zeroInput, Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction,
         TIn[] inputs, TOut[] targets)
     where TIn : notnull where TOut : notnull
     {
-        double totalLoss = 0.0;
+        ScalarTensorStorage totalLoss = Operations.NewDefaultScalarStorage(0.0);
         for (int i = 0; i < inputs.Length; i++)
         {
             var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { }, 
@@ -40,10 +40,10 @@ public static class NetworkHelpers
         
             var outputTensor = forward(inputTensor);
         
-            var lossTensor = lossFunction.Function(outputTensor, targets[i]);
-            totalLoss += lossTensor.Value;
+            var lossTensor = lossFunction(outputTensor, targets[i]);
+            totalLoss = Operations.AddStorage(totalLoss, lossTensor.Value);
         }
-        return totalLoss / inputs.Length;
+        return totalLoss.ToHost() / inputs.Length;
     }
     
     public static void Save<TIn, THidden, TOut>(

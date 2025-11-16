@@ -114,6 +114,13 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> vector,
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = XMath.Exp(vector[index]);
+    
+    public static void VectorScalarMaxKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> scalar,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = XMath.Max(vector[index], scalar[0]);
     #endregion
     #region Matrices
     public static void MatrixAddKernel(

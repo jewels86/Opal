@@ -56,6 +56,8 @@ public static partial class Operations
             ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorTanhKernel);
         VectorExpKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
             ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorExpKernel);
+        VectorScalarMaxKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorScalarMaxKernel);
         
         MatrixVectorMultiplyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView2D<double, Stride2D.DenseX>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.MatrixVectorMultiplyKernel);

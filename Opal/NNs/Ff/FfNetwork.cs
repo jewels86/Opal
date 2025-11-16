@@ -14,18 +14,18 @@ public abstract class FfNetwork<TInput, THidden, TOutput, TWeightsIn, TWeightsHi
     public FfLayer<THidden, TOutput, TWeightsOut> OutputLayer { get; }
     
     public string Name { get; set; }
-    public LossFunction<TOutput> LossFunction { get; }
+    public Func<Tensor<TOutput>, TOutput, ScalarTensor> LossFunction { get; }
     
     protected int HiddenSize { get; }
-    protected ActivationFunction<THidden> HiddenActivation { get; }
+    protected Func<Tensor<THidden>, Tensor<THidden>> HiddenActivation { get; }
     
     protected FfNetwork(
         FfLayer<TInput, THidden, TWeightsIn> inputLayer,
         List<FfLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
         FfLayer<THidden, TOutput, TWeightsOut> outputLayer,
-        LossFunction<TOutput> lossFunction,
+        Func<Tensor<TOutput>, TOutput, ScalarTensor> lossFunction,
         int hiddenSize,
-        ActivationFunction<THidden> hiddenActivation,
+        Func<Tensor<THidden>, Tensor<THidden>> hiddenActivation,
         string name = "FfNetwork")
     {
         InputLayer = inputLayer;

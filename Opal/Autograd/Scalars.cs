@@ -80,5 +80,6 @@ public static partial class Operations
             b.Gradient.CopyFrom(b.Gradient.ToHost() - outGrad);
         }
     }
+    public static ScalarTensor Negate(ScalarTensor a) => Multiply(a, NewScalar(-1.0, 0.0));
     #endregion
 }

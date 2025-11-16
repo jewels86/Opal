@@ -12,9 +12,9 @@ public class VectorFfNetwork : FfNetwork<VectorTensorStorage, VectorTensorStorag
         int hiddenSize,
         int outputSize,
         int numHiddenLayers,
-        ActivationFunction<VectorTensorStorage> hiddenActivation,
-        ActivationFunction<VectorTensorStorage> outputActivation,
-        LossFunction<VectorTensorStorage> lossFunction,
+        Func<VectorTensor, VectorTensor> hiddenActivation,
+        Func<VectorTensor, VectorTensor> outputActivation,
+        Func<VectorTensor, VectorTensorStorage, ScalarTensor> lossFunction,
         string name = "VectorFfNetwork")
         : base(
             CreateLayer(inputSize, hiddenSize, hiddenActivation),
@@ -33,7 +33,7 @@ public class VectorFfNetwork : FfNetwork<VectorTensorStorage, VectorTensorStorag
     private static FfLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateLayer(
         int inputSize,
         int outputSize,
-        ActivationFunction<VectorTensorStorage> activation)
+        Func<VectorTensor, VectorTensor> activation)
     {
         var catalog = new VectorCatalog();
     
@@ -46,7 +46,7 @@ public class VectorFfNetwork : FfNetwork<VectorTensorStorage, VectorTensorStorag
     private static List<FfLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
-        ActivationFunction<VectorTensorStorage> activation)
+        Func<VectorTensor, VectorTensor> activation)
     {
         var layers = new List<FfLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>>();
         for (int i = 0; i < numLayers; i++)

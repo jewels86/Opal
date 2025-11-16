@@ -8,10 +8,10 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
 {
     public Tensor<TWeights> Weights { get; set; }
     public Tensor<TOut> Biases { get; set; }
-    public ActivationFunction<TOut> Activation { get; set; }
+    public Func<Tensor<TOut>, Tensor<TOut>> Activation { get; set; }
     public IFfCatalog<TIn, TOut, TWeights> Catalog { get; set; }
 
-    public FfLayer(Tensor<TWeights> weights, Tensor<TOut> biases, ActivationFunction<TOut> activation, IFfCatalog<TIn, TOut, TWeights> catalog)
+    public FfLayer(Tensor<TWeights> weights, Tensor<TOut> biases, Func<Tensor<TOut>, Tensor<TOut>> activation, IFfCatalog<TIn, TOut, TWeights> catalog)
     {
         Weights = weights;
         Biases = biases;
@@ -23,7 +23,7 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
     {
         Tensor<TOut> weightedSum = Catalog.Multiply(Weights, input);
         Tensor<TOut> preActivation = Catalog.Add(weightedSum, Biases);
-        Tensor<TOut> output = Activation.Function(preActivation);
+        Tensor<TOut> output = Activation(preActivation);
         return output;
     }
     public TOut Forward(TIn input) => Forward(new Tensor<TIn>(input, null, _ => { }, Catalog.ZeroGradient(input))).Value;

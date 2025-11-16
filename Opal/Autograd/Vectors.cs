@@ -67,7 +67,8 @@ public static partial class Operations
         ArrayView1D<double, Stride1D.Dense>> VectorTanhKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
         ArrayView1D<double, Stride1D.Dense>> VectorExpKernel { get; private set; }
-    
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>> VectorScalarMaxKernel { get; set; }
     
     #endregion
     #region Helpers
@@ -289,6 +290,15 @@ public static partial class Operations
             {
                 AccumulateGradient(a.Gradient, output.Gradient);
                 AccumulateGradient(b.Gradient, output.Gradient);
+            });
+    public static VectorTensor Subtract(VectorTensor a, VectorTensor b) =>
+        BinaryOp(
+            a, b,
+            VectorSubtractKernel, Vectors.Subtract,
+            (_, _, output) =>
+            {
+                AccumulateGradient(a.Gradient, output.Gradient);
+                AccumulateGradient(b.Gradient, NegateStorage(output.Gradient));
             });
     public static VectorTensor Multiply(VectorTensor a, VectorTensor b) =>
         BinaryOp(
@@ -583,6 +593,21 @@ public static partial class Operations
             (input, output) =>
             {
                 var grad = MultiplyStorage(output.Value, output.Gradient);
+                AccumulateGradient(input.Gradient, grad);
+            });
+    public static VectorTensor ReLuVector(VectorTensor x) =>
+        UnaryOp(
+            x,
+            (i, v, r) => 
+                VectorScalarMaxKernel(i, v, ToGpuScalar(NewGpuScalarStorage(0.0)).GpuData.View, r), // GPU
+            v => v.Select(val => Math.Max(0, val)).ToArray(),
+            (input, output) =>
+            {
+                var xVal = input.Value.ToHost();
+                var mask = xVal.Select(v => v > 0 ? 1.0 : 0.0).ToArray();
+                var grad = MultiplyStorage(
+                    NewDefaultVectorStorage(mask), 
+                    output.Gradient);
                 AccumulateGradient(input.Gradient, grad);
             });
     
