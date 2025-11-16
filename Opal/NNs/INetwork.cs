@@ -1,14 +1,11 @@
 ﻿namespace Opal.NNs;
 
-public interface INetwork<in TInput, TOutput>
-    where TInput : notnull
-    where TOutput : notnull
+public interface INetwork<in TIn, TOut>
+    where TIn : notnull
+    where TOut : notnull
 {
-    public string Name { get; }
-    
-    
-    public TOutput Forward(TInput input);
-    public void Train(TInput[] inputs, TOutput[] targets, int epochs, double learningRate);
+    public TOut Forward(TIn input);
+    public void Train(TIn[] inputs, TOut[] targets, int epochs, double learningRate);
     
     public void Save(string path);
     public void Load(string path);

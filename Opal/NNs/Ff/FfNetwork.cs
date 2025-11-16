@@ -45,81 +45,36 @@ public abstract class FfNetwork<TInput, THidden, TOutput, TWeightsIn, TWeightsHi
         return OutputLayer.Forward(hidden);
     }
 
-    public void Train(TInput[] inputs, TOutput[] targets, int epochs, double learningRate)
+    public Tensor<TOutput> Forward(Tensor<TInput> input)
     {
-        for (int epoch = 0; epoch < epochs; epoch++)
-        {
-            for (int i = 0; i < inputs.Length; i++)
-            {
-                var inputTensor = new Tensor<TInput>(inputs[i], null, _ => { }, 
-                    InputLayer.Catalog.ZeroGradient(inputs[i]));
-            
-                var hiddenTensor = InputLayer.Forward(inputTensor);
-                foreach (var layer in HiddenLayers)
-                    hiddenTensor = layer.Forward(hiddenTensor);
-                var outputTensor = OutputLayer.Forward(hiddenTensor);
-
-                var lossTensor = LossFunction.Function(outputTensor, targets[i]);
-
-                lossTensor.Backward(1.0);
-
-                InputLayer.UpdateParameters(learningRate);
-                foreach (var layer in HiddenLayers)
-                    layer.UpdateParameters(learningRate);
-                OutputLayer.UpdateParameters(learningRate);
-            }
-        }
-    }
-
-    public double EvaluateLoss(TInput[] inputs, TOutput[] targets)
-    {
-        double totalLoss = 0.0;
-        for (int i = 0; i < inputs.Length; i++)
-        {
-            var inputTensor = new Tensor<TInput>(inputs[i], null, _ => { }, 
-                InputLayer.Catalog.ZeroGradient(inputs[i]));
-        
-            var hiddenTensor = InputLayer.Forward(inputTensor);
-            foreach (var layer in HiddenLayers)
-                hiddenTensor = layer.Forward(hiddenTensor);
-            var outputTensor = OutputLayer.Forward(hiddenTensor);
-        
-            var lossTensor = LossFunction.Function(outputTensor, targets[i]);
-            totalLoss += lossTensor.Value;
-        }
-        return totalLoss / inputs.Length;
-    }
-
-    public void Save(string path)
-    {
-        using BinaryWriter writer = new(File.OpenWrite(path));
-        
-        BinaryWriting.WriteString(writer, Name);
-        
-        InputLayer.Write(writer);
-        writer.Write(HiddenLayers.Count);
+        Tensor<THidden> hidden = InputLayer.Forward(input);
         foreach (var layer in HiddenLayers)
-            layer.Write(writer);
-        OutputLayer.Write(writer);
+            hidden = layer.Forward(hidden);
+        return OutputLayer.Forward(hidden);
     }
 
-    public void Load(string path)
+    public void UpdateParameters(double learningRate)
     {
-        using BinaryReader reader = new(File.OpenRead(path));
-        
-        Name = BinaryWriting.ReadString(reader);
-    
-        InputLayer.Read(reader);
-        int count = reader.ReadInt32();
-        HiddenLayers.Clear();
-        for (int i = 0; i < count; i++)
-        {
-            var layer = CreateHiddenLayer();
-            layer.Read(reader);
-            HiddenLayers.Add(layer);
-        }
-        OutputLayer.Read(reader);
+        InputLayer.UpdateParameters(learningRate);
+        foreach (var layer in HiddenLayers)
+            layer.UpdateParameters(learningRate);
+        OutputLayer.UpdateParameters(learningRate);
     }
-    
+
+    public void Train(TInput[] inputs, TOutput[] targets, int epochs, double learningRate) =>
+        NetworkHelpers.Train(
+            i => InputLayer.Catalog.ZeroGradient(i), 
+            Forward, LossFunction, 
+            () => UpdateParameters(learningRate), 
+            inputs, targets, epochs);
+
+    public double EvaluateLoss(TInput[] inputs, TOutput[] targets) =>
+        NetworkHelpers.EvaluateLoss(
+            i => InputLayer.Catalog.ZeroGradient(i), 
+            Forward, LossFunction, 
+            inputs, targets);
+
+    public void Save(string path) => NetworkHelpers.Save(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, path);
+    public void Load(string path) => NetworkHelpers.Load(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, CreateHiddenLayer, path);
     protected abstract FfLayer<THidden, THidden, TWeightsHidden> CreateHiddenLayer();
 }
