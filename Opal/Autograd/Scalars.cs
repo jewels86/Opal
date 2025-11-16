@@ -39,7 +39,7 @@ public static partial class Operations
             Backward,
             NewCpuScalarStorage(0.0));
     
-        void Backward(Tensor<ScalarTensorStorage> output)
+        void Backward(ScalarTensor output)
         {
             var outGrad = output.Gradient.ToHost();
             a.Gradient.CopyFrom(a.Gradient.ToHost() + outGrad);

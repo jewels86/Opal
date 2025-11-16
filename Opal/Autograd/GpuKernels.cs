@@ -80,9 +80,9 @@ public static class GpuKernels
     public static void VectorPowerKernel(
         Index1D index,
         ArrayView1D<double, Stride1D.Dense> vector,
-        ArrayView1D<double, Stride1D.Dense> result,
-        double power) =>
-        result[index] = XMath.Pow(vector[index], power);
+        ArrayView1D<double, Stride1D.Dense> power,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = XMath.Pow(vector[index], power[0]);
     
     public static void VectorLogKernel(
         Index1D index,

@@ -45,7 +45,7 @@ public static partial class Operations
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorSubtractKernel);
         VectorFillKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, double>(GpuKernels.VectorFillKernel);
         VectorPowerKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
-            ArrayView1D<double, Stride1D.Dense>, double>(GpuKernels.VectorPowerKernel);
+            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorPowerKernel);
         VectorLogKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
             ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorLogKernel);
         VectorSqrtKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 

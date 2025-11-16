@@ -1,4 +1,6 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using ILGPU;
 using ILGPU.Algorithms;
 using ILGPU.Algorithms.ScanReduceOperations;
@@ -53,7 +55,7 @@ public static partial class Operations
         ArrayView1D<double, Stride1D.Dense>> VectorNegateKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, double> VectorFillKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
-        ArrayView1D<double, Stride1D.Dense>, double> VectorPowerKernel { get; private set; }
+        ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>> VectorPowerKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
         ArrayView1D<double, Stride1D.Dense>> VectorLogKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
@@ -132,6 +134,48 @@ public static partial class Operations
     }
     #endregion
     #region Storage Helpers
+    public static VectorTensorStorage BinaryOpStorage(
+        VectorTensorStorage a,
+        VectorTensorStorage b,
+        Action<GpuVectorStorage, GpuVectorStorage, MemoryBuffer1D<double, Stride1D.Dense>> gpuKernel,
+        Func<double[], double[], double[]> cpuKernel)
+    {
+        if (!UseGpu(a, b)) return NewCpuVectorStorage(cpuKernel(a.ToHost(), b.ToHost()));;
+        var gpuA = ToGpuVector(a);
+        var gpuB = ToGpuVector(b);
+        var result = AllocateBuffer(gpuA.GpuData.Length);
+            
+        Queue.Enqueue(() => gpuKernel(gpuA, gpuB, result));
+        return new GpuVectorStorage(result);
+    }
+
+    public static VectorTensorStorage BinaryOpStorage(
+        VectorTensorStorage a,
+        ScalarTensorStorage b,
+        Action<GpuVectorStorage, GpuScalarStorage, MemoryBuffer1D<double, Stride1D.Dense>> gpuKernel,
+        Func<double[], double, double[]> cpuKernel)
+    {
+        if (!UseGpu(a)) return NewCpuVectorStorage(cpuKernel(a.ToHost(), b.ToHost()));
+        var gpuA = ToGpuVector(a);
+        var gpuB = ToGpuScalar(b);
+        var result = AllocateBuffer(gpuA.GpuData.Length);
+        
+        Queue.Enqueue(() => gpuKernel(gpuA, gpuB, result));
+        return new GpuVectorStorage(result);;
+    }
+
+    public static VectorTensorStorage UnaryOpStorage(
+        VectorTensorStorage vector,
+        Action<GpuVectorStorage, MemoryBuffer1D<double, Stride1D.Dense>> gpuKernel,
+        Func<double[], double[]> cpuKernel)
+    {
+        if (!UseGpu(vector)) return NewCpuVectorStorage(cpuKernel(vector.ToHost()));;
+        var gpuVector = ToGpuVector(vector);
+        var result = AllocateBuffer(gpuVector.GpuData.Length);
+        
+        Queue.Enqueue(() => gpuKernel(gpuVector, result));
+        return new GpuVectorStorage(result);
+    }
     public static void AccumulateGradient(VectorTensorStorage gradient, VectorTensorStorage incomingGrad)
     {
         if (UseGpu(gradient, incomingGrad))
@@ -153,107 +197,70 @@ public static partial class Operations
         }
     }
 
-    public static VectorTensorStorage MultiplyStorage(VectorTensorStorage a, VectorTensorStorage b)
-    {
-        if (UseGpu(a, b))
-        {
-            var gpuA = ToGpuVector(a);
-            var gpuB = ToGpuVector(b);
-            
-            Queue.Enqueue(() => VectorMultiplyKernel(
-                (int)gpuA.GpuData.Length,
-                gpuA.GpuData.View,
-                gpuB.GpuData.View,
-                gpuA.GpuData.View));
-            
-            return new GpuVectorStorage(gpuA.GpuData);
-        }
-        var aData = a.ToHost();
-        var bData = b.ToHost();
-        return NewCpuVectorStorage(Vectors.Multiply(aData, bData));
-    }
-    public static VectorTensorStorage DivideStorage(VectorTensorStorage a, VectorTensorStorage b)
-    {
-        if (UseGpu(a, b))
-        {
-            var gpuA = ToGpuVector(a);
-            var gpuB = ToGpuVector(b);
-            
-            Queue.Enqueue(() => VectorDivideKernel(
-                (int)gpuA.GpuData.Length,
-                gpuA.GpuData.View,
-                gpuB.GpuData.View,
-                gpuA.GpuData.View));
-            
-            return new GpuVectorStorage(gpuA.GpuData);
-        }
-        var aData = a.ToHost();
-        var bData = b.ToHost();
-        return NewCpuVectorStorage(Vectors.Divide(aData, bData));
-    }
+    public static VectorTensorStorage MultiplyStorage(VectorTensorStorage a, VectorTensorStorage b) =>
+        BinaryOpStorage(
+            a, b,
+            (gpuA, gpuB, result) => 
+                VectorMultiplyKernel(gpuA.GpuData.IntExtent, gpuA.GpuData.View, gpuB.GpuData.View, result.View),
+            Vectors.Multiply);
+    public static VectorTensorStorage DivideStorage(VectorTensorStorage a, VectorTensorStorage b) =>
+        BinaryOpStorage(
+            a, b,
+            (gpuA, gpuB, result) => 
+                VectorDivideKernel(gpuA.GpuData.IntExtent, gpuA.GpuData.View, gpuB.GpuData.View, result.View),
+            Vectors.Divide);
     
-    public static VectorTensorStorage ScaleVectorStorage(VectorTensorStorage vector, ScalarTensorStorage scalar)
-    {
-        if (UseGpu(vector))
-        {
-            var gpuVec = ToGpuVector(vector);
-            var gpuScalar = ToGpuScalar(scalar);
-            var result = AllocateBuffer(gpuVec.GpuData.Length);
-            Queue.Enqueue(() => ScalarVectorMultiplyKernel(
-                (int)gpuVec.GpuData.Length,
-                gpuVec.GpuData.View,
-                gpuScalar.GpuData.View,
-                result.View));
-            return new GpuVectorStorage(result);
-        }
-        var vecData = vector.ToHost();
-        var scalarData = scalar.ToHost();
-        return NewCpuVectorStorage(Vectors.Multiply(vecData, scalarData));
-    }
+    public static VectorTensorStorage ScaleVectorStorage(VectorTensorStorage vector, ScalarTensorStorage scalar) => 
+        BinaryOpStorage(
+            vector, scalar,
+            (gpuV, gpuS, result) => 
+                ScalarVectorMultiplyKernel(gpuV.GpuData.IntExtent, gpuV.GpuData.View, gpuS.GpuData.View, result.View),
+            Vectors.Multiply);
 
-    public static VectorTensorStorage NegateStorage(VectorTensorStorage vector)
-    {
-        if (UseGpu(vector))
-        {
-            var gpuVector = ToGpuVector(vector);
-            var result = AllocateBuffer(gpuVector.GpuData.Length);
-            Queue.Enqueue(() => VectorNegateKernel(
-                (int)gpuVector.GpuData.Length,
-                gpuVector.GpuData.View,
-                result.View));
-            return new GpuVectorStorage(result);;
-        }
-        var vecData = vector.ToHost();
-        return NewCpuVectorStorage(Vectors.Negate(vecData));
-    }
+    public static VectorTensorStorage NegateStorage(VectorTensorStorage vector) =>
+        UnaryOpStorage(
+            vector, 
+            (gpuV, result) => VectorNegateKernel(gpuV.GpuData.IntExtent, gpuV.GpuData.View, result.View), 
+            Vectors.Negate);
 
-    public static VectorTensorStorage AddStorage(VectorTensorStorage a, VectorTensorStorage b)
+    public static VectorTensorStorage AddStorage(VectorTensorStorage a, VectorTensorStorage b) =>
+        BinaryOpStorage(
+            a, b,
+            (gpuA, gpuB, result) =>
+                VectorAddKernel(gpuA.GpuData.IntExtent, gpuA.GpuData.View, gpuB.GpuData.View, result.View),
+            Vectors.Add);
+    public static VectorTensorStorage SubtractStorage(VectorTensorStorage a, VectorTensorStorage b) =>
+        BinaryOpStorage(
+            a, b,
+            (gpuA, gpuB, result) =>
+                VectorSubtractKernel(gpuA.GpuData.IntExtent, gpuA.GpuData.View, gpuB.GpuData.View, result.View),
+            Vectors.Subtract);
+
+    public static VectorTensorStorage PowerStorage(VectorTensorStorage vector, ScalarTensorStorage exponent) => 
+        BinaryOpStorage(
+            vector, exponent,
+            (gpuV, gpuS, result) => 
+                VectorPowerKernel(gpuV.GpuData.IntExtent, gpuV.GpuData.View, gpuS.GpuData.View, result.View),
+            (v, e) => v.Select(x => Math.Pow(x, e)).ToArray());
+
+    public static VectorTensorStorage LogStorage(VectorTensorStorage vector) =>
+        UnaryOpStorage(
+            vector, 
+            (gpuV, result) => VectorLogKernel(gpuV.GpuData.IntExtent, gpuV.GpuData.View, result.View), 
+            v => v.Select(x => Math.Log(x)).ToArray());
+
+    public static ScalarTensorStorage SumStorage(VectorTensorStorage vector)
     {
-        if (!UseGpu(a, b)) return NewCpuVectorStorage(Vectors.Add(a.ToHost(), b.ToHost()));
-        var gpuA = ToGpuVector(a);
-        var gpuB = ToGpuVector(b);
-        var result = AllocateBuffer(gpuA.GpuData.Length);
-            
-        Queue.Enqueue(() => VectorAddKernel(
-            (int)gpuA.GpuData.Length,
-            gpuA.GpuData.View,
-            gpuB.GpuData.View,
+        if (!UseGpu(vector)) return NewCpuScalarStorage(vector.ToHost().Aggregate((x, y) => x + y));
+        var gpuVector = ToGpuVector(vector);
+        var result = AllocateScalar();
+        
+        Queue.Enqueue(() => Accelerator.Reduce<double, AddDouble>(
+            Accelerator.DefaultStream,
+            gpuVector.GpuData.View,
             result.View));
-        return new GpuVectorStorage(result);
-    }
-    public static VectorTensorStorage SubtractStorage(VectorTensorStorage a, VectorTensorStorage b)
-    {
-        if (!UseGpu(a, b)) return NewCpuVectorStorage(Vectors.Subtract(a.ToHost(), b.ToHost()));
-        var gpuA = ToGpuVector(a);
-        var gpuB = ToGpuVector(b);
-        var result = AllocateBuffer(gpuA.GpuData.Length);
-            
-        Queue.Enqueue(() => VectorSubtractKernel(
-            (int)gpuA.GpuData.Length,
-            gpuA.GpuData.View,
-            gpuB.GpuData.View,
-            result.View));
-        return new GpuVectorStorage(result);
+        
+        return new GpuScalarStorage(result);
     }
     #endregion
     
@@ -401,7 +408,6 @@ public static partial class Operations
             }
         }
     }
-
     public static VectorTensor Multiply(VectorTensor a, ScalarTensor scalar)
     {
         if (!UseGpu(a.Value))
@@ -427,11 +433,9 @@ public static partial class Operations
             output => AccumulateGradient(a.Gradient, ScaleVectorStorage(output.Gradient, scalar.Gradient)),
             NewCpuVectorStorage(Vectors.Ones(gpuAStorage.TotalElements)));
     }
-
     public static VectorTensor Negate(VectorTensor a) => UnaryOp(
         a, VectorNegateKernel, Vectors.Negate, 
         (_, output) => AccumulateGradient(a.Gradient, NegateStorage(output.Gradient)));
-    
     public static ScalarTensor Sum(VectorTensor vector)
     {
         if (UseGpu(vector.Value))
@@ -476,6 +480,65 @@ public static partial class Operations
                 AccumulateGradient(vector.Gradient, NewCpuVectorStorage(grad));
             }
         }
+    }
+
+    public static VectorTensor Log(VectorTensor vector) =>
+        UnaryOp(vector, VectorLogKernel,
+            v => v.Select(s => Math.Log(s)).ToArray(), 
+            (_, output) => AccumulateGradient(vector.Gradient, DivideStorage(output.Gradient, vector.Value)));
+
+    public static VectorTensor Power(VectorTensor a, ScalarTensor exponent)
+    {
+        if (UseGpu(a.Value))
+        {
+            var gpuA = ToGpuVector(a.Value);
+            var gpuExponent = ToGpuScalar(exponent.Value);
+            var result = AllocateBuffer(gpuA.GpuData.Length);
+            
+            Queue.Enqueue(() => VectorPowerKernel(
+                result.IntExtent,
+                gpuA.GpuData.View,
+                gpuExponent.GpuData.View,
+                result.View));
+            
+            return new VectorTensor(new GpuVectorStorage(result), [a, exponent], Backwards, NewGpuVectorStorage(Vectors.Zeros((int)result.Length)));
+
+            void Backwards(VectorTensor output)
+            {
+                var expMinusOne = AddStorage(exponent.Value, NewDefaultScalarStorage(1));
+                var aPowExpMinusOne = PowerStorage(a.Value, expMinusOne);
+                var gradA = MultiplyStorage(
+                    ScaleVectorStorage(aPowExpMinusOne, exponent.Value),
+                    output.Gradient);
+                AccumulateGradient(a.Gradient, gradA);
+
+                var logA = LogStorage(a.Value);
+                var gradExponent = MultiplyStorage(
+                    MultiplyStorage(output.Value, logA),
+                    output.Gradient);
+                
+                var scalarGrad = SumStorage(gradExponent).ToHost();
+                exponent.Gradient.CopyFrom(scalarGrad + exponent.Gradient.ToHost());
+            }
+        }
+        var cpuA = a.Value.ToHost();
+        return new VectorTensor(
+            NewCpuVectorStorage(cpuA.Select(x => Math.Pow(x, exponent.Value.ToHost())).ToArray()),
+            [a, exponent], output =>
+            {
+                var cpuA2 = a.Value.ToHost();
+                var cpuExponent = exponent.Value.ToHost();
+                var outGrad = output.Gradient.ToHost();
+                var outValue = output.Value.ToHost();
+    
+                var gradA = cpuA2.Select((val, i) => 
+                    cpuExponent * Math.Pow(val, cpuExponent - 1) * outGrad[i]).ToArray();
+                AccumulateGradient(a.Gradient, NewCpuVectorStorage(gradA));
+    
+                var gradExponent = cpuA2.Select((val, i) => 
+                    outValue[i] * Math.Log(val) * outGrad[i]).Sum();
+                exponent.Gradient.CopyFrom(gradExponent + exponent.Gradient.ToHost());
+            }, NewCpuVectorStorage(Vectors.Zeros(cpuA.Length)));
     }
     #endregion
 }
