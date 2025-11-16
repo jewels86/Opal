@@ -26,6 +26,10 @@ public class ScalarTensor : Tensor<ITensorStorage<double>>
         buffer.CopyFromCPU([value]);
         return new GpuScalarStorage(buffer);
     }
+    
+    public static ScalarTensor operator +(ScalarTensor a, ScalarTensor b) => Operations.Add(a, b);
+    public static ScalarTensor operator -(ScalarTensor a, ScalarTensor b) => Operations.Subtract(a, b);
+    public static ScalarTensor operator *(ScalarTensor a, ScalarTensor b) => Operations.Multiply(a, b);
 }
 
 public static partial class Operations

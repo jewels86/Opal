@@ -206,6 +206,8 @@ public static partial class Operations
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>, int>(GpuKernels.VectorConcatKernel);
         VectorSliceKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
             ArrayView1D<double, Stride1D.Dense>, int>(GpuKernels.VectorSliceKernel);
+        VectorNegateKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>,
+            ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorNegateKernel);
         
         MatrixVectorMultiplyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView2D<double, Stride2D.DenseX>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.MatrixVectorMultiplyKernel);
@@ -220,8 +222,6 @@ public static partial class Operations
         ScaleVectorByRowKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>,
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>, int>(GpuKernels.ScaleVectorByRowKernel);
     }
-    
-    
     
     public static void Sync() => Queue.Execute();
 }

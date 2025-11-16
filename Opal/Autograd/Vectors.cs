@@ -26,6 +26,11 @@ public class VectorTensor : Tensor<ITensorStorage<double[]>>
         buffer.CopyFromCPU(vector);
         return new GpuVectorStorage(buffer);
     }
+    
+    public static VectorTensor operator +(VectorTensor a, VectorTensor b) => Operations.Add(a, b);
+    public static VectorTensor operator -(VectorTensor a) => Operations.Negate(a);
+    public static VectorTensor operator -(VectorTensor a, VectorTensor b) => Operations.Add(a, -b);
+    public static VectorTensor operator *(VectorTensor a, VectorTensor b) => Operations.Multiply(a, b);
 }
 
 public static partial class Operations
@@ -45,6 +50,8 @@ public static partial class Operations
 
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
         ArrayView1D<double, Stride1D.Dense>, int> VectorSliceKernel { get; private set; }
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>> VectorNegateKernel { get; private set; }
     
     #endregion
     #region Helpers
@@ -80,6 +87,29 @@ public static partial class Operations
             VectorTensor.CpuVectorStorage(result),
             [a, b],
             output => gradientFn(a, b, (VectorTensor)output),
+            VectorTensor.CpuVectorStorage(new double[result.Length]));
+    }
+
+    public static VectorTensor UnaryOp(
+        VectorTensor vector,
+        Action<Index1D, ArrayView1D<double, Stride1D.Dense>,
+            ArrayView1D<double, Stride1D.Dense>> gpuKernel,
+        Func<double[], double[]> cpuFallback,
+        Action<VectorTensor, VectorTensor> gradientFn)
+    {
+        if (GpuAvailable && vector.Value is GpuVectorStorage gpuVector)
+        {
+            var resultBuffer = Accelerator.Allocate1D<double>(gpuVector.GpuData.Length);
+            Queue.Enqueue(() => gpuKernel((int)gpuVector.GpuData.Length, gpuVector.GpuData.View, resultBuffer.View));
+            var resultStorage = new GpuVectorStorage(resultBuffer);
+            var gradStorage = new GpuVectorStorage(Accelerator.Allocate1D<double>((int)resultBuffer.Length));
+            return new VectorTensor(resultStorage, [vector], output => gradientFn(vector, (VectorTensor)output), gradStorage);;
+        }
+        var result = cpuFallback(vector.Value.ToHost());
+        return new VectorTensor(
+            VectorTensor.CpuVectorStorage(result),
+            [vector],
+            output => gradientFn(vector, (VectorTensor)output),
             VectorTensor.CpuVectorStorage(new double[result.Length]));
     }
     
@@ -147,6 +177,21 @@ public static partial class Operations
         var vecData = vector.ToHost();
         var scalarData = scalar.ToHost();
         return VectorTensor.CpuVectorStorage(Vectors.Multiply(vecData, scalarData));
+    }
+
+    public static ITensorStorage<double[]> NegateStorage(ITensorStorage<double[]> vector)
+    {
+        if (GpuAvailable && vector is GpuVectorStorage gpuVector)
+        {
+            var result = Accelerator.Allocate1D<double>(gpuVector.GpuData.Length);
+            Queue.Enqueue(() => VectorNegateKernel(
+                (int)gpuVector.GpuData.Length,
+                gpuVector.GpuData.View,
+                result.View));
+            return new GpuVectorStorage(result);;
+        }
+        var vecData = vector.ToHost();
+        return VectorTensor.CpuVectorStorage(Vectors.Negate(vecData));
     }
     #endregion
     
@@ -289,5 +334,9 @@ public static partial class Operations
             }
         }
     }
+
+    public static VectorTensor Negate(VectorTensor a) => UnaryOp(
+        a, VectorNegateKernel, Vectors.Negate, 
+        (_, output) => AccumulateGradient(a.Gradient, NegateStorage(output.Gradient)));
     #endregion
 }

@@ -45,6 +45,11 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> dest,
         int offset) =>
         dest[index] = source[index + offset];
+    public static void VectorNegateKernel(
+        Index1D index, 
+        ArrayView1D<double, Stride1D.Dense> vector, 
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = -vector[index];
     #endregion
     #region Matrices
     public static void MatrixAddKernel(

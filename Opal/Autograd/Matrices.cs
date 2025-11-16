@@ -33,6 +33,8 @@ public class MatrixTensor : Tensor<ITensorStorage<double[,]>>
         buffer.CopyFromCPU(matrix);
         return new GpuMatrixStorage(buffer);
     }
+
+    public static VectorTensor operator *(MatrixTensor a, VectorTensor b) => Operations.Multiply(a, b);
 }
 
 public static partial class Operations
