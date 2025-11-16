@@ -96,6 +96,7 @@ public static class Vectors
         return sum;
     }
     public static double[] Negate(double[] a) => ApplyElementwise(a, x => -x);
+    public static double[] Fill(double value, int size) => new double[size].Select(_ => value).ToArray();
     #endregion
     #region Other Operations
     public static double[,] OuterProduct(double[] a, double[] b)

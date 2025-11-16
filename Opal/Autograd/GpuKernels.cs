@@ -108,6 +108,12 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> vector,
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = XMath.Tanh(vector[index]);
+    
+    public static void VectorExpKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = XMath.Exp(vector[index]);
     #endregion
     #region Matrices
     public static void MatrixAddKernel(

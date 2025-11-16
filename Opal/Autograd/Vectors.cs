@@ -65,6 +65,9 @@ public static partial class Operations
         ArrayView1D<double, Stride1D.Dense>> VectorMaxKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
         ArrayView1D<double, Stride1D.Dense>> VectorTanhKernel { get; private set; }
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>> VectorExpKernel { get; private set; }
+    
     
     #endregion
     #region Helpers
@@ -262,6 +265,19 @@ public static partial class Operations
         
         return new GpuScalarStorage(result);
     }
+
+    public static VectorTensorStorage FillStorage(long length, double value)
+    {
+        var result = AllocateBuffer(length);
+        Queue.Enqueue(() => VectorFillKernel(result.IntExtent, result.View, value));
+        return new GpuVectorStorage(result);
+    }
+    public static VectorTensorStorage ExpStorage(VectorTensorStorage vector) =>
+        UnaryOpStorage(
+            vector, 
+            (gpuV, result) => VectorExpKernel(gpuV.GpuData.IntExtent, gpuV.GpuData.View, result.View), 
+            v => v.Select(Math.Exp).ToArray());
+    
     #endregion
     
     #region Operations
@@ -540,5 +556,35 @@ public static partial class Operations
                 exponent.Gradient.CopyFrom(gradExponent + exponent.Gradient.ToHost());
             }, NewCpuVectorStorage(Vectors.Zeros(cpuA.Length)));
     }
+    public static VectorTensor Tanh(VectorTensor vector) =>
+        UnaryOp(
+            vector,
+            VectorTanhKernel,
+            v => v.Select(Math.Tanh).ToArray(),
+            (input, output) =>
+            {
+                var tanhSquared = MultiplyStorage(output.Value, output.Value);
+                var oneMinusTanhSquared = SubtractStorage(
+                    FillStorage(vector.Value.TotalElements, 1.0),
+                    tanhSquared);
+                var grad = MultiplyStorage(oneMinusTanhSquared, output.Gradient);
+                AccumulateGradient(input.Gradient, grad);
+            });
+
+    public static VectorTensor Fill(long length, double value, double gradValue) => NewVector(
+        FillStorage(length, value), null,
+        _ => { }, FillStorage(length, gradValue));
+    
+    public static VectorTensor Exp(VectorTensor vector) =>
+        UnaryOp(
+            vector,
+            VectorExpKernel,
+            v => v.Select(Math.Exp).ToArray(),
+            (input, output) =>
+            {
+                var grad = MultiplyStorage(output.Value, output.Gradient);
+                AccumulateGradient(input.Gradient, grad);
+            });
+    
     #endregion
 }
