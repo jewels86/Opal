@@ -34,12 +34,8 @@ public class ScalarFfNetwork : FfNetwork<ScalarTensorStorage, ScalarTensorStorag
         ActivationFunction<ScalarTensorStorage> activation)
     {
         var catalog = new ScalarCatalog();
-        var _weights = new double[inputSize];
-        
-        var random = new Random();
-        for (int i = 0; i < inputSize; i++) _weights[i] = random.NextDouble() * 2 - 1;
 
-        var weights = Operations.NewVector(_weights, Vectors.Zeros(inputSize));
+        var weights = ParameterGeneration.RandomVector(1, -1, inputSize);
         var bias = Operations.NewScalar(0.0, 0.0);
         
         return new(weights, bias, activation, catalog);

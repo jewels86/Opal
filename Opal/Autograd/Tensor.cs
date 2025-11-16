@@ -56,7 +56,7 @@ public class GpuScalarStorage : ITensorStorage<double>, IDisposable
     public void Dispose() => GpuData.Dispose();
 }
 
-public class GpuVectorStorage : ITensorStorage<double[]>, IDisposable
+public class GpuVectorStorage : VectorTensorStorage, IDisposable
 {
     public MemoryBuffer1D<double, Stride1D.Dense> GpuData { get; set; }
     public int[] Shape => [(int)GpuData.Length];
@@ -79,7 +79,7 @@ public class GpuVectorStorage : ITensorStorage<double[]>, IDisposable
     public void Dispose() => GpuData.Dispose();
 }
 
-public class GpuMatrixStorage : ITensorStorage<double[,]>, IDisposable
+public class GpuMatrixStorage : MatrixTensorStorage, IDisposable
 {
     public MemoryBuffer2D<double, Stride2D.DenseX> GpuData { get; set; }
     public int[] Shape => [(int)GpuData.Extent.X, (int)GpuData.Extent.Y];

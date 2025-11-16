@@ -7,13 +7,13 @@ namespace Opal.Autograd;
 public static partial class Operations
 {
     #region Matrix Tensor Helpers
-    public static ITensorStorage<double[,]> NewCpuMatrixStorage(double[,] matrix)
+    public static MatrixTensorStorage NewCpuMatrixStorage(double[,] matrix)
     {
         int rows = matrix.GetLength(0);
         int cols = matrix.GetLength(1);
         return new CpuStorage<double[,]>(matrix, [rows, cols], rows * cols);
     }
-    public static ITensorStorage<double[,]> NewGpuMatrixStorage(double[,] matrix)
+    public static MatrixTensorStorage NewGpuMatrixStorage(double[,] matrix)
     {
         int rows = matrix.GetLength(0);
         int cols = matrix.GetLength(1);
@@ -21,10 +21,10 @@ public static partial class Operations
         buffer.CopyFromCPU(matrix);
         return new GpuMatrixStorage(buffer);
     }
-    public static ITensorStorage<double[,]> NewDefaultMatrixStorage(double[,] matrix) => GpuAvailable ? NewGpuMatrixStorage(matrix) : NewCpuMatrixStorage(matrix);
+    public static MatrixTensorStorage NewDefaultMatrixStorage(double[,] matrix) => GpuAvailable ? NewGpuMatrixStorage(matrix) : NewCpuMatrixStorage(matrix);
     
-    public static MatrixTensor NewMatrix(ITensorStorage<double[,]> storage, List<object>? inputs, Action<Tensor<ITensorStorage<double[,]>>> backwards,
-        ITensorStorage<double[,]> gradient) => new(storage, inputs, backwards, gradient);
+    public static MatrixTensor NewMatrix(MatrixTensorStorage storage, List<object>? inputs, Action<Tensor<MatrixTensorStorage>> backwards,
+        MatrixTensorStorage gradient) => new(storage, inputs, backwards, gradient);
     public static MatrixTensor NewMatrix(double[,] matrix, double[,] gradient) =>
         NewMatrix(NewDefaultMatrixStorage(matrix), null, _ => { }, NewDefaultMatrixStorage(gradient));
     #endregion
