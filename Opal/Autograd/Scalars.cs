@@ -1,30 +1,35 @@
-﻿using ILGPU.Runtime;
+﻿using ILGPU;
+using ILGPU.Runtime;
 using Opal.Mathematics;
 
 namespace Opal.Autograd;
 
 public static partial class Operations
 {
+    public static GpuScalarStorage ToGpuScalar(ScalarTensorStorage storage) => (storage as GpuScalarStorage) ?? (GpuScalarStorage)storage.ToGpu();
+    public static MemoryBuffer1D<double, Stride1D.Dense> AllocateScalar() => AllocateBuffer(1);
+    
     #region Scalar Tensor Helpers
-    public static ITensorStorage<double> NewCpuScalarStorage(double value) => 
+    public static ScalarTensorStorage NewCpuScalarStorage(double value) => 
         new CpuStorage<double>(value, [1], 1);
     
-    public static ITensorStorage<double> NewGpuScalarStorage(double value)
+    public static ScalarTensorStorage NewGpuScalarStorage(double value)
     {
         var buffer = Operations.Accelerator.Allocate1D<double>(1);
         buffer.CopyFromCPU([value]);
         return new GpuScalarStorage(buffer);
     }
-    public static ITensorStorage<double> NewDefaultScalarStorage(double value) => NewCpuScalarStorage(value);
-    public static ScalarTensor NewScalar(ITensorStorage<double> storage, List<object>? inputs, Action<Tensor<ITensorStorage<double>>> backwards,
-        ITensorStorage<double> gradient) => new(storage, inputs, backwards, gradient);
+    public static ScalarTensorStorage NewDefaultScalarStorage(double value) => NewCpuScalarStorage(value);
+    public static ScalarTensor NewScalar(ScalarTensorStorage storage, List<object>? inputs, Action<Tensor<ScalarTensorStorage>> backwards,
+        ScalarTensorStorage gradient) => new(storage, inputs, backwards, gradient);
     public static ScalarTensor NewScalar(double value, double gradient) => NewScalar(NewDefaultScalarStorage(value), null, _ => { }, NewDefaultScalarStorage(gradient));
     #endregion
     #region Storage Operations
-    public static ITensorStorage<double> SubtractStorage(ITensorStorage<double> a, ITensorStorage<double> b) => NewCpuScalarStorage(a.ToHost() - b.ToHost());
-    public static ITensorStorage<double> MultiplyStorage(ITensorStorage<double> a, ITensorStorage<double> b) => NewCpuScalarStorage(a.ToHost() * b.ToHost());
-    public static ITensorStorage<double> AddStorage(ITensorStorage<double> a, ITensorStorage<double> b) => NewCpuScalarStorage(a.ToHost() + b.ToHost());
+    public static ScalarTensorStorage SubtractStorage(ScalarTensorStorage a, ScalarTensorStorage b) => NewCpuScalarStorage(a.ToHost() - b.ToHost());
+    public static ScalarTensorStorage MultiplyStorage(ScalarTensorStorage a, ScalarTensorStorage b) => NewCpuScalarStorage(a.ToHost() * b.ToHost());
+    public static ScalarTensorStorage AddStorage(ScalarTensorStorage a, ScalarTensorStorage b) => NewCpuScalarStorage(a.ToHost() + b.ToHost());
     #endregion
+    #region Operations
     public static ScalarTensor Add(ScalarTensor a, ScalarTensor b)
     {
         var result = a.Value.ToHost() + b.Value.ToHost();
@@ -34,14 +39,13 @@ public static partial class Operations
             Backward,
             NewCpuScalarStorage(0.0));
     
-        void Backward(Tensor<ITensorStorage<double>> output)
+        void Backward(Tensor<ScalarTensorStorage> output)
         {
             var outGrad = output.Gradient.ToHost();
             a.Gradient.CopyFrom(a.Gradient.ToHost() + outGrad);
             b.Gradient.CopyFrom(b.Gradient.ToHost() + outGrad);
         }
     }
-    
     public static ScalarTensor Multiply(ScalarTensor a, ScalarTensor b)
     {
         var aHost = a.Value.ToHost();
@@ -60,7 +64,6 @@ public static partial class Operations
             b.Gradient.CopyFrom(b.Gradient.ToHost() + outGrad * aHost);;
         }
     }
-    
     public static ScalarTensor Subtract(ScalarTensor a, ScalarTensor b)
     {
         var result = a.Value.ToHost() - b.Value.ToHost();
@@ -77,4 +80,5 @@ public static partial class Operations
             b.Gradient.CopyFrom(b.Gradient.ToHost() - outGrad);
         }
     }
+    #endregion
 }
