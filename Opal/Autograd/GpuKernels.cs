@@ -1,4 +1,5 @@
 ﻿using ILGPU;
+using ILGPU.Algorithms;
 using ILGPU.Runtime;
 
 namespace Opal.Autograd;
@@ -25,6 +26,12 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> b,
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = a[index] * b[index];
+    public static void VectorDivideKernel(
+        Index1D index, 
+        ArrayView1D<double, Stride1D.Dense> a, 
+        ArrayView1D<double, Stride1D.Dense> b,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = a[index] / b[index];
     
     public static void ScalarVectorMultiplyKernel(Index1D index, 
         ArrayView1D<double, Stride1D.Dense> scalar, 
@@ -69,6 +76,38 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> array,
         double value) =>
         array[index] = value;
+
+    public static void VectorPowerKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> result,
+        double power) =>
+        result[index] = XMath.Pow(vector[index], power);
+    
+    public static void VectorLogKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = XMath.Log(vector[index]);
+    
+    public static void VectorSqrtKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = XMath.Sqrt(vector[index]);
+    
+    public static void VectorMaxKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> a,
+        ArrayView1D<double, Stride1D.Dense> b,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = XMath.Max(a[index], b[index]);
+    
+    public static void VectorTanhKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> result) =>
+        result[index] = XMath.Tanh(vector[index]);
     #endregion
     #region Matrices
     public static void MatrixAddKernel(

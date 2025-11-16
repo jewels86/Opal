@@ -72,6 +72,13 @@ public static class Vectors
         return ApplyElementwise(a, (x, i) => x * b[i]);
     }
 
+    public static double[] Divide(double[] a, double[] b)
+    {
+        if (a.Length != b.Length)
+            throw new ArgumentException("Vectors must be of the same length.");
+        return ApplyElementwise(a, (x, i) => x / b[i]);
+    }
+
     public static double[] Multiply(params List<double[]> vectors)
     {
         var result = vectors[0];

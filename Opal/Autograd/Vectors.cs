@@ -40,6 +40,9 @@ public static partial class Operations
         ArrayView1D<double, Stride1D.Dense>> VectorMultiplyKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
         ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>> VectorDivideKernel { get; private set; }
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>, 
         ArrayView1D<double, Stride1D.Dense>> ScalarVectorMultiplyKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
         ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>, int> VectorConcatKernel { get; private set; }
@@ -49,6 +52,18 @@ public static partial class Operations
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
         ArrayView1D<double, Stride1D.Dense>> VectorNegateKernel { get; private set; }
     public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, double> VectorFillKernel { get; private set; }
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>, double> VectorPowerKernel { get; private set; }
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>> VectorLogKernel { get; private set; }
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>> VectorSqrtKernel { get; private set; }
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>> VectorMaxKernel { get; private set; }
+    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>> VectorTanhKernel { get; private set; }
+    
     #endregion
     #region Helpers
     public static bool UseGpu(params VectorTensorStorage[] storages) => storages.Any(s => s is GpuVectorStorage) && GpuAvailable;
@@ -157,6 +172,25 @@ public static partial class Operations
         var bData = b.ToHost();
         return NewCpuVectorStorage(Vectors.Multiply(aData, bData));
     }
+    public static VectorTensorStorage DivideStorage(VectorTensorStorage a, VectorTensorStorage b)
+    {
+        if (UseGpu(a, b))
+        {
+            var gpuA = ToGpuVector(a);
+            var gpuB = ToGpuVector(b);
+            
+            Queue.Enqueue(() => VectorDivideKernel(
+                (int)gpuA.GpuData.Length,
+                gpuA.GpuData.View,
+                gpuB.GpuData.View,
+                gpuA.GpuData.View));
+            
+            return new GpuVectorStorage(gpuA.GpuData);
+        }
+        var aData = a.ToHost();
+        var bData = b.ToHost();
+        return NewCpuVectorStorage(Vectors.Divide(aData, bData));
+    }
     
     public static VectorTensorStorage ScaleVectorStorage(VectorTensorStorage vector, ScalarTensorStorage scalar)
     {
@@ -240,6 +274,14 @@ public static partial class Operations
             {
                 AccumulateGradient(a.Gradient, MultiplyStorage(b.Value, output.Gradient));
                 AccumulateGradient(b.Gradient, MultiplyStorage(a.Value, output.Gradient));
+            });
+    public static VectorTensor Divide(VectorTensor a, VectorTensor b) =>
+        BinaryOp(
+            a, b,
+            VectorDivideKernel, Vectors.Divide, (_, _, output) =>
+            {
+                AccumulateGradient(a.Gradient, DivideStorage(b.Value, output.Gradient));
+                AccumulateGradient(b.Gradient, DivideStorage(a.Value, output.Gradient));
             });
     public static ScalarTensor Dot(VectorTensor a, VectorTensor b)
     {
