@@ -16,7 +16,7 @@ public class ScalarTensor : Tensor<ITensorStorage<double>>
         new CpuStorage<double> 
         { 
             Data = value, 
-            Shape = Array.Empty<int>(), 
+            Shape = [], 
             TotalElements = 1 
         };
     
@@ -30,61 +30,56 @@ public class ScalarTensor : Tensor<ITensorStorage<double>>
 
 public static partial class Operations
 {
-    public static Tensor<double> Sum(params List<Tensor<double>> scalars)
+    public static ScalarTensor Add(ScalarTensor a, ScalarTensor b)
     {
-        var result = scalars.Sum(s => s.Value);
-        return new(result, scalars.Cast<object>().ToList(), Backwards, 0.0);
-
-        void Backwards(Tensor<double> output)
+        var result = a.Value.ToHost() + b.Value.ToHost();
+        return new ScalarTensor(
+            ScalarTensor.CpuScalarStorage(result),
+            [a, b],
+            Backward,
+            ScalarTensor.CpuScalarStorage(0.0));
+    
+        void Backward(Tensor<ITensorStorage<double>> output)
         {
-            foreach (var scalar in scalars) scalar.Gradient += output.Gradient;
-        }
-    }
-
-    public static Tensor<double> Multiply(params List<Tensor<double>> scalars)
-    {
-        var result = scalars.Aggregate(1.0, (a, s) => a * s.Value);
-
-        return new(result, scalars.Cast<object>().ToList(), Backwards, 0.0);
-
-        void Backwards(Tensor<double> output)
-        {
-            foreach (var scalar in scalars)
-            {
-                var productOfOthers = scalars
-                    .Where(s => s != scalar)
-                    .Aggregate(1.0, (acc, s) => acc * s.Value);
-
-                scalar.Gradient += output.Gradient * productOfOthers;
-            }
-        }
-    }
-
-    public static Tensor<double> Subtract(Tensor<double> scalar, Tensor<double> other)
-    {
-        var result = scalar.Value - other.Value;
-        return new(result, new List<object> {scalar, other}, Backwards, 0.0);
-        
-        void Backwards(Tensor<double> output)
-        {
-            scalar.Gradient += output.Gradient;
-            other.Gradient -= output.Gradient;
+            var outGrad = output.Gradient.ToHost();
+            a.Gradient.CopyFrom(a.Gradient.ToHost() + outGrad);
+            b.Gradient.CopyFrom(b.Gradient.ToHost() + outGrad);
         }
     }
     
-    public static Tensor<double[]> VectorFromScalars(params Tensor<double>[] scalars)
+    public static ScalarTensor Multiply(ScalarTensor a, ScalarTensor b)
     {
-        var result = scalars.Select(s => s.Value).ToArray();
-        List<object> inputs = scalars.Cast<object>().ToList();
+        var aHost = a.Value.ToHost();
+        var bHost = b.Value.ToHost();
+        var result = aHost * bHost;
+        return new ScalarTensor(
+            ScalarTensor.CpuScalarStorage(result),
+            [a, b],
+            Backward,
+            ScalarTensor.CpuScalarStorage(0.0));
     
-        return new Tensor<double[]>(result, inputs, Backwards, Vectors.Zeros(result.Length));
-    
-        void Backwards(Tensor<double[]> output)
+        void Backward(Tensor<ITensorStorage<double>> output)
         {
-            for (int i = 0; i < scalars.Length; i++)
-                scalars[i].Gradient += output.Gradient[i];
+            var outGrad = output.Gradient.ToHost();
+            a.Gradient.CopyFrom(a.Gradient.ToHost() + outGrad * bHost);
+            b.Gradient.CopyFrom(b.Gradient.ToHost() + outGrad * aHost);;
         }
     }
     
-    public static Tensor<double> ZeroGrad(double value) => new(value, null, _ => { }, 0.0);
+    public static ScalarTensor Subtract(ScalarTensor a, ScalarTensor b)
+    {
+        var result = a.Value.ToHost() - b.Value.ToHost();
+        return new ScalarTensor(
+            ScalarTensor.CpuScalarStorage(result),
+            [a, b],
+            Backward,
+            ScalarTensor.CpuScalarStorage(0.0));
+    
+        void Backward(Tensor<ITensorStorage<double>> output)
+        {
+            var outGrad = output.Gradient.ToHost();
+            a.Gradient.CopyFrom(a.Gradient.ToHost() - outGrad);
+            b.Gradient.CopyFrom(b.Gradient.ToHost() - outGrad);
+        }
+    }
 }
