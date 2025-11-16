@@ -4,14 +4,14 @@ using Opal.Utilities;
 
 namespace Opal.NNs.Ff;
 
-public abstract class FfNetwork<TInput, THidden, TOutput, TWeightIn, TWeightHidden, TWeightOut>
+public abstract class FfNetwork<TInput, THidden, TOutput, TWeightsIn, TWeightsHidden, TWeightsOut>
     : INetwork<TInput, TOutput>
     where TInput : notnull where TOutput : notnull where THidden : notnull
-    where TWeightIn : notnull where TWeightHidden : notnull where TWeightOut : notnull
+    where TWeightsIn : notnull where TWeightsHidden : notnull where TWeightsOut : notnull
 {
-    public FfLayer<TInput, THidden, TWeightIn> InputLayer { get; }
-    public List<FfLayer<THidden, THidden, TWeightHidden>> HiddenLayers { get; }
-    public FfLayer<THidden, TOutput, TWeightOut> OutputLayer { get; }
+    public FfLayer<TInput, THidden, TWeightsIn> InputLayer { get; }
+    public List<FfLayer<THidden, THidden, TWeightsHidden>> HiddenLayers { get; }
+    public FfLayer<THidden, TOutput, TWeightsOut> OutputLayer { get; }
     
     public string Name { get; set; }
     public LossFunction<TOutput> LossFunction { get; }
@@ -20,9 +20,9 @@ public abstract class FfNetwork<TInput, THidden, TOutput, TWeightIn, TWeightHidd
     protected ActivationFunction<THidden> HiddenActivation { get; }
     
     protected FfNetwork(
-        FfLayer<TInput, THidden, TWeightIn> inputLayer,
-        List<FfLayer<THidden, THidden, TWeightHidden>> hiddenLayers,
-        FfLayer<THidden, TOutput, TWeightOut> outputLayer,
+        FfLayer<TInput, THidden, TWeightsIn> inputLayer,
+        List<FfLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
+        FfLayer<THidden, TOutput, TWeightsOut> outputLayer,
         LossFunction<TOutput> lossFunction,
         int hiddenSize,
         ActivationFunction<THidden> hiddenActivation,
@@ -121,5 +121,5 @@ public abstract class FfNetwork<TInput, THidden, TOutput, TWeightIn, TWeightHidd
         OutputLayer.Read(reader);
     }
     
-    protected abstract FfLayer<THidden, THidden, TWeightHidden> CreateHiddenLayer();
+    protected abstract FfLayer<THidden, THidden, TWeightsHidden> CreateHiddenLayer();
 }

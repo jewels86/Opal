@@ -17,9 +17,16 @@ public interface ITensorStorage<T> where T : notnull
 
 public class CpuStorage<T> : ITensorStorage<T> where T : notnull
 {
-    public required T Data { get; set; }
-    public required int[] Shape { get; set; }
-    public required int TotalElements { get; set; }
+    public CpuStorage(T data, int[] shape, int totalElements)
+    {
+        Data = data;
+        Shape = shape;
+        TotalElements = totalElements;
+    }
+
+    public T Data { get; set; }
+    public int[] Shape { get; set; }
+    public int TotalElements { get; set; }
     
     public T ToHost() => Data;
     public void CopyFrom(T source) => Data = source;
@@ -44,6 +51,8 @@ public class GpuScalarStorage : ITensorStorage<double>, IDisposable
         Operations.Sync();
         GpuData.CopyFromCPU([source]);
     }
+
+    public GpuVectorStorage ToVector() => new(GpuData);
     
     public void Dispose() => GpuData.Dispose();
 }

@@ -13,12 +13,7 @@ public class ScalarTensor : Tensor<ITensorStorage<double>>
         : base(storage, inputs, backward ?? (_ => { }), gradient) {}
     
     public static ITensorStorage<double> CpuScalarStorage(double value) => 
-        new CpuStorage<double> 
-        { 
-            Data = value, 
-            Shape = [], 
-            TotalElements = 1 
-        };
+        new CpuStorage<double>(value, [1], 1);
     
     public static ITensorStorage<double> GpuScalarStorage(double value)
     {

@@ -4,16 +4,16 @@ using Opal.Mathematics;
 
 namespace Opal.NNs.Ff;
 
-public class VectorFfNetwork : FfNetwork<double[], double[], double[], double[], double[], double[]>
+public class VectorFfNetwork : FfNetwork<ITensorStorage<double[]>, ITensorStorage<double[]>, ITensorStorage<double[]>, ITensorStorage<double[,]>, ITensorStorage<double[,]>, ITensorStorage<double[,]>>
 {
     public VectorFfNetwork(
         int inputSize,
         int hiddenSize,
         int outputSize,
         int numHiddenLayers,
-        ActivationFunction<double[]> hiddenActivation,
-        ActivationFunction<double[]> outputActivation,
-        LossFunction<double[]> lossFunction,
+        ActivationFunction<ITensorStorage<double[]>> hiddenActivation,
+        ActivationFunction<ITensorStorage<double[]>> outputActivation,
+        LossFunction<ITensorStorage<double[]>> lossFunction,
         string name = "VectorFfNetwork")
         : base(
             CreateLayer(inputSize, hiddenSize, hiddenActivation),
@@ -26,37 +26,34 @@ public class VectorFfNetwork : FfNetwork<double[], double[], double[], double[],
     {
     }
 
-    protected override FfLayer<double[], double[], double[]> CreateHiddenLayer() =>
+    protected override FfLayer<ITensorStorage<double[]>, ITensorStorage<double[]>, ITensorStorage<double[,]>> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, HiddenActivation);
 
-    private static FfLayer<double[], double[], double[]> CreateLayer(
+    private static FfLayer<ITensorStorage<double[]>, ITensorStorage<double[]>, ITensorStorage<double[,]>> CreateLayer(
         int inputSize,
         int outputSize,
-        ActivationFunction<double[]> activation)
+        ActivationFunction<ITensorStorage<double[]>> activation)
     {
         var catalog = new VectorCatalog();
-        var weights = new Tensor<double[]>[outputSize];
+        var _weights = new double[outputSize, inputSize];
     
         var random = new Random();
-        for (int i = 0; i < outputSize; i++) 
-        {
-            var weight = new double[inputSize];  
-            for (int j = 0; j < inputSize; j++)
-                weight[j] = random.NextDouble() * 2 - 1;
-            weights[i] = new Tensor<double[]>(weight, null, _ => { }, Vectors.Zeros(inputSize));
-        }
+        for (int i = 0; i < outputSize; i++)
+        for (int j = 0; j < inputSize; j++)
+            _weights[i, j] = random.NextDouble() * 2 - 1;
+
+        MatrixTensor weights = new(MatrixTensor.CpuMatrixStorage(_weights), null, _ => { }, MatrixTensor.CpuMatrixStorage(Matrices.Zeros(outputSize, inputSize)));
+        VectorTensor biases = new(VectorTensor.CpuVectorStorage(Vectors.Zeros(outputSize)), null, _ => { }, VectorTensor.CpuVectorStorage(Vectors.Zeros(outputSize)));
     
-        Tensor<double[]> biases = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize));
-    
-        return new FfLayer<double[], double[], double[]>(weights, biases, activation, catalog);
+        return new(weights, biases, activation, catalog);
     }
 
-    private static List<FfLayer<double[], double[], double[]>> CreateHiddenLayers(
+    private static List<FfLayer<ITensorStorage<double[]>, ITensorStorage<double[]>, ITensorStorage<double[,]>>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
-        ActivationFunction<double[]> activation)
+        ActivationFunction<ITensorStorage<double[]>> activation)
     {
-        var layers = new List<FfLayer<double[], double[], double[]>>();
+        var layers = new List<FfLayer<ITensorStorage<double[]>, ITensorStorage<double[]>, ITensorStorage<double[,]>>>();
         for (int i = 0; i < numLayers; i++)
             layers.Add(CreateLayer(hiddenSize, hiddenSize, activation));
         return layers;

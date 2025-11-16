@@ -17,8 +17,8 @@ public class VectorTensor : Tensor<ITensorStorage<double[]>>
         ITensorStorage<double[]> gradient)
         : base(storage, inputs, backward ?? (_ => { }), gradient) {}
 
-    public static ITensorStorage<double[]> CpuVectorStorage(double[] vector) => 
-        new CpuStorage<double[]> { Data = vector, Shape = [vector.Length], TotalElements = vector.Length };
+    public static ITensorStorage<double[]> CpuVectorStorage(double[] vector) =>
+        new CpuStorage<double[]>(vector, [vector.Length], vector.Length);
 
     public static ITensorStorage<double[]> GpuVectorStorage(double[] vector)
     {

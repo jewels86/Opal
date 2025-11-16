@@ -17,12 +17,7 @@ public class MatrixTensor : Tensor<ITensorStorage<double[,]>>
     {
         int rows = matrix.GetLength(0);
         int cols = matrix.GetLength(1);
-        return new CpuStorage<double[,]>
-        {
-            Data = matrix,
-            Shape = [rows, cols],
-            TotalElements = rows * cols
-        };
+        return new CpuStorage<double[,]>(matrix, [rows, cols], rows * cols);
     }
 
     public static ITensorStorage<double[,]> GpuMatrixStorage(double[,] matrix)

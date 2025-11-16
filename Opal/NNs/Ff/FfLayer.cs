@@ -3,15 +3,15 @@ using Opal.Mathematics;
 
 namespace Opal.NNs.Ff;
 
-public class FfLayer<TIn, TOut, TWeight>  : ILayer<TIn, TOut>
-    where TIn : notnull where TOut : notnull where TWeight : notnull
+public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
+    where TIn : notnull where TOut : notnull where TWeights : notnull
 {
-    public Tensor<TWeight>[] Weights { get; set; }
+    public Tensor<TWeights> Weights { get; set; }
     public Tensor<TOut> Biases { get; set; }
     public ActivationFunction<TOut> Activation { get; set; }
-    public IFfCatalog<TIn, TOut, TWeight> Catalog { get; set; }
+    public IFfCatalog<TIn, TOut, TWeights> Catalog { get; set; }
 
-    public FfLayer(Tensor<TWeight>[] weights, Tensor<TOut> biases, ActivationFunction<TOut> activation, IFfCatalog<TIn, TOut, TWeight> catalog)
+    public FfLayer(Tensor<TWeights> weights, Tensor<TOut> biases, ActivationFunction<TOut> activation, IFfCatalog<TIn, TOut, TWeights> catalog)
     {
         Weights = weights;
         Biases = biases;
@@ -30,11 +30,8 @@ public class FfLayer<TIn, TOut, TWeight>  : ILayer<TIn, TOut>
 
     public void UpdateParameters(double lr)
     {
-        foreach (var weight in Weights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
+        Weights.Value = Catalog.Subtract(Weights.Value, Catalog.Scale(Weights.Gradient, lr));
+        Weights.Gradient = Catalog.ZeroGradient(Weights.Value);
         
         Biases.Value = Catalog.Subtract(Biases.Value, Catalog.Scale(Biases.Gradient, lr));
         Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
@@ -42,43 +39,34 @@ public class FfLayer<TIn, TOut, TWeight>  : ILayer<TIn, TOut>
     
     public void ZeroGradients()
     {
-        foreach (var weight in Weights)
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-    
+        Weights.Gradient = Catalog.ZeroGradient(Weights.Value);
         Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
     }
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(Weights.Length);
-        foreach (var weight in Weights)
-            Catalog.WriteWeight(writer, weight.Value);
+        Catalog.WriteWeights(writer, Weights.Value);
         Catalog.WriteBias(writer, Biases.Value);
     }
 
     public void Read(BinaryReader reader)
     {
-        int weightCount = reader.ReadInt32();
-        Weights = new Tensor<TWeight>[weightCount];
-        for (int i = 0; i < weightCount; i++)
-        {
-            var weightValue = Catalog.ReadWeight(reader);
-            Weights[i] = new Tensor<TWeight>(weightValue, null, _ => { }, Catalog.ZeroGradient(weightValue));
-        }
+        var weightsValue = Catalog.ReadWeights(reader);
         var biasValue = Catalog.ReadBias(reader);
+        Weights = new Tensor<TWeights>(weightsValue, null, _ => { }, Catalog.ZeroGradient(weightsValue));
         Biases = new Tensor<TOut>(biasValue, null, _ => { }, Catalog.ZeroGradient(biasValue));
     }
 }
 
-public interface IFfCatalog<TIn, TOut, TWeight>
-    where TIn : notnull where TOut : notnull where TWeight : notnull
+public interface IFfCatalog<TIn, TOut, TWeights>
+    where TIn : notnull where TOut : notnull where TWeights : notnull
 {
-    public Tensor<TOut> Multiply(Tensor<TIn> a, Tensor<TWeight>[] b);
+    public Tensor<TOut> Multiply(Tensor<TIn> a, Tensor<TWeights> b);
     public Tensor<TOut> Add(Tensor<TOut> a, Tensor<TOut> b);
     
-    public TWeight Subtract(TWeight a, TWeight b);
-    public TWeight Scale(TWeight a, double scale);
-    public TWeight ZeroGradient(TWeight a);
+    public TWeights Subtract(TWeights a, TWeights b);
+    public TWeights Scale(TWeights a, double scale);
+    public TWeights ZeroGradient(TWeights a);
     
     public TOut Subtract(TOut a, TOut b);
     public TOut Scale(TOut a, double scale);
@@ -86,8 +74,8 @@ public interface IFfCatalog<TIn, TOut, TWeight>
     
     public TIn ZeroGradient(TIn a);
     
-    public void WriteWeight(BinaryWriter writer, TWeight weight);
-    public TWeight ReadWeight(BinaryReader reader);
+    public void WriteWeights(BinaryWriter writer, TWeights weight);
+    public TWeights ReadWeights(BinaryReader reader);
     public void WriteBias(BinaryWriter writer, TOut bias);
     public TOut ReadBias(BinaryReader reader);
 }

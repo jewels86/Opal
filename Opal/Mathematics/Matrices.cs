@@ -234,4 +234,6 @@ public static class Matrices
         return sum;
     }
     #endregion
+    
+    public static double[,] Zeros(int rows, int cols) => new double[rows, cols];
 }

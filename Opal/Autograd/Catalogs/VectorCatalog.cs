@@ -1,34 +1,32 @@
-﻿using Opal.Mathematics;
+﻿using System.Numerics;
+using Opal.Mathematics;
 using Opal.NNs.Ff;
 using Opal.NNs.Lstm;
 using Opal.NNs.Recurrent;
 
 namespace Opal.Autograd.Catalogs;
 
-public class VectorCatalog : IFfCatalog<double[], double[], double[]>, IRecurrentCatalog<double[], double[], double[]>,
-    ILstmCatalog<double[], double[], double[]>
+public class VectorCatalog : IFfCatalog<ITensorStorage<double[]>, ITensorStorage<double[]>, ITensorStorage<double[,]>>
 {
-    public Tensor<double[]> Multiply(Tensor<double[]> a, Tensor<double[]>[] b) => Operations.Multiply(a, b);
-    public Tensor<double[]> Multiply(Tensor<double[]>[] a, Tensor<double[]> b) => Operations.Multiply(b, a);
-
-    public Tensor<double[]> Add(Tensor<double[]> a, Tensor<double[]> b) => 
-        Operations.Sum(a, b);
-
-    public double[] Subtract(double[] a, double[] b) => Vectors.Subtract(a, b);
+    public VectorTensor Multiply(VectorTensor a, MatrixTensor b) => b * a;
+    public VectorTensor Multiply(VectorTensor a, VectorTensor b) => a * b;
+    public VectorTensor Add(VectorTensor a, VectorTensor b) => a + b;
+    public VectorTensor Subtract(VectorTensor a, VectorTensor b) => a - b;
     
-    public double[] Scale(double[] a, double scale) => Vectors.Multiply(a, scale);
-    
-    public double[] ZeroGradient(double[] a) => Vectors.Zeros(a.Length);
+    public ITensorStorage<double[]> Scale(ITensorStorage<double[]> a, ITensorStorage<double> scale) => Operations.MultiplyScalarStorage(a, scale);
 
-    public Tensor<double[]> ConcatHidden(Tensor<double[]> input, Tensor<double[]> prevHidden) => Operations.Concat(input, prevHidden);
+    public ITensorStorage<double[]> ZeroGradient(ITensorStorage<double[]> a) => new CpuStorage<double[]>(Vectors.Zeros(a.TotalElements), [a.TotalElements], a.TotalElements);
 
-    public Tensor<double[]> ConcatInputHidden(Tensor<double[]> input, Tensor<double[]> prevHidden) => Operations.Concat(input, prevHidden);
+    public VectorTensor ConcatHidden(VectorTensor input, VectorTensor prevHidden) => Operations.Concat(input, prevHidden);
 
-    public Tensor<double[]> DefaultHidden() => new(Vectors.Zeros(1), null, _ => { }, Vectors.Zeros(1));
+    public VectorTensor ConcatInputHidden(VectorTensor input, VectorTensor prevHidden) => Operations.Concat(input, prevHidden);
 
-    public Tensor<double[]> Multiply(Tensor<double[]> a, Tensor<double[]> b) => Operations.Multiply(a, b);
+    public VectorTensor DefaultHidden(int size) => new(
+        new CpuStorage<double[]>(Vectors.Zeros(size), [size], size), 
+        null, _ => { }, new CpuStorage<double[]>(Vectors.Zeros(size), [size], size)
+        );
 
-    public Tensor<double[]> DefaultState() => new(Vectors.Zeros(1), null, _ => { }, Vectors.Zeros(1));
+    public VectorTensor DefaultState(int size) => DefaultHidden(size);
 
     public void WriteWeight(BinaryWriter writer, double[] weight)
     {
