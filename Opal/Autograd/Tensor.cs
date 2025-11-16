@@ -25,6 +25,29 @@ public class CpuStorage<T> : ITensorStorage<T> where T : notnull
     public void CopyFrom(T source) => Data = source;
 }
 
+public class GpuScalarStorage : ITensorStorage<double>, IDisposable
+{
+    public MemoryBuffer1D<double, Stride1D.Dense> GpuData { get; set; }
+    public int[] Shape => [1];
+    public int TotalElements => 1;
+    
+    public GpuScalarStorage(MemoryBuffer1D<double, Stride1D.Dense> gpuData) => GpuData = gpuData;
+
+    public double ToHost()
+    {
+        Operations.Sync();
+        return GpuData.GetAsArray1D()[0];
+    }
+
+    public void CopyFrom(double source)
+    {
+        Operations.Sync();
+        GpuData.CopyFromCPU([source]);
+    }
+    
+    public void Dispose() => GpuData.Dispose();
+}
+
 public class GpuVectorStorage : ITensorStorage<double[]>, IDisposable
 {
     public MemoryBuffer1D<double, Stride1D.Dense> GpuData { get; set; }
@@ -173,69 +196,19 @@ public static partial class Operations
         }
         Queue = new(Accelerator);
         
-        AddKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
-            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.AddKernel);
+        VectorAddKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorAddKernel);
+        VectorMultiplyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorMultiplyKernel);
+        ScalarVectorMultiplyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.ScalarVectorMultiplyKernel);
+        VectorConcatKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>, int>(GpuKernels.VectorConcatKernel);
+        VectorSliceKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+            ArrayView1D<double, Stride1D.Dense>, int>(GpuKernels.VectorSliceKernel);
     }
     
-    public static Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
-        ArrayView1D<double, Stride1D.Dense>, 
-        ArrayView1D<double, Stride1D.Dense>> AddKernel { get; private set; }
-
-    public static VectorTensor BinaryOp(
-        VectorTensor a, 
-        VectorTensor b,
-        Action<Index1D, ArrayView1D<double, Stride1D.Dense>, 
-            ArrayView1D<double, Stride1D.Dense>, 
-            ArrayView1D<double, Stride1D.Dense>> gpuKernel,
-        Func<double[], double[], double[]> cpuFallback,
-        Action<VectorTensor, VectorTensor, VectorTensor> gradientFn)
-    {
-        if (GpuAvailable && 
-            (a.Value is GpuVectorStorage || b.Value is GpuVectorStorage))
-        {
-            var gpuA = (a.Value as GpuVectorStorage) ?? 
-                       (GpuVectorStorage)a.Value.ToGpu();
-            var gpuB = (b.Value as GpuVectorStorage) ?? 
-                       (GpuVectorStorage)b.Value.ToGpu();
-        
-            var resultBuffer = Accelerator.Allocate1D<double>(gpuA.GpuData.Length);
-        
-            Queue.Enqueue(() => gpuKernel((int)gpuA.GpuData.Length, gpuA.GpuData.View, gpuB.GpuData.View, resultBuffer.View));
-        
-            var resultStorage = new GpuVectorStorage(resultBuffer);
-            var gradStorage = new GpuVectorStorage(Accelerator.Allocate1D<double>((int)resultBuffer.Length));
-        
-            return new VectorTensor(resultStorage, [a, b], 
-                output => gradientFn(a, b, (VectorTensor)output), gradStorage);
-        }
-        var result = cpuFallback(a.Value.ToHost(), b.Value.ToHost());
-        return new VectorTensor(
-            VectorTensor.CpuVectorStorage(result),
-            [a, b],
-            output => gradientFn(a, b, (VectorTensor)output),
-            VectorTensor.CpuVectorStorage(new double[result.Length]));
-    }
     
-    public static void AccumulateGradient(
-        ITensorStorage<double[]> gradient,
-        ITensorStorage<double[]> incomingGrad)
-    {
-        if (gradient is GpuVectorStorage gpuGrad && incomingGrad is GpuVectorStorage gpuIncoming)
-        {
-            AddKernel(
-                (int)gpuGrad.GpuData.Length,
-                gpuGrad.GpuData.View,
-                gpuIncoming.GpuData.View,
-                gpuGrad.GpuData.View);
-            Accelerator.Synchronize();
-        }
-        else
-        {
-            var gradData = gradient.ToHost();
-            var incomingData = incomingGrad.ToHost();
-            gradient.CopyFrom(Vectors.Add(gradData, incomingData));
-        }
-    }
     
     public static void Sync() => Queue.Execute();
 }

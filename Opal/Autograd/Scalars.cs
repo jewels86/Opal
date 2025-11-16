@@ -1,6 +1,32 @@
-﻿using Opal.Mathematics;
+﻿using ILGPU.Runtime;
+using Opal.Mathematics;
 
 namespace Opal.Autograd;
+
+public class ScalarTensor : Tensor<ITensorStorage<double>>
+{
+    public ScalarTensor(
+        ITensorStorage<double> storage, 
+        List<object>? inputs, 
+        Action<Tensor<ITensorStorage<double>>>? backward,
+        ITensorStorage<double> gradient)
+        : base(storage, inputs, backward ?? (_ => { }), gradient) {}
+    
+    public static ITensorStorage<double> CpuScalarStorage(double value) => 
+        new CpuStorage<double> 
+        { 
+            Data = value, 
+            Shape = Array.Empty<int>(), 
+            TotalElements = 1 
+        };
+    
+    public static ITensorStorage<double> GpuScalarStorage(double value)
+    {
+        var buffer = Operations.Accelerator.Allocate1D<double>(1);
+        buffer.CopyFromCPU([value]);
+        return new GpuScalarStorage(buffer);
+    }
+}
 
 public static partial class Operations
 {
