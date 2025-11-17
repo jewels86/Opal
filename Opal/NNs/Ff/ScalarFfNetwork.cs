@@ -18,13 +18,11 @@ public class ScalarFfNetwork : VectorFfNetwork
     
     public double Forward(double input) => Forward([input])[0];
 
-    public VectorTensor Forward(ScalarTensor input)
-    {
-        return Forward(
+    public VectorTensor Forward(ScalarTensor input) =>
+        Forward(
             Operations.NewVector(
                 Operations.VectorFromScalarStorage(input.Value), 
                 null, _ => { }, Operations.NewDefaultVectorStorage(Vectors.Zeros(1))));
-    }
 
     public void Backwards(ScalarTensor input, ScalarTensor target, double learningRate = 0.01)
     {

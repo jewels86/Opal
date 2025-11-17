@@ -3,11 +3,14 @@ using Opal.Mathematics;
 
 namespace Opal.NNs.Recurrent;
 
-public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
+public class RecurrentLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
     where TIn : notnull where TOut : notnull
-    where TWeight : notnull 
+    where TWeights : notnull 
 {
-    public RecurrentLayer(Tensor<TWeight>[] inputWeights, Tensor<TWeight>[] recurrentWeights, Tensor<TOut> biases, Tensor<TOut> state, Func<Tensor<TOut>, Tensor<TOut>> activation, IRecurrentCatalog<TIn, TOut, TWeight> catalog)
+    public RecurrentLayer(
+        Tensor<TWeights> inputWeights, Tensor<TWeights> recurrentWeights, 
+        Tensor<TOut> biases, Tensor<TOut> state, 
+        Func<Tensor<TOut>, Tensor<TOut>> activation, IRecurrentCatalog<TIn, TOut, TWeights> catalog)
     {
         InputWeights = inputWeights;
         RecurrentWeights = recurrentWeights;
@@ -17,12 +20,12 @@ public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
         Catalog = catalog;
     }
 
-    public Tensor<TWeight>[] InputWeights { get; set; } 
-    public Tensor<TWeight>[] RecurrentWeights { get; set; }
+    public Tensor<TWeights> InputWeights { get; set; } 
+    public Tensor<TWeights> RecurrentWeights { get; set; }
     public Tensor<TOut> Biases { get; set; }
     public Tensor<TOut> State { get; set; }
     public Func<Tensor<TOut>, Tensor<TOut>> Activation { get; set; }
-    public IRecurrentCatalog<TIn, TOut, TWeight> Catalog { get; set; }
+    public IRecurrentCatalog<TIn, TOut, TWeights> Catalog { get; set; }
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
@@ -39,16 +42,11 @@ public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
 
     public void UpdateParameters(double lr)
     {
-        foreach (var weight in InputWeights) 
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        foreach (var weight in RecurrentWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
+        InputWeights.Value = Catalog.Subtract(InputWeights.Value, Catalog.Scale(InputWeights.Gradient, lr));
+        InputWeights.Gradient = Catalog.ZeroGradient(InputWeights.Value);
+        
+        RecurrentWeights.Value = Catalog.Subtract(RecurrentWeights.Value, Catalog.Scale(RecurrentWeights.Gradient, lr));
+        RecurrentWeights.Gradient = Catalog.ZeroGradient(RecurrentWeights.Value);
         
         Biases.Value = Catalog.Subtract(Biases.Value, Catalog.Scale(Biases.Gradient, lr));
         Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
@@ -56,44 +54,23 @@ public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
 
     public void ZeroGradients()
     {
-        foreach (var weight in InputWeights)
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        foreach (var weight in RecurrentWeights)
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
+        InputWeights.Gradient = Catalog.ZeroGradient(InputWeights.Value);
+        RecurrentWeights.Gradient = Catalog.ZeroGradient(RecurrentWeights.Value);
         Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
     }
 
     public void Write(BinaryWriter writer)
     {
-        writer.Write(InputWeights.Length);
-        foreach (var weight in InputWeights)
-            Catalog.WriteWeight(writer, weight.Value);
-        
-        writer.Write(RecurrentWeights.Length);
-        foreach (var weight in RecurrentWeights)
-            Catalog.WriteWeight(writer, weight.Value);
-        
+        Catalog.WriteWeights(writer, InputWeights.Value);
+        Catalog.WriteWeights(writer, RecurrentWeights.Value);
         Catalog.WriteBias(writer, Biases.Value);
         Catalog.WriteState(writer, State.Value);
     }
 
     public void Read(BinaryReader reader)
     {
-        int inputWeightCount = reader.ReadInt32();
-        InputWeights = new Tensor<TWeight>[inputWeightCount];
-        for (int i = 0; i < inputWeightCount; i++)
-        {
-            var weightValue = Catalog.ReadWeight(reader);
-            InputWeights[i] = new Tensor<TWeight>(weightValue, null, _ => { }, Catalog.ZeroGradient(weightValue));
-        }
-        
-        int recurrentWeightCount = reader.ReadInt32();
-        RecurrentWeights = new Tensor<TWeight>[recurrentWeightCount];
-        for (int i = 0; i < recurrentWeightCount; i++)
-        {
-            var weightValue = Catalog.ReadWeight(reader);
-            RecurrentWeights[i] = new Tensor<TWeight>(weightValue, null, _ => { }, Catalog.ZeroGradient(weightValue));
-        }
+        InputWeights = new Tensor<TWeights>(Catalog.ReadWeights(reader), null, _ => { }, Catalog.ZeroGradient(InputWeights.Value));
+        RecurrentWeights = new Tensor<TWeights>(Catalog.ReadWeights(reader), null, _ => { }, Catalog.ZeroGradient(RecurrentWeights.Value));
         
         var biasValue = Catalog.ReadBias(reader);
         Biases = new Tensor<TOut>(biasValue, null, _ => { }, Catalog.ZeroGradient(biasValue));
@@ -103,28 +80,28 @@ public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     }
 }
 
-public interface IRecurrentCatalog<TIn, TOut, TWeight>
+public interface IRecurrentCatalog<TIn, TOut, TWeights>
     where TIn : notnull where TOut : notnull
-    where TWeight : notnull
+    where TWeights : notnull
 {
-    public Tensor<TOut> Multiply(Tensor<TWeight>[] weights, Tensor<TIn> input);
-    public Tensor<TOut> Multiply(Tensor<TWeight>[] weights, Tensor<TOut> state);
+    public Tensor<TOut> Multiply(Tensor<TWeights> weights, Tensor<TIn> input);
+    public Tensor<TOut> Multiply(Tensor<TWeights> weights, Tensor<TOut> state);
     public Tensor<TOut> Add(Tensor<TOut> a, Tensor<TOut> b);
-    public TWeight Subtract(TWeight a, TWeight b);
+    public TWeights Subtract(TWeights a, TWeights b);
     public TOut Subtract(TOut a, TOut b);
     
-    public TWeight Scale(TWeight a, double scale);
+    public TWeights Scale(TWeights a, double scale);
     public TOut Scale(TOut a, double scale);
     
     public TIn ZeroGradient(TIn a);
-    public TWeight ZeroGradient(TWeight a);
+    public TWeights ZeroGradient(TWeights a);
     public TOut ZeroGradient(TOut a);
     
-    public void WriteWeight(BinaryWriter writer, TWeight weight);
+    public void WriteWeights(BinaryWriter writer, TWeights weight);
     public void WriteBias(BinaryWriter writer, TOut bias);
     public void WriteState(BinaryWriter writer, TOut state);
     
-    public TWeight ReadWeight(BinaryReader reader);
+    public TWeights ReadWeights(BinaryReader reader);
     public TOut ReadBias(BinaryReader reader);
     public TOut ReadState(BinaryReader reader);
 }

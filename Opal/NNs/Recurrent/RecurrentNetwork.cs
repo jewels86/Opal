@@ -14,8 +14,8 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsH
     where TWeightsOut : notnull
 {
 
-    protected RecurrentNetwork(RecurrentLayer<TIn, THidden, TWeightsIn> inputLayer, List<RecurrentLayer<THidden, THidden, TWeightsHidden>> hiddenLayers, 
-        RecurrentLayer<THidden, TOut, TWeightsOut> outputLayer, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction, Func<Tensor<TOut>, TOut> outputActivation, 
+    protected RecurrentNetwork(int hiddenSize, RecurrentLayer<TIn, THidden, TWeightsIn> inputLayer, List<RecurrentLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
+        RecurrentLayer<THidden, TOut, TWeightsOut> outputLayer, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction, Func<Tensor<TOut>, Tensor<TOut>> outputActivation, 
         Func<Tensor<THidden>, Tensor<THidden>> hiddenActivation)
     {
         InputLayer = inputLayer;
@@ -24,14 +24,18 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsH
         LossFunction = lossFunction;
         OutputActivation = outputActivation;
         HiddenActivation = hiddenActivation;
+        HiddenSize = hiddenSize;
     }
+    
+    
+    protected int HiddenSize { get; }
 
     public RecurrentLayer<TIn, THidden, TWeightsIn> InputLayer { get; }
     public List<RecurrentLayer<THidden, THidden, TWeightsHidden>> HiddenLayers { get; }
     public RecurrentLayer<THidden, TOut, TWeightsOut> OutputLayer { get; }
     
     public Func<Tensor<TOut>, TOut, ScalarTensor> LossFunction { get; }
-    public Func<Tensor<TOut>, TOut> OutputActivation { get; }
+    public Func<Tensor<TOut>, Tensor<TOut>> OutputActivation { get; }
     public Func<Tensor<THidden>, Tensor<THidden>> HiddenActivation { get; }
     
     public TOut Forward(TIn input)

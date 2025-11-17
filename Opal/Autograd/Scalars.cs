@@ -9,6 +9,10 @@ public static partial class Operations
     public static GpuScalarStorage ToGpuScalar(ScalarTensorStorage storage) => (storage as GpuScalarStorage) ?? (GpuScalarStorage)storage.ToGpu();
     public static MemoryBuffer1D<double, Stride1D.Dense> AllocateScalar() => AllocateBuffer(1);
     public static bool UseGpu(params ScalarTensorStorage[] storages) => GpuAvailable && storages.Any(s => s is GpuScalarStorage);
+    public static VectorTensorStorage VectorFromScalarStorage(ScalarTensorStorage storage) =>
+        Operations.UseGpu(storage)
+            ? new GpuVectorStorage(Operations.ToGpuScalar(storage).GpuData)
+            : new CpuStorage<double[]>([storage.ToHost()], [1], 1);
     
     #region Scalar Tensor Helpers
     public static ScalarTensorStorage NewCpuScalarStorage(double value) => 

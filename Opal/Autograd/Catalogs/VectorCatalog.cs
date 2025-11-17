@@ -1,11 +1,12 @@
 ﻿using System.Numerics;
 using Opal.Mathematics;
 using Opal.NNs.Ff;
+using Opal.NNs.Recurrent;
 using Opal.Utilities;
 
 namespace Opal.Autograd.Catalogs;
 
-public class VectorCatalog : IFfCatalog<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>
+public class VectorCatalog : IFfCatalog<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>, IRecurrentCatalog<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>
 {
     public VectorTensor Add(VectorTensor a, VectorTensor b) => Operations.Add(a, b);
     public VectorTensor Multiply(MatrixTensor a, VectorTensor b) => Operations.Multiply(a, b);
@@ -22,5 +23,7 @@ public class VectorCatalog : IFfCatalog<VectorTensorStorage, VectorTensorStorage
     public MatrixTensorStorage ReadWeights(BinaryReader reader) => Operations.NewDefaultMatrixStorage(BinaryWriting.ReadMatrix(reader));
     public void WriteBias(BinaryWriter writer, VectorTensorStorage bias) => BinaryWriting.WriteVector(writer, bias.ToHost());
     public void WriteWeights(BinaryWriter writer, MatrixTensorStorage weights) => BinaryWriting.WriteMatrix(writer, weights.ToHost());
+    public VectorTensorStorage ReadState(BinaryReader reader) => Operations.NewDefaultVectorStorage(BinaryWriting.ReadVector(reader));
+    public void WriteState(BinaryWriter writer, VectorTensorStorage state) => BinaryWriting.WriteVector(writer, state.ToHost());
 }
 

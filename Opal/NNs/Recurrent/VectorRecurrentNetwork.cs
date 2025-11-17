@@ -1,84 +1,59 @@
 ﻿using Opal.Autograd;
 using Opal.Autograd.Catalogs;
 using Opal.Mathematics;
+using Opal.Utilities;
 
 namespace Opal.NNs.Recurrent;
 
-public class VectorRecurrentNetwork : RecurrentNetwork<double[], double[], double[], double[], double[], double[]>
+public class VectorRecurrentNetwork : RecurrentNetwork<VectorTensorStorage, VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage, MatrixTensorStorage, MatrixTensorStorage>
 {
     public VectorRecurrentNetwork(
         int inputSize,
         int hiddenSize,
         int outputSize,
         int numHiddenLayers,
-        ActivationFunction<double[]> hiddenActivation,
-        ActivationFunction<double[]> outputActivation,
-        LossFunction<double[]> lossFunction,
-        string name = "VectorRecurrentNetwork")
+        Func<VectorTensor, VectorTensor> hiddenActivation,
+        Func<VectorTensor, VectorTensor> outputActivation,
+        Func<VectorTensor, VectorTensorStorage, ScalarTensor> lossFunction)
         : base(
+            hiddenSize,
             CreateLayer(inputSize, hiddenSize, hiddenActivation),
             CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
             CreateLayer(hiddenSize, outputSize, outputActivation),
             lossFunction,
-            hiddenSize,
-            hiddenActivation,
-            name)
+            outputActivation,
+            hiddenActivation)
     {
     }
+    
+    public double[] Forward(double[] input) => Forward(Operations.NewVector(input, Vectors.Zeros(input.Length))).Value.ToHost();
 
-    protected override RecurrentLayer<double[], double[], double[]> CreateHiddenLayer() =>
+    protected override RecurrentLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, HiddenActivation);
 
-    private static RecurrentLayer<double[], double[], double[]> CreateLayer(
+    private static RecurrentLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateLayer(
         int inputSize,
         int outputSize,
-        ActivationFunction<double[]> activation)
+        Func<VectorTensor, VectorTensor> activation)
     {
         var catalog = new VectorCatalog();
-        var random = new Random();
-        
-        var inputWeights = new Tensor<double[]>[outputSize];
-        for (int i = 0; i < outputSize; i++) 
-        {
-            var weight = new double[inputSize];  
-            for (int j = 0; j < inputSize; j++)
-                weight[j] = random.NextDouble() * 2 - 1;
-            inputWeights[i] = new Tensor<double[]>(weight, null, _ => { }, Vectors.Zeros(inputSize));
-        }
-        
-        var recurrentWeights = new Tensor<double[]>[outputSize];
-        for (int i = 0; i < outputSize; i++) 
-        {
-            var weight = new double[outputSize];  
-            for (int j = 0; j < outputSize; j++)
-                weight[j] = random.NextDouble() * 2 - 1;
-            recurrentWeights[i] = new Tensor<double[]>(weight, null, _ => { }, Vectors.Zeros(outputSize));
-        }
-        
-        Tensor<double[]> biases = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize));
-        
-        Tensor<double[]> state = new(Vectors.Zeros(outputSize), null, _ => { }, Vectors.Zeros(outputSize));
     
-        return new RecurrentLayer<double[], double[], double[]>
-        {
-            InputWeights = inputWeights,
-            RecurrentWeights = recurrentWeights,
-            Biases = biases,
-            State = state,
-            Activation = activation,
-            Catalog = catalog
-        };
+        MatrixTensor inputWeights = ParameterGeneration.RandomMatrix(1, -1, outputSize, inputSize);
+        MatrixTensor recurrentWeights = ParameterGeneration.RandomMatrix(1, -1, outputSize, outputSize);
+        VectorTensor biases = ParameterGeneration.GenerateVector(_ => 0.0, outputSize);
+        VectorTensor state = ParameterGeneration.GenerateVector(_ => 0.0, outputSize);
+    
+        return new(inputWeights, recurrentWeights, biases, state, activation, catalog);
     }
 
-    private static List<RecurrentLayer<double[], double[], double[]>> CreateHiddenLayers(
+    private static List<RecurrentLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
-        ActivationFunction<double[]> activation)
+        Func<VectorTensor, VectorTensor> activation)
     {
-        var layers = new List<RecurrentLayer<double[], double[], double[]>>();
+        var layers = new List<RecurrentLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>>();
         for (int i = 0; i < numLayers; i++)
             layers.Add(CreateLayer(hiddenSize, hiddenSize, activation));
         return layers;
     }
 }
-
