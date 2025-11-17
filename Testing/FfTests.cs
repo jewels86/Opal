@@ -9,6 +9,7 @@ public class FfTests
 {
     public static void OverfittingTest()
     {
+        GpuAvailable = false;
         Console.WriteLine($"Training a network to overfit a simple function...");
         double[] inputs = [0.5, -0.5];
         double[] targets = [1, -1];

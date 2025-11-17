@@ -61,12 +61,12 @@ public static class ActivationFunctions
     public static ScalarTensor Identity(ScalarTensor x)
     {
         return new ScalarTensor(
-            NewCpuScalarStorage(x.Value.ToHost()),
+            x.Value,
             [x],
             Backwards,
-            NewCpuScalarStorage(0.0));
+            NewDefaultScalarStorage(0.0));
         
-        void Backwards(ScalarTensor output) => x.Gradient.CopyFrom(x.Gradient.ToHost() + output.Gradient.ToHost());
+        void Backwards(ScalarTensor output) => AccumulateGradient(x.Gradient, output.Gradient);
     }
     #endregion
     #region Vectors
