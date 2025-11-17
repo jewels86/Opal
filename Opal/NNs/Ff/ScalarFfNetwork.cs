@@ -5,51 +5,34 @@ using Opal.Utilities;
 
 namespace Opal.NNs.Ff;
 
-public class ScalarFfNetwork : FfNetwork<ScalarTensorStorage, ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage, VectorTensorStorage, VectorTensorStorage>
+public class ScalarFfNetwork : VectorFfNetwork
 {
     public ScalarFfNetwork(
-        int numHiddenLayers,
-        Func<ScalarTensor, ScalarTensor> hiddenActivation,
-        Func<ScalarTensor, ScalarTensor> outputActivation,
-        Func<ScalarTensor, ScalarTensorStorage, ScalarTensor> lossFunction,
-        string name = "ScalarFfNetwork")
-        : base(
-            CreateLayer(1, hiddenActivation),
-            CreateHiddenLayers(numHiddenLayers, 1, hiddenActivation),
-            CreateLayer(1, outputActivation),
-            lossFunction,
-            1,
-            hiddenActivation,
-            name)
+        int hiddenSize, int numHiddenLayers,
+        Func<VectorTensor, VectorTensor> hiddenActivation,
+        Func<VectorTensor, VectorTensor> outputActivation,
+        Func<VectorTensor, VectorTensorStorage, ScalarTensor> lossFunction) :
+        base(1, hiddenSize, 1, numHiddenLayers, hiddenActivation, outputActivation, lossFunction)
     {
     }
+    
+    public double Forward(double input) => Forward([input])[0];
 
-    protected override FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage> CreateHiddenLayer() =>
-        CreateLayer(HiddenSize, HiddenActivation);
-    
-    public double Forward(double input) => Forward(Operations.NewScalar(input, 0.0)).Value.ToHost();
-    
-    private static FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage> CreateLayer(
-        int inputSize, 
-        Func<ScalarTensor, ScalarTensor> activation)
+    public VectorTensor Forward(ScalarTensor input)
     {
-        var catalog = new ScalarCatalog();
+        return Forward(
+            Operations.NewVector(
+                Operations.VectorFromScalarStorage(input.Value), 
+                null, _ => { }, Operations.NewDefaultVectorStorage(Vectors.Zeros(1))));
+    }
 
-        var weights = ParameterGeneration.RandomVector(1, -1, inputSize);
-        var bias = Operations.NewScalar(0.0, 0.0);
+    public void Backwards(ScalarTensor input, ScalarTensor target, double learningRate = 0.01)
+    {
+        var output = Forward(input);
+        var loss = LossFunction(output, Operations.VectorFromScalarStorage(target.Value));
+        loss.Backwards(Operations.NewScalar(1.0, 0.0));
+        UpdateParameters(learningRate);
+    }
         
-        return new(weights, bias, activation, catalog);
-    }
-
-    private static List<FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage>> CreateHiddenLayers(
-        int numLayers,
-        int hiddenSize,
-        Func<ScalarTensor, ScalarTensor> activation)
-    {
-        var layers = new List<FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage>>();
-        for (int i = 0; i < numLayers; i++)
-            layers.Add(CreateLayer(hiddenSize, activation));
-        return layers;
-    }
 }
 
