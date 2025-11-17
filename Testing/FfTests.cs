@@ -1,5 +1,7 @@
-﻿using Opal.Mathematics;
+﻿using Opal.Autograd;
+using Opal.Mathematics;
 using Opal.NNs.Ff;
+using static Opal.Autograd.Operations;
 
 namespace Testing;
 
@@ -13,9 +15,16 @@ public class FfTests
 
         ScalarFfNetwork network = new(
             1, 1, 1,
-            ActivationFunctions.Identity, ActivationFunctions.Identity, LossFunctions.MeanSquaredError);
-        network.Train(inputs, targets, 1000, 0.01);
-        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputs, targets)}");
+            ActivationFunctions.Identity, ActivationFunctions.Identity, 
+            LossFunctions.MeanSquaredError);
+        
+        var inputStorage = inputs.Select(NewCpuScalarStorage).ToArray();
+        var targetStorage = targets.Select(NewCpuScalarStorage).ToArray();
+        
+        Console.WriteLine($"Initial loss: {network.EvaluateLoss(inputStorage, targetStorage)}");
+        GpuAvailable = false;
+        network.Train(inputStorage, targetStorage, 1000, 0.01);
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)}");
     }
     
     public static void NonlinearFunctionTest()
@@ -35,14 +44,18 @@ public class FfTests
 
         ScalarFfNetwork network = new(
             1, 8, 2,  
-            ActivationFunctions.Tanh, ActivationFunctions.Identity, LossFunctions.MeanSquaredError);
+            ActivationFunctions.Tanh, ActivationFunctions.Identity, 
+            (predicted, actual) => LossFunctions.MeanSquaredError(predicted, actual));
         
-        double initialLoss = network.EvaluateLoss(inputs, targets);
+        var inputStorage = inputs.Select(x => NewCpuScalarStorage(x)).ToArray();
+        var targetStorage = targets.Select(x => NewCpuScalarStorage(x)).ToArray();
+        
+        double initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        network.Train(inputs, targets, 2000, 0.01);
+        network.Train(inputStorage, targetStorage, 2000, 0.01);
         
-        double finalLoss = network.EvaluateLoss(inputs, targets);
+        double finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Final loss: {finalLoss}");
         Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}%");
         
@@ -50,7 +63,7 @@ public class FfTests
         double[] testInputs = [0.0, 1.0, -1.5, 2.0];
         foreach (var x in testInputs)
         {
-            double prediction = network.Forward(x);
+            double prediction = network.Forward(NewCpuScalarStorage(x)).ToHost();
             double expected = x * x;
             Console.WriteLine($"  f({x}) = {prediction:F4} (expected {expected:F4})");
         }
@@ -76,24 +89,28 @@ public class FfTests
             [0.0]
         ];
 
+        GpuAvailable = true;
         VectorFfNetwork network = new(
             2, 4, 1, 1, 
             ActivationFunctions.TanhVector, 
             ActivationFunctions.SigmoidVector, 
-            LossFunctions.MeanSquaredErrorVector);
+            (predicted, actual) => LossFunctions.MeanSquaredErrorVector(predicted, actual));
         
-        double initialLoss = network.EvaluateLoss(inputs, targets);
+        var inputStorage = inputs.Select(x => NewCpuVectorStorage(x)).ToArray();
+        var targetStorage = targets.Select(x => NewCpuVectorStorage(x)).ToArray();
+        
+        double initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        network.Train(inputs, targets, 5000, 0.5);
+        network.Train(inputStorage, targetStorage, 5000, 0.5);
         
-        double finalLoss = network.EvaluateLoss(inputs, targets);
+        double finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Final loss: {finalLoss}");
         
         Console.WriteLine("\nXOR predictions:");
         foreach (var input in inputs)
         {
-            double[] output = network.Forward(input);
+            double[] output = network.Forward(NewCpuVectorStorage(input)).ToHost();
             Console.WriteLine($"  [{input[0]}, {input[1]}] → {output[0]:F4}");
         }
     }
@@ -125,20 +142,23 @@ public class FfTests
             2, 8, 2, 2,  // 2 inputs, 8 hidden, 2 outputs, 2 hidden layers
             ActivationFunctions.ReLuVector, 
             ActivationFunctions.SoftmaxVector, 
-            LossFunctions.CrossEntropy);
+            (predicted, actual) => LossFunctions.CrossEntropy(predicted, actual));
         
-        double initialLoss = network.EvaluateLoss(inputs, targets);
+        var inputStorage = inputs.Select(x => NewCpuVectorStorage(x)).ToArray();
+        var targetStorage = targets.Select(x => NewCpuVectorStorage(x)).ToArray();
+        
+        double initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        network.Train(inputs, targets, 3000, 0.1);
+        network.Train(inputStorage, targetStorage, 3000, 0.1);
         
-        double finalLoss = network.EvaluateLoss(inputs, targets);
+        double finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Final loss: {finalLoss}");
         
         int correct = 0;
         for (int i = 0; i < inputs.Length; i++)
         {
-            double[] output = network.Forward(inputs[i]);
+            double[] output = network.Forward(NewCpuVectorStorage(inputs[i])).ToHost();
             int predicted = output[0] > output[1] ? 0 : 1;
             int actual = targets[i][0] > targets[i][1] ? 0 : 1;
             if (predicted == actual) correct++;
@@ -166,21 +186,24 @@ public class FfTests
             1, 16, 2, 2,  
             ActivationFunctions.TanhVector, 
             ActivationFunctions.IdentityVector, 
-            LossFunctions.MeanSquaredErrorVector);
+            (predicted, actual) => LossFunctions.MeanSquaredErrorVector(predicted, actual));
         
-        double initialLoss = network.EvaluateLoss(inputs, targets);
+        var inputStorage = inputs.Select(x => NewCpuVectorStorage(x)).ToArray();
+        var targetStorage = targets.Select(x => NewCpuVectorStorage(x)).ToArray();
+        
+        double initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        network.Train(inputs, targets, 3000, 0.01);
+        network.Train(inputStorage, targetStorage, 3000, 0.01);
         
-        double finalLoss = network.EvaluateLoss(inputs, targets);
+        double finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Final loss: {finalLoss}");
         
         Console.WriteLine("\nSample predictions:");
         double[] testAngles = [0.0, Math.PI / 4, Math.PI / 2, Math.PI, 3 * Math.PI / 2];
         foreach (var angle in testAngles)
         {
-            double[] output = network.Forward([angle]);
+            double[] output = network.Forward(NewCpuVectorStorage([angle])).ToHost();
             Console.WriteLine($"  x={angle:F4} → sin={output[0]:F4} (expected {Math.Sin(angle):F4}), cos={output[1]:F4} (expected {Math.Cos(angle):F4})");
         }
     }

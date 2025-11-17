@@ -29,4 +29,9 @@
     <None Remove="stopwords.txt" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="LstmTests.cs" />
+    <Compile Remove="RecurrentTests.cs" />
+  </ItemGroup>
+
 </Project>

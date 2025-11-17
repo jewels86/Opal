@@ -26,6 +26,8 @@ public class VectorFfNetwork : FfNetwork<VectorTensorStorage, VectorTensorStorag
             name)
     {
     }
+    
+    public double[] Forward(double[] input) => Forward(Operations.NewVector(input, Vectors.Zeros(input.Length))).Value.ToHost();
 
     protected override FfLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, HiddenActivation);

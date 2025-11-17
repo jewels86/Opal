@@ -34,8 +34,8 @@ public static class GpuKernels
         result[index] = a[index] / b[index];
     
     public static void ScalarVectorMultiplyKernel(Index1D index, 
-        ArrayView1D<double, Stride1D.Dense> scalar, 
         ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> scalar,
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = scalar[0] * vector[index];
     
@@ -76,6 +76,11 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> array,
         double value) =>
         array[index] = value;
+    public static void VectorFillScalarKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> array,
+        ArrayView1D<double, Stride1D.Dense> scalar) =>
+        array[index] = scalar[0];
 
     public static void VectorPowerKernel(
         Index1D index,

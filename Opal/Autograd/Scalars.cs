@@ -15,7 +15,7 @@ public static partial class Operations
     
     public static ScalarTensorStorage NewGpuScalarStorage(double value)
     {
-        var buffer = Operations.Accelerator.Allocate1D<double>(1);
+        var buffer = AllocateScalar();
         buffer.CopyFromCPU([value]);
         return new GpuScalarStorage(buffer);
     }
@@ -25,6 +25,7 @@ public static partial class Operations
     public static ScalarTensor NewScalar(double value, double gradient) => NewScalar(NewDefaultScalarStorage(value), null, _ => { }, NewDefaultScalarStorage(gradient));
     #endregion
     #region Storage Operations
+    public static void AccumulateGradient(ScalarTensorStorage gradient, ScalarTensorStorage incomingGrad) => gradient.CopyFrom(gradient.ToHost() + incomingGrad.ToHost());
     public static ScalarTensorStorage SubtractStorage(ScalarTensorStorage a, ScalarTensorStorage b) => NewCpuScalarStorage(a.ToHost() - b.ToHost());
     public static ScalarTensorStorage MultiplyStorage(ScalarTensorStorage a, ScalarTensorStorage b) => NewCpuScalarStorage(a.ToHost() * b.ToHost());
     public static ScalarTensorStorage AddStorage(ScalarTensorStorage a, ScalarTensorStorage b) => NewCpuScalarStorage(a.ToHost() + b.ToHost());
@@ -42,8 +43,8 @@ public static partial class Operations
         void Backward(ScalarTensor output)
         {
             var outGrad = output.Gradient.ToHost();
-            a.Gradient.CopyFrom(a.Gradient.ToHost() + outGrad);
-            b.Gradient.CopyFrom(b.Gradient.ToHost() + outGrad);
+            AccumulateGradient(a.Gradient, NewCpuScalarStorage(outGrad));
+            AccumulateGradient(b.Gradient, NewCpuScalarStorage(outGrad));
         }
     }
     public static ScalarTensor Multiply(ScalarTensor a, ScalarTensor b)
@@ -61,7 +62,7 @@ public static partial class Operations
         {
             var outGrad = output.Gradient.ToHost();
             a.Gradient.CopyFrom(a.Gradient.ToHost() + outGrad * bHost);
-            b.Gradient.CopyFrom(b.Gradient.ToHost() + outGrad * aHost);;
+            b.Gradient.CopyFrom(b.Gradient.ToHost() + outGrad * aHost);
         }
     }
     public static ScalarTensor Subtract(ScalarTensor a, ScalarTensor b)
@@ -76,7 +77,7 @@ public static partial class Operations
         void Backward(ScalarTensor output)
         {
             var outGrad = output.Gradient.ToHost();
-            a.Gradient.CopyFrom(a.Gradient.ToHost() - outGrad);
+            a.Gradient.CopyFrom(a.Gradient.ToHost() + outGrad);
             b.Gradient.CopyFrom(b.Gradient.ToHost() - outGrad);
         }
     }

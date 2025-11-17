@@ -1,4 +1,5 @@
 ﻿using ILGPU;
+using ILGPU.Algorithms;
 using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
@@ -10,11 +11,14 @@ public static partial class Operations
     public static Context Context { get; private set; }
     public static Accelerator Accelerator { get; private set; }
     public static GpuExecutionQueue Queue { get; } 
-    public static bool GpuAvailable { get; }
+    public static bool GpuAvailable { get; set; }
 
     static Operations()
     {
-        Context = Context.CreateDefault();
+        Context = Context.Create(builder => builder
+            .Default()
+            .EnableAlgorithms());
+        
         try
         {
             Accelerator = Context.CreateCudaAccelerator(0);
@@ -44,6 +48,8 @@ public static partial class Operations
         VectorSubtractKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorSubtractKernel);
         VectorFillKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, double>(GpuKernels.VectorFillKernel);
+        VectorFillScalarKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
+            ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorFillScalarKernel);
         VectorPowerKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorPowerKernel);
         VectorLogKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 

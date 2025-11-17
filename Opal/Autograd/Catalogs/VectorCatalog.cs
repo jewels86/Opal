@@ -1,8 +1,6 @@
 ﻿using System.Numerics;
 using Opal.Mathematics;
 using Opal.NNs.Ff;
-using Opal.NNs.Lstm;
-using Opal.NNs.Recurrent;
 using Opal.Utilities;
 
 namespace Opal.Autograd.Catalogs;

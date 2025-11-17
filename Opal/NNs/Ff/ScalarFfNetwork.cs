@@ -29,6 +29,8 @@ public class ScalarFfNetwork : FfNetwork<ScalarTensorStorage, ScalarTensorStorag
     protected override FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenActivation);
     
+    public double Forward(double input) => Forward(Operations.NewScalar(input, 0.0)).Value.ToHost();
+    
     private static FfLayer<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage> CreateLayer(
         int inputSize, 
         Func<ScalarTensor, ScalarTensor> activation)

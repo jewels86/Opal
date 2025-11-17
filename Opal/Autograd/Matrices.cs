@@ -27,6 +27,7 @@ public static partial class Operations
         MatrixTensorStorage gradient) => new(storage, inputs, backwards, gradient);
     public static MatrixTensor NewMatrix(double[,] matrix, double[,] gradient) =>
         NewMatrix(NewDefaultMatrixStorage(matrix), null, _ => { }, NewDefaultMatrixStorage(gradient));
+    public static MatrixTensor NewMatrix(double[,] matrix) => NewMatrix(matrix, new double[matrix.GetLength(0), matrix.GetLength(1)]);
     #endregion
     #region Kernels
     public static Action<Index1D, ArrayView2D<double, Stride2D.DenseX>, 
