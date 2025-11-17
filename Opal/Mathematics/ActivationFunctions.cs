@@ -35,7 +35,7 @@ public static class ActivationFunctions
         
         void Backwards(ScalarTensor output)
         {
-            var sig = output.Value.ToHost();
+            var sig = output.Value.ToHost(); 
             var grad = output.Gradient.ToHost() * sig * (1 - sig);
             x.Gradient.CopyFrom(x.Gradient.ToHost() + grad);
         }
@@ -53,8 +53,7 @@ public static class ActivationFunctions
         
         void Backwards(ScalarTensor output)
         {
-            var t = Math.Tanh(xVal);
-            var grad = output.Gradient.ToHost() * (1 - t * t);
+            var grad = output.Gradient.ToHost() * (1 - result * result);
             x.Gradient.CopyFrom(x.Gradient.ToHost() + grad);
         }
     }
@@ -67,10 +66,7 @@ public static class ActivationFunctions
             Backwards,
             NewCpuScalarStorage(0.0));
         
-        void Backwards(ScalarTensor output)
-        {
-            x.Gradient.CopyFrom(x.Gradient.ToHost() + output.Gradient.ToHost());
-        }
+        void Backwards(ScalarTensor output) => x.Gradient.CopyFrom(x.Gradient.ToHost() + output.Gradient.ToHost());
     }
     #endregion
     #region Vectors
@@ -89,17 +85,11 @@ public static class ActivationFunctions
     
     public static VectorTensor IdentityVector(VectorTensor x)
     {
-        var result = x.Value.ToHost();
         return new VectorTensor(
-            NewCpuVectorStorage(result),
+            x.Value,
             [x],
-            Backwards,
-            NewCpuVectorStorage(Vectors.Zeros(result.Length)));
-        
-        void Backwards(VectorTensor output)
-        {
-            AccumulateGradient(x.Gradient, output.Gradient);
-        }
+            output => AccumulateGradient(x.Gradient, output.Gradient),
+            NewDefaultVectorStorage(Vectors.Zeros(x.Value.TotalElements)));
     }
 
     public static VectorTensor SoftmaxVector(VectorTensor x)

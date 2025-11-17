@@ -12,12 +12,6 @@ public static class LossFunctions
         return Multiply(diff, diff);
     }
     
-    public static ScalarTensor MeanSquaredError(ScalarTensor predicted, double actual)
-    {
-        var actualTensor = NewScalar(actual, 0.0);
-        var diff = Subtract(predicted, actualTensor);
-        return Multiply(diff, diff);
-    }
     #endregion
     #region Vectors
     public static ScalarTensor MeanSquaredErrorVector(VectorTensor predicted, VectorTensorStorage actual)

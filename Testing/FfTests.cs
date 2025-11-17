@@ -13,16 +13,15 @@ public class FfTests
         double[] inputs = [0.5, -0.5];
         double[] targets = [1, -1];
 
-        ScalarFfNetwork network = new(
-            1, 1, 1,
-            ActivationFunctions.Identity, ActivationFunctions.Identity, 
-            LossFunctions.MeanSquaredError);
+        VectorFfNetwork network = new(
+            1, 8, 1, 1,
+            ActivationFunctions.IdentityVector, ActivationFunctions.IdentityVector, 
+            LossFunctions.MeanSquaredErrorVector);
         
-        var inputStorage = inputs.Select(NewCpuScalarStorage).ToArray();
-        var targetStorage = targets.Select(NewCpuScalarStorage).ToArray();
+        var inputStorage = inputs.Select(x => NewDefaultVectorStorage([x])).ToArray();
+        var targetStorage = targets.Select(x => NewDefaultVectorStorage([x])).ToArray();
         
         Console.WriteLine($"Initial loss: {network.EvaluateLoss(inputStorage, targetStorage)}");
-        GpuAvailable = false;
         network.Train(inputStorage, targetStorage, 1000, 0.01);
         Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)}");
     }
@@ -42,18 +41,22 @@ public class FfTests
             targets[i] = inputs[i] * inputs[i];
         }
 
-        ScalarFfNetwork network = new(
-            1, 8, 2,  
-            ActivationFunctions.Tanh, ActivationFunctions.Identity, 
-            (predicted, actual) => LossFunctions.MeanSquaredError(predicted, actual));
+        VectorFfNetwork network = new(
+            1, 8, 1, 8,  
+            ActivationFunctions.TanhVector, ActivationFunctions.IdentityVector, 
+            LossFunctions.MeanSquaredErrorVector);
         
-        var inputStorage = inputs.Select(x => NewCpuScalarStorage(x)).ToArray();
-        var targetStorage = targets.Select(x => NewCpuScalarStorage(x)).ToArray();
+        Console.WriteLine($"Initial weights: {string.Join(", ", network.InputLayer.Weights.Value.ToHost())}");
+        
+        var inputStorage = inputs.Select(x => NewDefaultVectorStorage([x])).ToArray();
+        var targetStorage = targets.Select(x => NewDefaultVectorStorage([x])).ToArray();
         
         double initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
         network.Train(inputStorage, targetStorage, 2000, 0.01);
+        
+        Console.WriteLine($"Final weights: {string.Join(", ", network.InputLayer.Weights.Value.ToHost())}");
         
         double finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Final loss: {finalLoss}");
@@ -63,7 +66,7 @@ public class FfTests
         double[] testInputs = [0.0, 1.0, -1.5, 2.0];
         foreach (var x in testInputs)
         {
-            double prediction = network.Forward(NewCpuScalarStorage(x)).ToHost();
+            double prediction = network.Forward(NewCpuVectorStorage([x])).ToHost()[0];
             double expected = x * x;
             Console.WriteLine($"  f({x}) = {prediction:F4} (expected {expected:F4})");
         }
@@ -89,7 +92,6 @@ public class FfTests
             [0.0]
         ];
 
-        GpuAvailable = true;
         VectorFfNetwork network = new(
             2, 4, 1, 1, 
             ActivationFunctions.TanhVector, 

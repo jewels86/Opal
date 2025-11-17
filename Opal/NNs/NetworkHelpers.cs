@@ -19,6 +19,7 @@ public static class NetworkHelpers
                     zeroInput(inputs[i]));
             
                 var outputTensor = forward(inputTensor);
+                
                 var lossTensor = lossFunction(outputTensor, targets[i]);
                 lossTensor.Backward(Operations.NewDefaultScalarStorage(1.0));
             

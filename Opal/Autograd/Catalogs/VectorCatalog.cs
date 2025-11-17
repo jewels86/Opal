@@ -11,10 +11,7 @@ public class VectorCatalog : IFfCatalog<VectorTensorStorage, VectorTensorStorage
     public VectorTensor Multiply(MatrixTensor a, VectorTensor b) => Operations.Multiply(a, b);
     public MatrixTensorStorage Subtract(MatrixTensorStorage a, MatrixTensorStorage b) => Operations.SubtractStorage(a, b);
     public VectorTensorStorage Subtract(VectorTensorStorage a, VectorTensorStorage b) => Operations.SubtractStorage(a, b);
-    public MatrixTensorStorage Scale(MatrixTensorStorage a, double scale)
-    {
-        return Operations.ScaleMatrixStorage(a, Operations.NewDefaultScalarStorage(scale));
-    }
+    public MatrixTensorStorage Scale(MatrixTensorStorage a, double scale) => Operations.ScaleMatrixStorage(a, Operations.NewDefaultScalarStorage(scale));
 
     public VectorTensorStorage Scale(VectorTensorStorage a, double scale) => Operations.ScaleVectorStorage(a, Operations.NewDefaultScalarStorage(scale));
 

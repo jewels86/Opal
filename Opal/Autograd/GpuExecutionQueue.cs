@@ -21,7 +21,7 @@ public class GpuExecutionQueue
     public void Execute()
     {
         if (_operations.Count == 0) return;
-        //Console.WriteLine($"Executing {_operations.Count} operations");
+        Console.WriteLine($"Executing {_operations.Count} operations");
         
         foreach (var operation in _operations) operation();
         _accelerator.Synchronize();

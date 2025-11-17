@@ -9,9 +9,9 @@ internal static class Program
     public static void Main()
     {
         Console.WriteLine($"GPU Available: {Operations.GpuAvailable}");
-        CatalogTests.RunAll();
+        //CatalogTests.RunAll();
         //AutogradTests.RunAll();
-        //FfTests.RunAll();
+        FfTests.RunAll();
         //RecurrentTests.RunAll();
         //LstmTests.RunAll();
     }

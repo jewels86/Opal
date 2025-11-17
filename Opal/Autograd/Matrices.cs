@@ -130,7 +130,7 @@ public static partial class Operations
 
     public static MatrixTensorStorage SubtractStorage(MatrixTensorStorage a, MatrixTensorStorage b)
     {
-        if (!UseGpu(a, b)) return NewCpuMatrixStorage(Matrices.Add(a.ToHost(), b.ToHost()));
+        if (!UseGpu(a, b)) return NewCpuMatrixStorage(Matrices.Subtract(a.ToHost(), b.ToHost()));
         var gpuA = ToGpuMatrix(a);
         var gpuB = ToGpuMatrix(b);
         var result = AllocateBuffer(gpuA.GpuData.Extent);
@@ -168,7 +168,7 @@ public static partial class Operations
             var gpuMatrix = ToGpuMatrix(matrix.Value);
             var gpuVector = ToGpuVector(vector.Value);
             
-            int rows = (int)gpuMatrix.GpuData.Extent.Y;
+            int rows = (int)gpuMatrix.GpuData.Extent.X;
             var resultBuffer = AllocateBuffer(rows);
             
             Queue.Enqueue(() => MatrixVectorMultiplyKernel(
@@ -184,9 +184,9 @@ public static partial class Operations
             
             void Backward(VectorTensor output)
             {
-                var gradVectorBuffer = AllocateBuffer(gpuMatrix.GpuData.Extent.X);
+                var gradVectorBuffer = AllocateBuffer(gpuMatrix.GpuData.Extent.Y);
                 Queue.Enqueue(() => MatrixTransposeVectorMultiplyKernel(
-                    (int)gpuMatrix.GpuData.Extent.X,
+                    (int)gpuMatrix.GpuData.Extent.Y,
                     gpuMatrix.GpuData.View,
                     ((GpuVectorStorage)output.Gradient).GpuData.View,
                     gradVectorBuffer.View));

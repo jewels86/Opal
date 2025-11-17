@@ -219,28 +219,25 @@ public static partial class Operations
 
     public static ScalarTensorStorage DotStorage(VectorTensorStorage a, VectorTensorStorage b)
     {
-        if (UseGpu(a, b))
-        {
-            var gpuA = ToGpuVector(a);
-            var gpuB = ToGpuVector(b);
+        if (!UseGpu(a, b)) return NewCpuScalarStorage(Vectors.Dot(a.ToHost(), b.ToHost()));
+        var gpuA = ToGpuVector(a);
+        var gpuB = ToGpuVector(b);
             
-            var product = AllocateBuffer(gpuA.GpuData.Length);
+        var product = AllocateBuffer(gpuA.GpuData.Length);
             
-            Queue.Enqueue(() => VectorMultiplyKernel(
-                (int)gpuA.GpuData.Length,
-                gpuA.GpuData.View,
-                gpuB.GpuData.View,
-                product.View));
+        Queue.Enqueue(() => VectorMultiplyKernel(
+            (int)gpuA.GpuData.Length,
+            gpuA.GpuData.View,
+            gpuB.GpuData.View,
+            product.View));
         
-            var result = AllocateScalar();
-            Queue.Enqueue(() => Accelerator.Reduce<double, AddDouble>(
-                Accelerator.DefaultStream,
-                product.View,
-                result.View));
+        var result = AllocateScalar();
+        Queue.Enqueue(() => Accelerator.Reduce<double, AddDouble>(
+            Accelerator.DefaultStream,
+            product.View,
+            result.View));
         
-            return new GpuScalarStorage(result);
-        }
-        return NewCpuScalarStorage(Vectors.Dot(a.ToHost(), b.ToHost()));
+        return new GpuScalarStorage(result);
     }
     
     public static VectorTensorStorage ScaleVectorStorage(VectorTensorStorage vector, ScalarTensorStorage scalar) => 
@@ -284,7 +281,7 @@ public static partial class Operations
 
     public static ScalarTensorStorage SumStorage(VectorTensorStorage vector)
     {
-        if (!UseGpu(vector)) return NewCpuScalarStorage(vector.ToHost().Aggregate((x, y) => x + y));
+        if (!UseGpu(vector)) return NewCpuScalarStorage(vector.ToHost().Sum());
         var gpuVector = ToGpuVector(vector);
         var result = AllocateScalar();
         
@@ -298,6 +295,7 @@ public static partial class Operations
 
     public static VectorTensorStorage FillStorage(long length, double value)
     {
+        if (!GpuAvailable) return NewCpuVectorStorage(Vectors.Fill(value, (int)length));
         var result = AllocateBuffer(length);
         Queue.Enqueue(() => VectorFillKernel(result.IntExtent, result.View, value));
         return new GpuVectorStorage(result);
@@ -342,8 +340,8 @@ public static partial class Operations
             a, b,
             VectorDivideKernel, Vectors.Divide, (_, _, output) =>
             {
-                AccumulateGradient(a.Gradient, DivideStorage(b.Value, output.Gradient));
-                AccumulateGradient(b.Gradient, DivideStorage(a.Value, output.Gradient));
+                AccumulateGradient(a.Gradient, DivideStorage(output.Gradient, b.Value));
+                AccumulateGradient(b.Gradient, NegateStorage(DivideStorage(MultiplyStorage(output.Gradient, a.Value), MultiplyStorage(b.Value, b.Value))));
             });
     public static ScalarTensor Dot(VectorTensor a, VectorTensor b)
     {
@@ -519,7 +517,7 @@ public static partial class Operations
                 Queue.Enqueue(() => VectorFillScalarKernel(
                     (int)ones.Length,
                     ones.View,
-                    ((GpuScalarStorage)output.Gradient).GpuData.View));
+                    ((GpuScalarStorage)output.Gradient.ToGpu()).GpuData.View));
             
                 AccumulateGradient(vector.Gradient, new GpuVectorStorage(ones));
             }
@@ -566,7 +564,7 @@ public static partial class Operations
 
             void Backwards(VectorTensor output)
             {
-                var expMinusOne = AddStorage(exponent.Value, NewDefaultScalarStorage(1));
+                var expMinusOne = SubtractStorage(exponent.Value, NewDefaultScalarStorage(1));
                 var aPowExpMinusOne = PowerStorage(a.Value, expMinusOne);
                 var gradA = MultiplyStorage(
                     ScaleVectorStorage(aPowExpMinusOne, exponent.Value),

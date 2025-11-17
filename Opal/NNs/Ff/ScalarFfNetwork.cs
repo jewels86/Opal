@@ -8,19 +8,17 @@ namespace Opal.NNs.Ff;
 public class ScalarFfNetwork : FfNetwork<ScalarTensorStorage, ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage, VectorTensorStorage, VectorTensorStorage>
 {
     public ScalarFfNetwork(
-        int inputSize,
-        int hiddenSize,
         int numHiddenLayers,
         Func<ScalarTensor, ScalarTensor> hiddenActivation,
         Func<ScalarTensor, ScalarTensor> outputActivation,
         Func<ScalarTensor, ScalarTensorStorage, ScalarTensor> lossFunction,
         string name = "ScalarFfNetwork")
         : base(
-            CreateLayer(inputSize, hiddenActivation),
-            CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
-            CreateLayer(hiddenSize, outputActivation),
+            CreateLayer(1, hiddenActivation),
+            CreateHiddenLayers(numHiddenLayers, 1, hiddenActivation),
+            CreateLayer(1, outputActivation),
             lossFunction,
-            hiddenSize,
+            1,
             hiddenActivation,
             name)
     {
