@@ -1,4 +1,5 @@
-﻿using Opal.Mathematics;
+﻿using Opal.Autograd;
+using Opal.Mathematics;
 using Opal.NNs.Recurrent;
 
 namespace Testing;
@@ -8,24 +9,30 @@ public class RecurrentTests
     public static void SequenceMemoryTest()
     {
         Console.WriteLine("Testing RNN sequence memory (remembering first input)...");
-        
+        Operations.GpuAvailable = false;
         // Task: output the first value seen in the sequence
         // Sequences: [0.5, 0.1, 0.2] → 0.5, [-0.3, 0.4, 0.1] → -0.3
         var sequences = new[]
         {
-            new[] { 0.5, 0.1, 0.2 },
-            new[] { -0.3, 0.4, 0.1 },
-            new[] { 0.8, -0.2, 0.3 },
-            new[] { -0.6, 0.2, -0.1 }
+            new[] { new[] { 0.5 }, new[] { 0.1 }, new[] { 0.2 } },
+            new[] { new[] { -0.3 }, new[] { 0.4 }, new[] { 0.1 } },
+            new[] { new[] { 0.8 }, new[] { -0.2 }, new[] { 0.3 } },
+            new[] { new[] { -0.6 }, new[] { 0.2 }, new[] { -0.1 } }
         };
-        
-        var targets = new[] { 0.5, -0.3, 0.8, -0.6 };
+            
+        var targets = new[]
+        {
+            new[] { 0.5 }, 
+            new[] { -0.3 }, 
+            new[] { 0.8 }, 
+            new[] { -0.6 }
+        };
 
-        var network = new ScalarRecurrentNetwork(
+        var network = new VectorRecurrentNetwork(
             1, 8, 1, 1,
-            ActivationFunctions.Tanh,
-            ActivationFunctions.Identity,
-            LossFunctions.MeanSquaredError);
+            ActivationFunctions.TanhVector,
+            ActivationFunctions.IdentityVector,
+            LossFunctions.MeanSquaredErrorVector);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -39,8 +46,8 @@ public class RecurrentTests
         Console.WriteLine("\nPredictions:");
         foreach (var seq in sequences)
         {
-            double prediction = network.ForwardSequence(seq);
-            Console.WriteLine($"  [{string.Join(", ", seq.Select(x => x.ToString("F1")))}] → {prediction:F4} (expected {seq[0]:F1})");
+            double[] prediction = network.ForwardSequence(seq);
+            Console.WriteLine($"  [{string.Join(", ", seq.Select(x => x[0].ToString("F1")))}] → {prediction[0]:F4} (expected {seq[0][0]:F1})");
         }
     }
 
@@ -51,23 +58,33 @@ public class RecurrentTests
         // Task: count how many 1s appear in a binary sequence
         var sequences = new[]
         {
-            new[] { 0.0, 0.0, 0.0 },  // 0 ones
-            new[] { 1.0, 0.0, 0.0 },  // 1 one
-            new[] { 0.0, 1.0, 0.0 },  // 1 one
-            new[] { 1.0, 1.0, 0.0 },  // 2 ones
-            new[] { 1.0, 0.0, 1.0 },  // 2 ones
-            new[] { 1.0, 1.0, 1.0 },  // 3 ones
-            new[] { 0.0, 0.0, 1.0 },  // 1 one
-            new[] { 0.0, 1.0, 1.0 }   // 2 ones
+            new[] { new[] { 0.0 }, new[] { 0.0 }, new[] { 0.0 } },  // 0 ones
+            new[] { new[] { 1.0 }, new[] { 0.0 }, new[] { 0.0 } },  // 1 one
+            new[] { new[] { 0.0 }, new[] { 1.0 }, new[] { 0.0 } },  // 1 one
+            new[] { new[] { 1.0 }, new[] { 1.0 }, new[] { 0.0 } },  // 2 ones
+            new[] { new[] { 1.0 }, new[] { 0.0 }, new[] { 1.0 } },  // 2 ones
+            new[] { new[] { 1.0 }, new[] { 1.0 }, new[] { 1.0 } },  // 3 ones
+            new[] { new[] { 0.0 }, new[] { 0.0 }, new[] { 1.0 } },  // 1 one
+            new[] { new[] { 0.0 }, new[] { 1.0 }, new[] { 1.0 } }   // 2 ones
         };
         
-        var targets = new[] { 0.0, 1.0, 1.0, 2.0, 2.0, 3.0, 1.0, 2.0 };
+        var targets = new[]
+        {
+            new[] { 0.0 },
+            new[] { 1.0 },
+            new[] { 1.0 },
+            new[] { 2.0 },
+            new[] { 2.0 },
+            new[] { 3.0 },
+            new[] { 1.0 },
+            new[] { 2.0 }
+        };
 
-        var network = new ScalarRecurrentNetwork(
+        var network = new VectorRecurrentNetwork(
             1, 16, 1, 1,
-            ActivationFunctions.Tanh,
-            ActivationFunctions.Identity,
-            LossFunctions.MeanSquaredError);
+            ActivationFunctions.TanhVector,
+            ActivationFunctions.IdentityVector,
+            LossFunctions.MeanSquaredErrorVector);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -80,8 +97,8 @@ public class RecurrentTests
         Console.WriteLine("\nPredictions:");
         for (int i = 0; i < sequences.Length; i++)
         {
-            double prediction = network.ForwardSequence(sequences[i]);
-            Console.WriteLine($"  [{string.Join(", ", sequences[i].Select(x => x.ToString("F0")))}] → {prediction:F2} (expected {targets[i]:F0})");
+            double[] prediction = network.ForwardSequence(sequences[i]);
+            Console.WriteLine($"  [{string.Join(", ", sequences[i].Select(x => x[0].ToString("F0")))}] → {prediction[0]:F2} (expected {targets[i][0]:F0})");
         }
     }
 
@@ -92,21 +109,21 @@ public class RecurrentTests
         // Task: sum all values in the sequence
         var sequences = new[]
         {
-            new[] { 0.1, 0.2, 0.3 },     // 0.6
-            new[] { 0.5, 0.5, 0.0 },     // 1.0
-            new[] { -0.2, 0.3, 0.1 },    // 0.2
-            new[] { 0.4, -0.1, 0.2 },    // 0.5
-            new[] { 0.0, 0.0, 0.5 },     // 0.5
-            new[] { 0.3, 0.3, 0.3 }      // 0.9
+            new[] { new[] { 0.1 }, new[] { 0.2 }, new[] { 0.3 } },     // 0.6
+            new[] { new[] { 0.5 }, new[] { 0.5 }, new[] { 0.0 } },     // 1.0
+            new[] { new[] { -0.2 }, new[] { 0.3 }, new[] { 0.1 } },    // 0.2
+            new[] { new[] { 0.4 }, new[] { -0.1 }, new[] { 0.2 } },    // 0.5
+            new[] { new[] { 0.0 }, new[] { 0.0 }, new[] { 0.5 } },     // 0.5
+            new[] { new[] { 0.3 }, new[] { 0.3 }, new[] { 0.3 } }      // 0.9
         };
         
-        var targets = sequences.Select(seq => seq.Sum()).ToArray();
+        var targets = sequences.Select(seq => new[] { seq.Sum(x => x[0]) }).ToArray();
 
-        var network = new ScalarRecurrentNetwork(
+        var network = new VectorRecurrentNetwork(
             1, 8, 1, 1,
-            ActivationFunctions.Tanh,
-            ActivationFunctions.Identity,
-            LossFunctions.MeanSquaredError);
+            ActivationFunctions.TanhVector,
+            ActivationFunctions.IdentityVector,
+            LossFunctions.MeanSquaredErrorVector);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -119,8 +136,8 @@ public class RecurrentTests
         Console.WriteLine("\nPredictions:");
         for (int i = 0; i < sequences.Length; i++)
         {
-            double prediction = network.ForwardSequence(sequences[i]);
-            Console.WriteLine($"  [{string.Join(", ", sequences[i].Select(x => x.ToString("F1")))}] → {prediction:F3} (expected {targets[i]:F1})");
+            double[] prediction = network.ForwardSequence(sequences[i]);
+            Console.WriteLine($"  [{string.Join(", ", sequences[i].Select(x => x[0].ToString("F1")))}] → {prediction[0]:F3} (expected {targets[i][0]:F1})");
         }
     }
 
@@ -182,19 +199,19 @@ public class RecurrentTests
         // We'll test on the last output only (should equal the second-to-last input)
         var sequences = new[]
         {
-            new[] { 0.5, 0.8, 0.2 },   // should output 0.8
-            new[] { 0.3, 0.1, 0.6 },   // should output 0.1
-            new[] { 0.9, 0.4, 0.7 },   // should output 0.4
-            new[] { 0.2, 0.6, 0.3 }    // should output 0.6
+            new[] { new[] { 0.5 }, new[] { 0.8 }, new[] { 0.2 } },   // should output 0.8
+            new[] { new[] { 0.3 }, new[] { 0.1 }, new[] { 0.6 } },   // should output 0.1
+            new[] { new[] { 0.9 }, new[] { 0.4 }, new[] { 0.7 } },   // should output 0.4
+            new[] { new[] { 0.2 }, new[] { 0.6 }, new[] { 0.3 } }    // should output 0.6
         };
         
-        var targets = sequences.Select(seq => seq[seq.Length - 2]).ToArray();
+        var targets = sequences.Select(seq => new[] { seq[seq.Length - 2][0] }).ToArray();
 
-        var network = new ScalarRecurrentNetwork(
+        var network = new VectorRecurrentNetwork(
             1, 12, 1, 1,
-            ActivationFunctions.Tanh,
-            ActivationFunctions.Identity,
-            LossFunctions.MeanSquaredError);
+            ActivationFunctions.TanhVector,
+            ActivationFunctions.IdentityVector,
+            LossFunctions.MeanSquaredErrorVector);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -207,8 +224,8 @@ public class RecurrentTests
         Console.WriteLine("\nPredictions (should output previous value):");
         for (int i = 0; i < sequences.Length; i++)
         {
-            double prediction = network.ForwardSequence(sequences[i]);
-            Console.WriteLine($"  [..., {sequences[i][^2]:F1}, {sequences[i][^1]:F1}] → {prediction:F3} (expected {targets[i]:F1})");
+            double[] prediction = network.ForwardSequence(sequences[i]);
+            Console.WriteLine($"  [..., {sequences[i][^2][0]:F1}, {sequences[i][^1][0]:F1}] → {prediction[0]:F3} (expected {targets[i][0]:F1})");
         }
     }
 

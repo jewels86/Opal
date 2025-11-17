@@ -27,6 +27,21 @@ public class VectorRecurrentNetwork : RecurrentNetwork<VectorTensorStorage, Vect
     }
     
     public double[] Forward(double[] input) => Forward(Operations.NewVector(input, Vectors.Zeros(input.Length))).Value.ToHost();
+    
+    public double[] ForwardSequence(double[][] sequence) =>
+        ForwardSequence(sequence.Select(Operations.NewDefaultVectorStorage).ToArray()).ToHost();
+    
+    public void TrainSequences(double[][][] sequences, double[][] targets, int epochs, double learningRate) =>
+        TrainSequences(
+            sequences.Select(seq => seq.Select(Operations.NewDefaultVectorStorage).ToArray()).ToArray(),
+            targets.Select(Operations.NewDefaultVectorStorage).ToArray(),
+            epochs,
+            learningRate);
+    
+    public double EvaluateLossSequences(double[][][] sequences, double[][] targets) =>
+        EvaluateLossSequences(
+            sequences.Select(seq => seq.Select(Operations.NewDefaultVectorStorage).ToArray()).ToArray(),
+            targets.Select(Operations.NewDefaultVectorStorage).ToArray());
 
     protected override RecurrentLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, HiddenActivation);

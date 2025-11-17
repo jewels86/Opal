@@ -13,20 +13,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Modules\Refinement\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Remove="NNs\Lstm\**" />
-    <Compile Include="NNs\Recurrent\RecurrentLayer.cs" />
   </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Remove="NNs\Lstm\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="NNs\Lstm\**" />
-  </ItemGroup>
-
 </Project>

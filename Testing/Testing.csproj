@@ -7,31 +7,16 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <None Remove="data1.txt" />
-    <None Remove="data2.txt" />
-  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Opal\Opal.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="data3.txt" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Spectre.Console" Version="0.50.1-preview.0.21" />
   </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="affixes.txt" />
-    <None Remove="stopwords.txt" />
-  </ItemGroup>
-
   <ItemGroup>
     <Compile Remove="LstmTests.cs" />
-    <Compile Remove="RecurrentTests.cs" />
   </ItemGroup>
 
 </Project>

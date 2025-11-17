@@ -472,7 +472,7 @@ public static partial class Operations
                     AccumulateGradient(a.Gradient, ScaleVectorStorage(output.Gradient, scalar.Value));
                     AccumulateGradient(scalar.Gradient, DotStorage(output.Gradient, a.Value));
                 },
-                NewCpuVectorStorage(Vectors.Ones(value.TotalElements)));
+                NewCpuVectorStorage(Vectors.Zeros(value.TotalElements)));
         }
         var gpuAStorage = ToGpuVector(a.Value);
         var gpuScalarStorage = ToGpuScalar(scalar.Value);
@@ -490,7 +490,7 @@ public static partial class Operations
                 AccumulateGradient(a.Gradient, ScaleVectorStorage(output.Gradient, scalar.Value));
                 AccumulateGradient(scalar.Gradient, DotStorage(output.Gradient, a.Value));
             },
-            NewCpuVectorStorage(Vectors.Ones(gpuAStorage.TotalElements)));
+            NewCpuVectorStorage(Vectors.Zeros(gpuAStorage.TotalElements)));
     }
     public static VectorTensor Negate(VectorTensor a) => UnaryOp(
         a, VectorNegateKernel, Vectors.Negate, 
