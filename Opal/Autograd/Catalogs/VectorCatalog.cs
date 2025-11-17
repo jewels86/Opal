@@ -1,20 +1,27 @@
 ﻿using System.Numerics;
 using Opal.Mathematics;
 using Opal.NNs.Ff;
+using Opal.NNs.Lstm;
 using Opal.NNs.Recurrent;
 using Opal.Utilities;
 
 namespace Opal.Autograd.Catalogs;
 
-public class VectorCatalog : IFfCatalog<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>, IRecurrentCatalog<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>
+public class VectorCatalog : 
+    IFfCatalog<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>, 
+    IRecurrentCatalog<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>,
+    ILstmCatalog<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>
 {
     public VectorTensor Add(VectorTensor a, VectorTensor b) => Operations.Add(a, b);
     public VectorTensor Multiply(MatrixTensor a, VectorTensor b) => Operations.Multiply(a, b);
+    public VectorTensor Multiply(VectorTensor a, VectorTensor b) => Operations.Multiply(a, b);
+
     public MatrixTensorStorage Subtract(MatrixTensorStorage a, MatrixTensorStorage b) => Operations.SubtractStorage(a, b);
     public VectorTensorStorage Subtract(VectorTensorStorage a, VectorTensorStorage b) => Operations.SubtractStorage(a, b);
     public MatrixTensorStorage Scale(MatrixTensorStorage a, double scale) => Operations.ScaleMatrixStorage(a, Operations.NewDefaultScalarStorage(scale));
-
     public VectorTensorStorage Scale(VectorTensorStorage a, double scale) => Operations.ScaleVectorStorage(a, Operations.NewDefaultScalarStorage(scale));
+    public VectorTensor ConcatHidden(VectorTensor input, VectorTensor prevHidden) => Operations.Concat(input, prevHidden);
+    public VectorTensor ConcatInputHidden(VectorTensor input, VectorTensor prevHidden) => Operations.Concat(input, prevHidden);
 
     public VectorTensorStorage ZeroGradient(VectorTensorStorage a) => Operations.NewDefaultVectorStorage(Vectors.Zeros(a.TotalElements));
     public MatrixTensorStorage ZeroGradient(MatrixTensorStorage a) => Operations.NewDefaultMatrixStorage(Matrices.Zeros(a.Shape[0], a.Shape[1]));

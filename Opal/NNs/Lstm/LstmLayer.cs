@@ -4,31 +4,31 @@ using Opal.Utilities;
 
 namespace Opal.NNs.Lstm;
 
-public class LstmLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
-    where TIn : notnull where TOut : notnull where TWeight : notnull
+public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
+    where TIn : notnull where TOut : notnull where TWeights : notnull
 {
-    public required Tensor<TWeight>[] EncoderForgetWeights { get; set; } 
-    public required Tensor<TWeight>[] EncoderInputWeights { get; set; } 
-    public required Tensor<TWeight>[] EncoderCellWeights { get; set; } 
-    public required Tensor<TWeight>[] EncoderOutputWeights { get; set; }
+    public required Tensor<TWeights> EncoderForgetWeights { get; set; } 
+    public required Tensor<TWeights> EncoderInputWeights { get; set; } 
+    public required Tensor<TWeights> EncoderCellWeights { get; set; } 
+    public required Tensor<TWeights> EncoderOutputWeights { get; set; }
     public required Tensor<TOut> EncoderForgetBiases { get; set; }
     public required Tensor<TOut> EncoderInputBiases { get; set; }
     public required Tensor<TOut> EncoderCellBiases { get; set; }
     public required Tensor<TOut> EncoderOutputBiases { get; set; }
     
-    public required Tensor<TWeight>[] DecoderForgetWeights { get; set; } 
-    public required Tensor<TWeight>[] DecoderInputWeights { get; set; } 
-    public required Tensor<TWeight>[] DecoderCellWeights { get; set; } 
-    public required Tensor<TWeight>[] DecoderOutputWeights { get; set; }
+    public required Tensor<TWeights> DecoderForgetWeights { get; set; } 
+    public required Tensor<TWeights> DecoderInputWeights { get; set; } 
+    public required Tensor<TWeights> DecoderCellWeights { get; set; } 
+    public required Tensor<TWeights> DecoderOutputWeights { get; set; }
     
     public required Tensor<TOut> DecoderForgetBiases { get; set; }
     public required Tensor<TOut> DecoderInputBiases { get; set; }
     public required Tensor<TOut> DecoderCellBiases { get; set; }
     public required Tensor<TOut> DecoderOutputBiases { get; set; }
     
-    public required ActivationFunction<TOut> SigmoidActivation { get; set; }
-    public required ActivationFunction<TOut> TanhActivation { get; set; }
-    public required ILstmCatalog<TIn, TOut, TWeight> Catalog { get; set; }
+    public required Func<Tensor<TOut>, Tensor<TOut>> SigmoidActivation { get; set; }
+    public required Func<Tensor<TOut>, Tensor<TOut>> TanhActivation { get; set; }
+    public required ILstmCatalog<TIn, TOut, TWeights> Catalog { get; set; }
     
     public required Tensor<TOut> DefaultState { get; set; }
     public required Tensor<TOut> DefaultHidden { get; set; }
@@ -37,13 +37,14 @@ public class LstmLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     public virtual (Tensor<TOut> hidden, Tensor<TOut> state) Encoder(Tensor<TIn> input, Tensor<TOut> state, Tensor<TOut> prevHidden)
     {
         Tensor<TOut> concat = Catalog.ConcatInputHidden(input, prevHidden);
-        Tensor<TOut> forgetGate = SigmoidActivation.Function(Catalog.Add(Catalog.Multiply(concat, EncoderForgetWeights), EncoderForgetBiases));
-        Tensor<TOut> inputGate = SigmoidActivation.Function(Catalog.Add(Catalog.Multiply(concat, EncoderInputWeights), EncoderInputBiases));
-        Tensor<TOut> cellGate = TanhActivation.Function(Catalog.Add(Catalog.Multiply(concat, EncoderCellWeights), EncoderCellBiases));
-        Tensor<TOut> outputGate = SigmoidActivation.Function(Catalog.Add(Catalog.Multiply(concat, EncoderOutputWeights), EncoderOutputBiases));
+        Tensor<TOut> forgetGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderForgetWeights, concat), DecoderForgetBiases));
+        Tensor<TOut> inputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderInputWeights, concat), DecoderInputBiases));
+        Tensor<TOut> cellGate = TanhActivation(Catalog.Add(Catalog.Multiply(DecoderCellWeights, concat), DecoderCellBiases));
+        Tensor<TOut> outputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderOutputWeights, concat), DecoderOutputBiases));
+
         
         Tensor<TOut> newState = Catalog.Add(Catalog.Multiply(forgetGate, state), Catalog.Multiply(inputGate, cellGate));
-        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, TanhActivation.Function(newState));
+        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, TanhActivation(newState));
         
         return (newHidden, newState);
     }
@@ -51,13 +52,14 @@ public class LstmLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     public virtual (Tensor<TOut> hidden, Tensor<TOut> state) Decoder(Tensor<TOut> input, Tensor<TOut> state, Tensor<TOut> prevHidden)
     {
         Tensor<TOut> concat = Catalog.ConcatHidden(input, prevHidden);
-        Tensor<TOut> forgetGate = SigmoidActivation.Function(Catalog.Add(Catalog.Multiply(concat, DecoderForgetWeights), DecoderForgetBiases));
-        Tensor<TOut> inputGate = SigmoidActivation.Function(Catalog.Add(Catalog.Multiply(concat, DecoderInputWeights), DecoderInputBiases));
-        Tensor<TOut> cellGate = TanhActivation.Function(Catalog.Add(Catalog.Multiply(concat, DecoderCellWeights), DecoderCellBiases));
-        Tensor<TOut> outputGate = SigmoidActivation.Function(Catalog.Add(Catalog.Multiply(concat, DecoderOutputWeights), DecoderOutputBiases));
+        Tensor<TOut> forgetGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderForgetWeights, concat), DecoderForgetBiases));
+        Tensor<TOut> inputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderInputWeights, concat), DecoderInputBiases));
+        Tensor<TOut> cellGate = TanhActivation(Catalog.Add(Catalog.Multiply(DecoderCellWeights, concat), DecoderCellBiases));
+        Tensor<TOut> outputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderOutputWeights, concat), DecoderOutputBiases));
+
         
         Tensor<TOut> newState = Catalog.Add(Catalog.Multiply(forgetGate, state), Catalog.Multiply(inputGate, cellGate));
-        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, TanhActivation.Function(newState));
+        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, TanhActivation(newState));
         
         return (newHidden, newState);
     }
@@ -132,69 +134,37 @@ public class LstmLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
 
     public virtual void UpdateParameters(double lr)
     {
-        foreach (var weight in EncoderForgetWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        foreach (var weight in EncoderInputWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        foreach (var weight in EncoderCellWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        foreach (var weight in EncoderOutputWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        
+        EncoderForgetWeights.Value = Catalog.Subtract(EncoderForgetWeights.Value, Catalog.Scale(EncoderForgetWeights.Gradient, lr));
+        EncoderForgetWeights.Gradient = Catalog.ZeroGradient(EncoderForgetWeights.Value);
+        EncoderInputWeights.Value = Catalog.Subtract(EncoderInputWeights.Value, Catalog.Scale(EncoderInputWeights.Gradient, lr));
+        EncoderInputWeights.Gradient = Catalog.ZeroGradient(EncoderInputWeights.Value);
+        EncoderCellWeights.Value = Catalog.Subtract(EncoderCellWeights.Value, Catalog.Scale(EncoderCellWeights.Gradient, lr));
+        EncoderCellWeights.Gradient = Catalog.ZeroGradient(EncoderCellWeights.Value);
+        EncoderOutputWeights.Value = Catalog.Subtract(EncoderOutputWeights.Value, Catalog.Scale(EncoderOutputWeights.Gradient, lr));
+        EncoderOutputWeights.Gradient = Catalog.ZeroGradient(EncoderOutputWeights.Value);
         EncoderForgetBiases.Value = Catalog.Subtract(EncoderForgetBiases.Value, Catalog.Scale(EncoderForgetBiases.Gradient, lr));
         EncoderForgetBiases.Gradient = Catalog.ZeroGradient(EncoderForgetBiases.Value);
-        
         EncoderInputBiases.Value = Catalog.Subtract(EncoderInputBiases.Value, Catalog.Scale(EncoderInputBiases.Gradient, lr));
         EncoderInputBiases.Gradient = Catalog.ZeroGradient(EncoderInputBiases.Value);
-        
         EncoderCellBiases.Value = Catalog.Subtract(EncoderCellBiases.Value, Catalog.Scale(EncoderCellBiases.Gradient, lr));
         EncoderCellBiases.Gradient = Catalog.ZeroGradient(EncoderCellBiases.Value);
-        
         EncoderOutputBiases.Value = Catalog.Subtract(EncoderOutputBiases.Value, Catalog.Scale(EncoderOutputBiases.Gradient, lr));
         EncoderOutputBiases.Gradient = Catalog.ZeroGradient(EncoderOutputBiases.Value);
         
-        foreach (var weight in DecoderForgetWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        foreach (var weight in DecoderInputWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        foreach (var weight in DecoderCellWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        foreach (var weight in DecoderOutputWeights)
-        {
-            weight.Value = Catalog.Subtract(weight.Value, Catalog.Scale(weight.Gradient, lr));
-            weight.Gradient = Catalog.ZeroGradient(weight.Value);
-        }
-        
+        DecoderForgetWeights.Value = Catalog.Subtract(DecoderForgetWeights.Value, Catalog.Scale(DecoderForgetWeights.Gradient, lr));
+        DecoderForgetWeights.Gradient = Catalog.ZeroGradient(DecoderForgetWeights.Value);
+        DecoderInputWeights.Value = Catalog.Subtract(DecoderInputWeights.Value, Catalog.Scale(DecoderInputWeights.Gradient, lr));
+        DecoderInputWeights.Gradient = Catalog.ZeroGradient(DecoderInputWeights.Value);
+        DecoderCellWeights.Value = Catalog.Subtract(DecoderCellWeights.Value, Catalog.Scale(DecoderCellWeights.Gradient, lr));
+        DecoderCellWeights.Gradient = Catalog.ZeroGradient(DecoderCellWeights.Value);
+        DecoderOutputWeights.Value = Catalog.Subtract(DecoderOutputWeights.Value, Catalog.Scale(DecoderOutputWeights.Gradient, lr));
+        DecoderOutputWeights.Gradient = Catalog.ZeroGradient(DecoderOutputWeights.Value);
         DecoderForgetBiases.Value = Catalog.Subtract(DecoderForgetBiases.Value, Catalog.Scale(DecoderForgetBiases.Gradient, lr));
         DecoderForgetBiases.Gradient = Catalog.ZeroGradient(DecoderForgetBiases.Value);
-        
         DecoderInputBiases.Value = Catalog.Subtract(DecoderInputBiases.Value, Catalog.Scale(DecoderInputBiases.Gradient, lr));
         DecoderInputBiases.Gradient = Catalog.ZeroGradient(DecoderInputBiases.Value);
-        
         DecoderCellBiases.Value = Catalog.Subtract(DecoderCellBiases.Value, Catalog.Scale(DecoderCellBiases.Gradient, lr));
         DecoderCellBiases.Gradient = Catalog.ZeroGradient(DecoderCellBiases.Value);
-        
         DecoderOutputBiases.Value = Catalog.Subtract(DecoderOutputBiases.Value, Catalog.Scale(DecoderOutputBiases.Gradient, lr));
         DecoderOutputBiases.Gradient = Catalog.ZeroGradient(DecoderOutputBiases.Value);
     }
@@ -202,42 +172,20 @@ public class LstmLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     #region Read/Write
     public void Write(BinaryWriter writer)
     {
-        writer.Write(EncoderForgetWeights.Length);
-        foreach (var weight in EncoderForgetWeights)
-            Catalog.WriteWeight(writer, weight.Value);
-        
-        writer.Write(EncoderInputWeights.Length);
-        foreach (var weight in EncoderInputWeights)
-            Catalog.WriteWeight(writer, weight.Value);
-        
-        writer.Write(EncoderCellWeights.Length);
-        foreach (var weight in EncoderCellWeights)
-            Catalog.WriteWeight(writer, weight.Value);
-        
-        writer.Write(EncoderOutputWeights.Length);
-        foreach (var weight in EncoderOutputWeights)
-            Catalog.WriteWeight(writer, weight.Value);
+        Catalog.WriteWeights(writer, EncoderForgetWeights.Value);
+        Catalog.WriteWeights(writer, EncoderInputWeights.Value);
+        Catalog.WriteWeights(writer, EncoderCellWeights.Value);
+        Catalog.WriteWeights(writer, EncoderOutputWeights.Value);
         
         Catalog.WriteBias(writer, EncoderForgetBiases.Value);
         Catalog.WriteBias(writer, EncoderInputBiases.Value);
         Catalog.WriteBias(writer, EncoderCellBiases.Value);
         Catalog.WriteBias(writer, EncoderOutputBiases.Value);
         
-        writer.Write(DecoderForgetWeights.Length);
-        foreach (var weight in DecoderForgetWeights)
-            Catalog.WriteWeight(writer, weight.Value);
-        
-        writer.Write(DecoderInputWeights.Length);
-        foreach (var weight in DecoderInputWeights)
-            Catalog.WriteWeight(writer, weight.Value);
-        
-        writer.Write(DecoderCellWeights.Length);
-        foreach (var weight in DecoderCellWeights)
-            Catalog.WriteWeight(writer, weight.Value);
-        
-        writer.Write(DecoderOutputWeights.Length);
-        foreach (var weight in DecoderOutputWeights)
-            Catalog.WriteWeight(writer, weight.Value);
+        Catalog.WriteWeights(writer, DecoderForgetWeights.Value);
+        Catalog.WriteWeights(writer, DecoderInputWeights.Value);
+        Catalog.WriteWeights(writer, DecoderCellWeights.Value);
+        Catalog.WriteWeights(writer, DecoderOutputWeights.Value);
         
         Catalog.WriteBias(writer, DecoderForgetBiases.Value);
         Catalog.WriteBias(writer, DecoderInputBiases.Value);
@@ -247,107 +195,53 @@ public class LstmLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
 
     public void Read(BinaryReader reader)
     {
-        int encoderForgetWeightsLength = reader.ReadInt32();
-        EncoderForgetWeights = new Tensor<TWeight>[encoderForgetWeightsLength];
-        for (int i = 0; i < encoderForgetWeightsLength; i++)
-        {
-            var weight = Catalog.ReadWeight(reader);
-            EncoderForgetWeights[i] = new Tensor<TWeight>(weight, null, _ => { }, Catalog.ZeroGradient(weight));
-        }
-        
-        int encoderInputWeightsLength = reader.ReadInt32();
-        EncoderInputWeights = new Tensor<TWeight>[encoderInputWeightsLength];
-        for (int i = 0; i < encoderInputWeightsLength; i++)
-        {
-            var weight = Catalog.ReadWeight(reader);
-            EncoderInputWeights[i] = new Tensor<TWeight>(weight, null, _ => { }, Catalog.ZeroGradient(weight));
-        }
-        
-        int encoderCellWeightsLength = reader.ReadInt32();
-        EncoderCellWeights = new Tensor<TWeight>[encoderCellWeightsLength];
-        for (int i = 0; i < encoderCellWeightsLength; i++)
-        {
-            var weight = Catalog.ReadWeight(reader);
-            EncoderCellWeights[i] = new Tensor<TWeight>(weight, null, _ => { }, Catalog.ZeroGradient(weight));
-        }
-        
-        int encoderOutputWeightsLength = reader.ReadInt32();
-        EncoderOutputWeights = new Tensor<TWeight>[encoderOutputWeightsLength];
-        for (int i = 0; i < encoderOutputWeightsLength; i++)
-        {
-            var weight = Catalog.ReadWeight(reader);
-            EncoderOutputWeights[i] = new Tensor<TWeight>(weight, null, _ => { }, Catalog.ZeroGradient(weight));
-        }
-        
-        EncoderForgetBiases = new Tensor<TOut>(Catalog.ReadBias(reader), null, _ => { }, Catalog.ZeroGradient(Catalog.ReadBias(reader)));
-        EncoderInputBiases = new Tensor<TOut>(Catalog.ReadBias(reader), null, _ => { }, Catalog.ZeroGradient(Catalog.ReadBias(reader)));
-        EncoderCellBiases = new Tensor<TOut>(Catalog.ReadBias(reader), null, _ => { }, Catalog.ZeroGradient(Catalog.ReadBias(reader)));
-        EncoderOutputBiases = new Tensor<TOut>(Catalog.ReadBias(reader), null, _ => { }, Catalog.ZeroGradient(Catalog.ReadBias(reader)));
-        
-        int decoderForgetWeightsLength = reader.ReadInt32();
-        DecoderForgetWeights = new Tensor<TWeight>[decoderForgetWeightsLength];
-        for (int i = 0; i < decoderForgetWeightsLength; i++)
-        {
-            var weight = Catalog.ReadWeight(reader);
-            DecoderForgetWeights[i] = new Tensor<TWeight>(weight, null, _ => { }, Catalog.ZeroGradient(weight));
-        }
-        
-        int decoderInputWeightsLength = reader.ReadInt32();
-        DecoderInputWeights = new Tensor<TWeight>[decoderInputWeightsLength];
-        for (int i = 0; i < decoderInputWeightsLength; i++)
-        {
-            var weight = Catalog.ReadWeight(reader);
-            DecoderInputWeights[i] = new Tensor<TWeight>(weight, null, _ => { }, Catalog.ZeroGradient(weight));
-        }
-        
-        int decoderCellWeightsLength = reader.ReadInt32();
-        DecoderCellWeights = new Tensor<TWeight>[decoderCellWeightsLength];
-        for (int i = 0; i < decoderCellWeightsLength; i++)
-        {
-            var weight = Catalog.ReadWeight(reader);
-            DecoderCellWeights[i] = new Tensor<TWeight>(weight, null, _ => { }, Catalog.ZeroGradient(weight));
-        }
-        
-        int decoderOutputWeightsLength = reader.ReadInt32();
-        DecoderOutputWeights = new Tensor<TWeight>[decoderOutputWeightsLength];
-        for (int i = 0; i < decoderOutputWeightsLength; i++)
-        {
-            var weight = Catalog.ReadWeight(reader);
-            DecoderOutputWeights[i] = new Tensor<TWeight>(weight, null, _ => { }, Catalog.ZeroGradient(weight));
-        }
-        
-        DecoderForgetBiases = new Tensor<TOut>(Catalog.ReadBias(reader), null, _ => { }, Catalog.ZeroGradient(Catalog.ReadBias(reader)));
-        DecoderInputBiases = new Tensor<TOut>(Catalog.ReadBias(reader), null, _ => { }, Catalog.ZeroGradient(Catalog.ReadBias(reader)));
-        DecoderCellBiases = new Tensor<TOut>(Catalog.ReadBias(reader), null, _ => { }, Catalog.ZeroGradient(Catalog.ReadBias(reader)));
-        DecoderOutputBiases = new Tensor<TOut>(Catalog.ReadBias(reader), null, _ => { }, Catalog.ZeroGradient(Catalog.ReadBias(reader)));
+        EncoderForgetWeights.Value = Catalog.ReadWeights(reader);
+        EncoderInputWeights.Value = Catalog.ReadWeights(reader);
+        EncoderCellWeights.Value = Catalog.ReadWeights(reader);
+        EncoderOutputWeights.Value = Catalog.ReadWeights(reader);
+
+        EncoderForgetBiases.Value = Catalog.ReadBias(reader);
+        EncoderInputBiases.Value = Catalog.ReadBias(reader);
+        EncoderCellBiases.Value = Catalog.ReadBias(reader);
+        EncoderOutputBiases.Value = Catalog.ReadBias(reader);
+
+        DecoderForgetWeights.Value = Catalog.ReadWeights(reader);
+        DecoderInputWeights.Value = Catalog.ReadWeights(reader);
+        DecoderCellWeights.Value = Catalog.ReadWeights(reader);
+        DecoderOutputWeights.Value = Catalog.ReadWeights(reader);
+
+        DecoderForgetBiases.Value = Catalog.ReadBias(reader);
+        DecoderInputBiases.Value = Catalog.ReadBias(reader);
+        DecoderCellBiases.Value = Catalog.ReadBias(reader);
+        DecoderOutputBiases.Value = Catalog.ReadBias(reader);  
     }
     #endregion
 }
 
-public interface ILstmCatalog<TIn, TOut, TWeight>
+public interface ILstmCatalog<TIn, TOut, TWeights>
     where TIn : notnull where TOut : notnull
-    where TWeight : notnull
+    where TWeights : notnull
 {
-    Tensor<TOut> ConcatInputHidden(Tensor<TIn> input, Tensor<TOut> prevHidden);
-    Tensor<TOut> ConcatHidden(Tensor<TOut> input, Tensor<TOut> prevHidden);
+    Tensor<TOut> ConcatInputHidden(Tensor<TIn> a, Tensor<TOut> b);
+    Tensor<TOut> ConcatHidden(Tensor<TOut> a, Tensor<TOut> b);
     
     Tensor<TOut> Add(Tensor<TOut> a, Tensor<TOut> b);
-    Tensor<TOut> Multiply(Tensor<TOut> concat, Tensor<TWeight>[] weights);
+    Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TOut> b);
     
     Tensor<TOut> Multiply(Tensor<TOut> a, Tensor<TOut> b);
     
     TIn ZeroGradient(TIn a);
     TOut ZeroGradient(TOut a);
-    TWeight ZeroGradient(TWeight a);
+    TWeights ZeroGradient(TWeights a);
     
-    TWeight Subtract(TWeight a, TWeight b);
+    TWeights Subtract(TWeights a, TWeights b);
     TOut Subtract(TOut a, TOut b);
     
-    TWeight Scale(TWeight a, double scale);
+    TWeights Scale(TWeights a, double scale);
     TOut Scale(TOut a, double scale);
     
-    TWeight ReadWeight(BinaryReader reader);
-    void WriteWeight(BinaryWriter writer, TWeight weight);
+    TWeights ReadWeights(BinaryReader reader);
+    void WriteWeights(BinaryWriter writer, TWeights weight);
     
     TOut ReadBias(BinaryReader reader);
     void WriteBias(BinaryWriter writer, TOut bias);

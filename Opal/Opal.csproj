@@ -13,6 +13,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="NNs\Lstm\**" />
+    <Compile Include="NNs\Lstm\LstmLayer.cs" />
   </ItemGroup>
 </Project>
