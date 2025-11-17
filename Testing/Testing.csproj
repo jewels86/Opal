@@ -15,8 +15,5 @@
   <ItemGroup>
     <PackageReference Include="Spectre.Console" Version="0.50.1-preview.0.21" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="LstmTests.cs" />
-  </ItemGroup>
 
 </Project>

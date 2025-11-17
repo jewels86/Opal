@@ -11,8 +11,4 @@
     <PackageReference Include="ILGPU.Algorithms" Version="1.5.3" />
     <PackageReference Include="ScottPlot" Version="5.0.55" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="NNs\Lstm\LstmLayer.cs" />
-  </ItemGroup>
 </Project>

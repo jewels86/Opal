@@ -1,4 +1,5 @@
-﻿using Opal.Mathematics;
+﻿using Opal.Autograd;
+using Opal.Mathematics;
 using Opal.NNs.Lstm;
 
 namespace Testing;
@@ -10,7 +11,7 @@ public class LstmTests
         Console.WriteLine("Testing LSTM sequence memory (remembering first input)...");
         
         // Task: output the first value seen in the sequence
-        var sequences = new[]
+        var sequencesRaw = new[]
         {
             new[] { new[] { 0.5 }, new[] { 0.1 }, new[] { 0.2 } },
             new[] { new[] { -0.3 }, new[] { 0.4 }, new[] { 0.1 } },
@@ -18,7 +19,7 @@ public class LstmTests
             new[] { new[] { -0.6 }, new[] { 0.2 }, new[] { -0.1 } }
         };
         
-        var targets = new[]
+        var targetsRaw = new[]
         {
             new[] { 0.5 },
             new[] { -0.3 },
@@ -26,8 +27,12 @@ public class LstmTests
             new[] { -0.6 }
         };
 
+        // Convert to VectorTensorStorage
+        var sequences = sequencesRaw.Select(seq => seq.Select(Operations.NewCpuVectorStorage).ToArray()).ToArray();
+        var targets = targetsRaw.Select(Operations.NewCpuVectorStorage).ToArray();
+
         var network = new VectorLstmNetwork(
-            1, 8, 1, 1,
+            1, 8, 1, 8,
             ActivationFunctions.SigmoidVector,
             ActivationFunctions.TanhVector,
             LossFunctions.MeanSquaredErrorVector);
@@ -45,8 +50,8 @@ public class LstmTests
         for (int i = 0; i < sequences.Length; i++)
         {
             var prediction = network.ForwardSequence(sequences[i]);
-            var seqString = string.Join(", ", sequences[i].Select(x => x[0].ToString("F1")));
-            Console.WriteLine($"  [{seqString}] → {prediction[0]:F4} (expected {targets[i][0]:F1})");
+            var seqString = string.Join(", ", sequencesRaw[i].Select(x => x[0].ToString("F1")));
+            Console.WriteLine($"  [{seqString}] → {prediction.ToHost()[0]:F4} (expected {targetsRaw[i][0]:F1})");
         }
     }
 
@@ -55,7 +60,7 @@ public class LstmTests
         Console.WriteLine("\nTesting LSTM counting (count 1s in binary sequence)...");
         
         // Task: count how many 1s appear in a binary sequence
-        var sequences = new[]
+        var sequencesRaw = new[]
         {
             new[] { new[] { 0.0 }, new[] { 0.0 }, new[] { 0.0 } },  // 0 ones
             new[] { new[] { 1.0 }, new[] { 0.0 }, new[] { 0.0 } },  // 1 one
@@ -67,14 +72,18 @@ public class LstmTests
             new[] { new[] { 0.0 }, new[] { 1.0 }, new[] { 1.0 } }   // 2 ones
         };
         
-        var targets = new[]
+        var targetsRaw = new[]
         {
             new[] { 0.0 }, new[] { 1.0 }, new[] { 1.0 }, new[] { 2.0 },
             new[] { 2.0 }, new[] { 3.0 }, new[] { 1.0 }, new[] { 2.0 }
         };
 
+        // Convert to VectorTensorStorage
+        var sequences = sequencesRaw.Select(seq => seq.Select(v => Operations.NewCpuVectorStorage(v)).ToArray()).ToArray();
+        var targets = targetsRaw.Select(t => Operations.NewCpuVectorStorage(t)).ToArray();
+
         var network = new VectorLstmNetwork(
-            1, 16, 1, 1,
+            1, 16, 1, 8,
             ActivationFunctions.SigmoidVector,
             ActivationFunctions.TanhVector,
             LossFunctions.MeanSquaredErrorVector);
@@ -91,8 +100,8 @@ public class LstmTests
         for (int i = 0; i < sequences.Length; i++)
         {
             var prediction = network.ForwardSequence(sequences[i]);
-            var seqString = string.Join(", ", sequences[i].Select(x => x[0].ToString("F0")));
-            Console.WriteLine($"  [{seqString}] → {prediction[0]:F2} (expected {targets[i][0]:F0})");
+            var seqString = string.Join(", ", sequencesRaw[i].Select(x => x[0].ToString("F0")));
+            Console.WriteLine($"  [{seqString}] → {prediction.ToHost()[0]:F2} (expected {targetsRaw[i][0]:F0})");
         }
     }
 
@@ -101,7 +110,7 @@ public class LstmTests
         Console.WriteLine("\nTesting LSTM sequence sum...");
         
         // Task: sum all values in the sequence
-        var sequences = new[]
+        var sequencesRaw = new[]
         {
             new[] { new[] { 0.1 }, new[] { 0.2 }, new[] { 0.3 } },     // 0.6
             new[] { new[] { 0.5 }, new[] { 0.5 }, new[] { 0.0 } },     // 1.0
@@ -111,10 +120,14 @@ public class LstmTests
             new[] { new[] { 0.3 }, new[] { 0.3 }, new[] { 0.3 } }      // 0.9
         };
         
-        var targets = sequences.Select(seq => new[] { seq.Sum(x => x[0]) }).ToArray();
+        var targetsRaw = sequencesRaw.Select(seq => new[] { seq.Sum(x => x[0]) }).ToArray();
+
+        // Convert to VectorTensorStorage
+        var sequences = sequencesRaw.Select(seq => seq.Select(v => Operations.NewCpuVectorStorage(v)).ToArray()).ToArray();
+        var targets = targetsRaw.Select(t => Operations.NewCpuVectorStorage(t)).ToArray();
 
         var network = new VectorLstmNetwork(
-            1, 8, 1, 1,
+            1, 8, 1, 8,
             ActivationFunctions.SigmoidVector,
             ActivationFunctions.TanhVector,
             LossFunctions.MeanSquaredErrorVector);
@@ -131,8 +144,8 @@ public class LstmTests
         for (int i = 0; i < sequences.Length; i++)
         {
             var prediction = network.ForwardSequence(sequences[i]);
-            var seqString = string.Join(", ", sequences[i].Select(x => x[0].ToString("F1")));
-            Console.WriteLine($"  [{seqString}] → {prediction[0]:F3} (expected {targets[i][0]:F1})");
+            var seqString = string.Join(", ", sequencesRaw[i].Select(x => x[0].ToString("F1")));
+            Console.WriteLine($"  [{seqString}] → {prediction.ToHost()[0]:F3} (expected {targetsRaw[i][0]:F1})");
         }
     }
 
@@ -141,7 +154,7 @@ public class LstmTests
         Console.WriteLine("\nTesting LSTM sequence classification...");
         
         // Task: classify sequences as "increasing" [1,0] or "decreasing" [0,1]
-        var sequences = new[]
+        var sequencesRaw = new[]
         {
             new[] { new[] { 0.1 }, new[] { 0.3 }, new[] { 0.5 } },  // increasing
             new[] { new[] { 0.2 }, new[] { 0.4 }, new[] { 0.6 } },  // increasing
@@ -151,7 +164,7 @@ public class LstmTests
             new[] { new[] { 0.7 }, new[] { 0.4 }, new[] { 0.1 } }   // decreasing
         };
         
-        var targets = new[]
+        var targetsRaw = new[]
         {
             new[] { 1.0, 0.0 },
             new[] { 1.0, 0.0 },
@@ -161,8 +174,12 @@ public class LstmTests
             new[] { 0.0, 1.0 }
         };
 
+        // Convert to VectorTensorStorage
+        var sequences = sequencesRaw.Select(seq => seq.Select(v => Operations.NewCpuVectorStorage(v)).ToArray()).ToArray();
+        var targets = targetsRaw.Select(t => Operations.NewCpuVectorStorage(t)).ToArray();
+
         var network = new VectorLstmNetwork(
-            1, 8, 2, 1,
+            1, 8, 2, 8,
             ActivationFunctions.SigmoidVector,
             ActivationFunctions.TanhVector,
             LossFunctions.CrossEntropy);
@@ -178,9 +195,9 @@ public class LstmTests
         Console.WriteLine("\nPredictions:");
         for (int i = 0; i < sequences.Length; i++)
         {
-            var output = network.ForwardSequence(sequences[i]);
+            var output = network.ForwardSequence(sequences[i]).ToHost();
             string predicted = output[0] > output[1] ? "increasing" : "decreasing";
-            string expected = targets[i][0] > targets[i][1] ? "increasing" : "decreasing";
+            string expected = targetsRaw[i][0] > targetsRaw[i][1] ? "increasing" : "decreasing";
             Console.WriteLine($"  Sequence {i + 1}: {predicted} (confidence: {Math.Max(output[0], output[1]):F3}) - expected {expected}");
         }
     }
@@ -190,7 +207,7 @@ public class LstmTests
         Console.WriteLine("\nTesting LSTM long-term memory (remember first of 5 values)...");
         
         // Task: remember the first value over a longer sequence (LSTM should excel at this)
-        var sequences = new[]
+        var sequencesRaw = new[]
         {
             new[] { new[] { 0.9 }, new[] { 0.1 }, new[] { 0.2 }, new[] { 0.3 }, new[] { 0.4 } },
             new[] { new[] { -0.8 }, new[] { 0.5 }, new[] { 0.2 }, new[] { 0.1 }, new[] { 0.3 } },
@@ -198,7 +215,7 @@ public class LstmTests
             new[] { new[] { -0.5 }, new[] { 0.2 }, new[] { -0.1 }, new[] { 0.4 }, new[] { 0.3 } }
         };
         
-        var targets = new[]
+        var targetsRaw = new[]
         {
             new[] { 0.9 },
             new[] { -0.8 },
@@ -206,8 +223,12 @@ public class LstmTests
             new[] { -0.5 }
         };
 
+        // Convert to VectorTensorStorage
+        var sequences = sequencesRaw.Select(seq => seq.Select(v => Operations.NewCpuVectorStorage(v)).ToArray()).ToArray();
+        var targets = targetsRaw.Select(t => Operations.NewCpuVectorStorage(t)).ToArray();
+
         var network = new VectorLstmNetwork(
-            1, 12, 1, 1,
+            1, 12, 1, 8,
             ActivationFunctions.SigmoidVector,
             ActivationFunctions.TanhVector,
             LossFunctions.MeanSquaredErrorVector);
@@ -225,8 +246,8 @@ public class LstmTests
         for (int i = 0; i < sequences.Length; i++)
         {
             var prediction = network.ForwardSequence(sequences[i]);
-            var seqString = string.Join(", ", sequences[i].Select(x => x[0].ToString("F1")));
-            Console.WriteLine($"  [{seqString}] → {prediction[0]:F4} (expected {targets[i][0]:F1})");
+            var seqString = string.Join(", ", sequencesRaw[i].Select(x => x[0].ToString("F1")));
+            Console.WriteLine($"  [{seqString}] → {prediction.ToHost()[0]:F4} (expected {targetsRaw[i][0]:F1})");
         }
     }
 

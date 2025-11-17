@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using ILGPU;
@@ -404,9 +405,8 @@ public static partial class Operations
             int totalLength = aLength + bLength;
             
             var result = AllocateBuffer(totalLength);
-            
-            Queue.Enqueue(() => GpuKernels.VectorConcatKernel(
-                totalLength,
+            Queue.Enqueue(() => VectorConcatKernel(
+                result.IntExtent,
                 gpuA.GpuData.View,
                 gpuB.GpuData.View,
                 result.View,
@@ -456,8 +456,8 @@ public static partial class Operations
                 var gradA = outGrad[..aLen];
                 var gradB = outGrad[aLen..];
                 
-                a.Gradient.CopyFrom(Vectors.Add(a.Gradient.ToHost(), gradA));
-                b.Gradient.CopyFrom(Vectors.Add(b.Gradient.ToHost(), gradB));
+                AccumulateGradient(a.Gradient, NewCpuVectorStorage(gradA));
+                AccumulateGradient(b.Gradient, NewCpuVectorStorage(gradB));
             }
         }
     }

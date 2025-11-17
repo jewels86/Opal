@@ -37,4 +37,35 @@ public static class ParameterGeneration
         for (int i = 0; i < size; i++) weights[i] = Random.NextDouble() * (max - min) + min;
         return Operations.NewVector(weights, Vectors.Zeros(size));   
     }
+    
+    public static MatrixTensor XavierMatrix(int rows, int columns)
+    {
+        var scale = Math.Sqrt(2.0 / (rows + columns));
+        return GenerateMatrix((_, _) => (Random.NextDouble() * 2 - 1) * scale, rows, columns);
+    }
+    
+    public static VectorTensor XavierVector(int size, int fanIn)
+    {
+        var scale = Math.Sqrt(2.0 / (fanIn + size));
+        return GenerateVector(_ => (Random.NextDouble() * 2 - 1) * scale, size);
+    }
+    
+    public static MatrixTensor HeMatrix(int rows, int columns)
+    {
+        var scale = Math.Sqrt(2.0 / rows);
+        return GenerateMatrix((_, _) => Random.NextGaussian() * scale, rows, columns);
+    }
+    
+    public static VectorTensor HeVector(int size, int fanIn)
+    {
+        var scale = Math.Sqrt(2.0 / fanIn);
+        return GenerateVector(_ => Random.NextGaussian() * scale, size);
+    }
+    
+    private static double NextGaussian(this Random random)
+    {
+        double u1 = 1.0 - random.NextDouble();
+        double u2 = 1.0 - random.NextDouble();
+        return Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Sin(2.0 * Math.PI * u2);
+    }
 }

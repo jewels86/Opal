@@ -10,10 +10,11 @@ internal static class Program
     {
         Console.WriteLine($"GPU Available: {Operations.GpuAvailable} (but will be switched off for testing)");
         Operations.GpuAvailable = false;
-        CatalogTests.RunAll();
-        AutogradTests.RunAll();
-        FfTests.RunAll();
-        RecurrentTests.RunAll();
-        //LstmTests.RunAll();
+        //CatalogTests.RunAll();
+        //AutogradTests.RunAll();
+        //FfTests.RunAll();
+        //RecurrentTests.RunAll();
+        Operations.GpuAvailable = true;
+        LstmTests.RunAll();
     }
 }

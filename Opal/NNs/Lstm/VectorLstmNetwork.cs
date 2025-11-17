@@ -30,9 +30,9 @@ public class VectorLstmNetwork : LstmNetwork<VectorTensorStorage, VectorTensorSt
     protected override LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, TanhHiddenActivation, SigmoidHiddenActivation);
 
-    private static MatrixTensor CreateWeightArray(int outputSize, int weightSize) => ParameterGeneration.RandomMatrix(1, -1, outputSize, weightSize);
+    private static MatrixTensor CreateWeightArray(int outputSize, int weightSize) => ParameterGeneration.XavierMatrix(outputSize, weightSize);
 
-    private static VectorTensor CreateBiasTensor(int size) => ParameterGeneration.GenerateVector(_ => 0.0, size);
+    private static VectorTensor CreateBiasTensor(int size, int fan) => ParameterGeneration.XavierVector(size, fan);
 
     private static LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateLayer(
         int inputSize,
@@ -54,15 +54,15 @@ public class VectorLstmNetwork : LstmNetwork<VectorTensorStorage, VectorTensorSt
         var decoderCellWeights = CreateWeightArray(outputSize, decoderConcatSize);
         var decoderOutputWeights = CreateWeightArray(outputSize, decoderConcatSize);
         
-        var encoderForgetBiases = CreateBiasTensor(outputSize);
-        var encoderInputBiases = CreateBiasTensor(outputSize);
-        var encoderCellBiases = CreateBiasTensor(outputSize);
-        var encoderOutputBiases = CreateBiasTensor(outputSize);
+        var encoderForgetBiases = CreateBiasTensor(outputSize, outputSize + inputSize);
+        var encoderInputBiases = CreateBiasTensor(outputSize, outputSize + inputSize);
+        var encoderCellBiases = CreateBiasTensor(outputSize, outputSize + inputSize);
+        var encoderOutputBiases = CreateBiasTensor(outputSize, outputSize + inputSize);
         
-        var decoderForgetBiases = CreateBiasTensor(outputSize);
-        var decoderInputBiases = CreateBiasTensor(outputSize);
-        var decoderCellBiases = CreateBiasTensor(outputSize);
-        var decoderOutputBiases = CreateBiasTensor(outputSize);
+        var decoderForgetBiases = CreateBiasTensor(outputSize, outputSize + inputSize);
+        var decoderInputBiases = CreateBiasTensor(outputSize, outputSize + inputSize);
+        var decoderCellBiases = CreateBiasTensor(outputSize, outputSize + inputSize);
+        var decoderOutputBiases = CreateBiasTensor(outputSize, outputSize + inputSize);
         
         return new LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>
         {

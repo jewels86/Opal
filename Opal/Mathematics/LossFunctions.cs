@@ -71,7 +71,7 @@ public static class LossFunctions
         var logOneMinusPred = Log(oneMinusPred);
         var term2 = Multiply(oneMinusActual, logOneMinusPred);
     
-        var loss = Subtract(term1, term2);
+        var loss = Add(term1, term2);
         var sumLoss = Sum(Negate(loss));
         return Multiply(sumLoss, NewScalar(1.0 / actual.TotalElements, 0.0));
     }
