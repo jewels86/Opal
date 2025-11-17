@@ -6,6 +6,19 @@ namespace Opal.NNs;
 
 public static class NetworkHelpers
 {
+    public static Tensor<TOut> ForwardSequence<TIn, TOut>(
+        Action resetState, Func<Tensor<TIn>, Tensor<TOut>> forward,
+        Tensor<TIn>[] sequence)
+    where TIn : notnull where TOut : notnull
+    {
+        resetState();
+        Tensor<TOut> output = null!;
+        
+        foreach (var input in sequence) output = forward(input);
+        
+        return output;
+    }
+    
     public static void Train<TIn, TOut>(
         Func<TIn, TIn> zeroInput, Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction, Action updateParameters,
         TIn[] inputs, TOut[] targets, int epochs)
@@ -28,6 +41,35 @@ public static class NetworkHelpers
         }
     }
     
+    public static void TrainSequences<TIn, TOut>(
+        Func<TIn, TIn> zeroInput, Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction, Action updateParameters, Action resetState,
+        TIn[][] sequences, TOut[] targets, int epochs)
+    where TIn : notnull where TOut : notnull
+    {
+        for (int epoch = 0; epoch < epochs; epoch++)
+        {
+            for (int i = 0; i < sequences.Length; i++)
+            {
+                resetState();
+                
+                Tensor<TOut> outputTensor = null!;
+                
+                foreach (var input in sequences[i])
+                {
+                    var inputTensor = new Tensor<TIn>(input, null, _ => { }, 
+                        zeroInput(input));
+                
+                    outputTensor = forward(inputTensor);
+                }
+
+                var lossTensor = lossFunction(outputTensor, targets[i]);
+                lossTensor.Backward(Operations.NewDefaultScalarStorage(1.0));
+
+                updateParameters();
+            }
+        }
+    }
+    
     public static double EvaluateLoss<TIn, TOut>(
         Func<TIn, TIn> zeroInput, Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction,
         TIn[] inputs, TOut[] targets)
@@ -45,6 +87,32 @@ public static class NetworkHelpers
             totalLoss = Operations.AddStorage(totalLoss, lossTensor.Value);
         }
         return totalLoss.ToHost() / inputs.Length;
+    }
+    
+    public static double EvaluateLossSequences<TIn, TOut>(
+        Func<TIn, TIn> zeroInput, Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction, Action resetState,
+        TIn[][] sequences, TOut[] targets)
+    where TIn : notnull where TOut : notnull
+    {
+        ScalarTensorStorage totalLoss = Operations.NewDefaultScalarStorage(0.0);
+        for (int i = 0; i < sequences.Length; i++)
+        {
+            resetState();
+            
+            Tensor<TOut> outputTensor = null!;
+            
+            foreach (var input in sequences[i])
+            {
+                var inputTensor = new Tensor<TIn>(input, null, _ => { }, 
+                    zeroInput(input));
+            
+                outputTensor = forward(inputTensor);
+            }
+        
+            var lossTensor = lossFunction(outputTensor, targets[i]);
+            totalLoss = Operations.AddStorage(totalLoss, lossTensor.Value);
+        }
+        return totalLoss.ToHost() / sequences.Length;
     }
     
     public static void Save<TIn, THidden, TOut>(

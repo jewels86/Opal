@@ -7,12 +7,22 @@ public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
     where TIn : notnull where TOut : notnull
     where TWeight : notnull 
 {
-    public required Tensor<TWeight>[] InputWeights { get; set; } 
-    public required Tensor<TWeight>[] RecurrentWeights { get; set; }
-    public required Tensor<TOut> Biases { get; set; }
-    public required Tensor<TOut> State { get; set; }
-    public required ActivationFunction<TOut> Activation { get; set; }
-    public required IRecurrentCatalog<TIn, TOut, TWeight> Catalog { get; set; }
+    public RecurrentLayer(Tensor<TWeight>[] inputWeights, Tensor<TWeight>[] recurrentWeights, Tensor<TOut> biases, Tensor<TOut> state, Func<Tensor<TOut>, Tensor<TOut>> activation, IRecurrentCatalog<TIn, TOut, TWeight> catalog)
+    {
+        InputWeights = inputWeights;
+        RecurrentWeights = recurrentWeights;
+        Biases = biases;
+        State = state;
+        Activation = activation;
+        Catalog = catalog;
+    }
+
+    public Tensor<TWeight>[] InputWeights { get; set; } 
+    public Tensor<TWeight>[] RecurrentWeights { get; set; }
+    public Tensor<TOut> Biases { get; set; }
+    public Tensor<TOut> State { get; set; }
+    public Func<Tensor<TOut>, Tensor<TOut>> Activation { get; set; }
+    public IRecurrentCatalog<TIn, TOut, TWeight> Catalog { get; set; }
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
@@ -20,7 +30,7 @@ public class RecurrentLayer<TIn, TOut, TWeight> : ILayer<TIn, TOut>
         var hiddenPart = Catalog.Multiply(RecurrentWeights, State);
         var sum1 = Catalog.Add(inputPart, hiddenPart);
         var sum2 = Catalog.Add(sum1, Biases);
-        var output = Activation.Function(sum2);
+        var output = Activation(sum2);
         State = output;
         return output;
     }

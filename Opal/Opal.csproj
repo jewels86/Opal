@@ -18,17 +18,15 @@
 
   <ItemGroup>
     <Compile Remove="NNs\Lstm\**" />
-    <Compile Remove="NNs\Recurrent\**" />
+    <Compile Include="NNs\Recurrent\RecurrentLayer.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Remove="NNs\Lstm\**" />
-    <EmbeddedResource Remove="NNs\Recurrent\**" />
   </ItemGroup>
 
   <ItemGroup>
     <None Remove="NNs\Lstm\**" />
-    <None Remove="NNs\Recurrent\**" />
   </ItemGroup>
 
 </Project>
