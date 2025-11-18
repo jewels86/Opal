@@ -3,10 +3,11 @@ using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
 using Opal.Mathematics;
+using static System.GC;
 
 namespace Opal.Autograd;
 
-public interface ITensorStorage<T> where T : notnull
+public interface ITensorStorage<T> : IDisposable where T : notnull
 {
     public T ToHost();
     public void CopyFrom(T source);
@@ -29,9 +30,10 @@ public class CpuStorage<T> : ITensorStorage<T> where T : notnull
     
     public T ToHost() => Data;
     public void CopyFrom(T source) => Data = source;
+    public void Dispose() { }
 }
 
-public class GpuScalarStorage : ITensorStorage<double>, IDisposable
+public class GpuScalarStorage : ScalarTensorStorage
 {
     public MemoryBuffer1D<double, Stride1D.Dense> GpuData { get; set; }
     public int[] Shape => [1];
@@ -53,10 +55,10 @@ public class GpuScalarStorage : ITensorStorage<double>, IDisposable
 
     public GpuVectorStorage ToVector() => new(GpuData);
     
-    public void Dispose() => GpuData.Dispose();
+    public void Dispose() => Operations.Queue.Return(GpuData);
 }
 
-public class GpuVectorStorage : VectorTensorStorage, IDisposable
+public class GpuVectorStorage : VectorTensorStorage
 {
     public MemoryBuffer1D<double, Stride1D.Dense> GpuData { get; set; }
     public int[] Shape => [(int)GpuData.Length];
@@ -76,10 +78,10 @@ public class GpuVectorStorage : VectorTensorStorage, IDisposable
         GpuData.CopyFromCPU(data);
     }
     
-    public void Dispose() => GpuData.Dispose();
+    public void Dispose() => Operations.Queue.Return(GpuData);
 }
 
-public class GpuMatrixStorage : MatrixTensorStorage, IDisposable
+public class GpuMatrixStorage : MatrixTensorStorage
 {
     public MemoryBuffer2D<double, Stride2D.DenseX> GpuData { get; set; }
     public int[] Shape => [(int)GpuData.Extent.X, (int)GpuData.Extent.Y];
@@ -99,15 +101,24 @@ public class GpuMatrixStorage : MatrixTensorStorage, IDisposable
         GpuData.CopyFromCPU(data);
     }
     
-    public void Dispose() => GpuData.Dispose();
+    public void Dispose() => Operations.Queue.Return(GpuData);
 }
 
-public class Tensor<T> where T : notnull
+public interface ITensor : IDisposable 
+{
+    List<object>? Inputs { get; }
+    void DisposeValues();
+    public void MarkDisposed();
+}
+
+public class Tensor<T> : ITensor where T : notnull
 {
     public T Value { get; set; }
     public List<object>? Inputs { get; set; }
     public Action<Tensor<T>> Backwards { get; set; }
     public T Gradient { get; set; }
+    
+    private bool _disposed;
 
     public Tensor(T value, List<object>? inputs, Action<Tensor<T>> backwards, T gradient) =>
         (Value, Inputs, Backwards, Gradient) = (value, inputs, backwards, gradient);
@@ -125,18 +136,50 @@ public class Tensor<T> where T : notnull
     
     private static void BuildTopo(object node, List<object> topo, HashSet<object> visited)
     {
-        if (!visited.Add(node)) return;
+        if (node is not ITensor tensor || !visited.Add(node)) return;
 
-        if (((dynamic)node).Inputs is List<object> inputs)
-            foreach (var input in inputs)
+        if (tensor.Inputs != null)
+            foreach (var input in tensor.Inputs)
                 BuildTopo(input, topo, visited);
 
         topo.Add(node);
     }
     
-    public void Dispose()
+    public void DisposeGraph()
+    {
+        var stack = new Stack<ITensor>();
+        var disposed = new HashSet<ITensor>();
+    
+        stack.Push(this);
+    
+        while (stack.Count > 0)
+        {
+            var node = stack.Pop();
+            if (!disposed.Add(node)) continue;
+        
+            node.DisposeValues();
+            node.MarkDisposed();
+
+            if (node.Inputs == null) continue;
+            foreach (var input in node.Inputs)
+                if (input is ITensor tensor)
+                    stack.Push(tensor);
+        }
+    }
+    
+    public void DisposeValues()
     {
         (Value as IDisposable)?.Dispose();
         (Gradient as IDisposable)?.Dispose();
     }
+    
+    public void Dispose()
+    {
+        if (_disposed) return;
+        DisposeGraph();
+        _disposed = true;
+        SuppressFinalize(this);
+    }
+    
+    public void MarkDisposed() => _disposed = true;
 }

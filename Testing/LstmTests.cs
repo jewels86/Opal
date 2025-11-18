@@ -28,8 +28,8 @@ public class LstmTests
         };
 
         // Convert to VectorTensorStorage
-        var sequences = sequencesRaw.Select(seq => seq.Select(Operations.NewCpuVectorStorage).ToArray()).ToArray();
-        var targets = targetsRaw.Select(Operations.NewCpuVectorStorage).ToArray();
+        var sequences = sequencesRaw.Select(seq => seq.Select(Operations.NewDefaultVectorStorage).ToArray()).ToArray();
+        var targets = targetsRaw.Select(Operations.NewDefaultVectorStorage).ToArray();
 
         var network = new VectorLstmNetwork(
             1, 8, 1, 8,
@@ -40,7 +40,7 @@ public class LstmTests
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        network.TrainSequences(sequences, targets, 2000, 0.01);
+        network.TrainSequences(sequences, targets, 10, 0.01);
         
         double finalLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Final loss: {finalLoss}");

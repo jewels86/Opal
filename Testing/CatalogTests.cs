@@ -49,7 +49,7 @@ public static class CatalogTests
         Console.WriteLine($"  Forward: {resultValue} (expected {2*5 + 3*5 + 4*5} = 45)");
         Assert(ApproxEqual(resultValue, 45.0), "Forward pass failed");
         
-        result.Backward(NewCpuScalarStorage(1.0));
+        result.Backward(NewDefaultScalarStorage(1.0));
         var weightsGrad = weights.Gradient.ToHost();
         var inputGrad = input.Gradient.ToHost();
         

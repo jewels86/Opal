@@ -66,6 +66,8 @@ public static class NetworkHelpers
                 lossTensor.Backward(Operations.NewDefaultScalarStorage(1.0));
 
                 updateParameters();
+                
+                lossTensor.Dispose();
             }
         }
     }
@@ -78,15 +80,17 @@ public static class NetworkHelpers
         ScalarTensorStorage totalLoss = Operations.NewDefaultScalarStorage(0.0);
         for (int i = 0; i < inputs.Length; i++)
         {
-            var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { }, 
+            using var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { }, 
                 zeroInput(inputs[i]));
         
-            var outputTensor = forward(inputTensor);
+            using var outputTensor = forward(inputTensor);
         
-            var lossTensor = lossFunction(outputTensor, targets[i]);
+            using var lossTensor = lossFunction(outputTensor, targets[i]);
             totalLoss = Operations.AddStorage(totalLoss, lossTensor.Value);
         }
-        return totalLoss.ToHost() / inputs.Length;
+        var result = totalLoss.ToHost() / inputs.Length;
+        totalLoss.Dispose();
+        return result;
     }
     
     public static double EvaluateLossSequences<TIn, TOut>(

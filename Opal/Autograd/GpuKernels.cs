@@ -63,13 +63,6 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> vector, 
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = -vector[index];
-    public static void ScaleVectorByRowKernel(
-        Index1D col,
-        ArrayView1D<double, Stride1D.Dense> vector,
-        ArrayView1D<double, Stride1D.Dense> scalars,
-        ArrayView1D<double, Stride1D.Dense> result,
-        int scalarIndex) =>
-        result[col] = vector[col] * scalars[scalarIndex];
     
     public static void VectorFillKernel(
         Index1D index,
@@ -187,5 +180,11 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> scalar,
         ArrayView2D<double, Stride2D.DenseX> result) =>
         result[index] = matrix[index] * scalar[0];
+    
+    public static void MatrixFillKernel(
+        Index2D index,
+        ArrayView2D<double, Stride2D.DenseX> matrix,
+        double value) =>
+        matrix[index] = value;
     #endregion
 }

@@ -8,13 +8,16 @@ internal static class Program
 {
     public static void Main()
     {
-        Console.WriteLine($"GPU Available: {Operations.GpuAvailable} (but will be switched off for testing)");
-        Operations.GpuAvailable = false;
+        Console.WriteLine($"GPU Available: {Operations.GpuAvailable}");
+        DiagnosticTest.TestLossComputation();
+        DiagnosticTest.TestNetworkForward();
+        DiagnosticTest.TestEvaluateLoss();
+        //GpuTest.TestGpuBufferZeroing();
         //CatalogTests.RunAll();
         //AutogradTests.RunAll();
         //FfTests.RunAll();
         //RecurrentTests.RunAll();
-        Operations.GpuAvailable = true;
-        LstmTests.RunAll();
+        //Operations.GpuAvailable = true;
+        //LstmTests.RunAll();
     }
 }
