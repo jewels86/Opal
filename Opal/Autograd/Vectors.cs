@@ -300,6 +300,16 @@ public static partial class Operations
         Queue.Enqueue(() => VectorFillKernel(result.IntExtent, result.View, value));
         return new GpuVectorStorage(result);
     }
+
+    public static void FillStorage(VectorTensorStorage storage, double value)
+    {
+        if (!UseGpu(storage)) ((CpuStorage<double[]>)storage).Data = Vectors.Fill(value, storage.TotalElements);
+        var gpuStorage = ToGpuVector(storage);
+        Queue.Enqueue(() => VectorFillKernel(
+            gpuStorage.GpuData.IntExtent, 
+            gpuStorage.GpuData.View, 
+            value));
+    }
     public static VectorTensorStorage ExpStorage(VectorTensorStorage vector) =>
         UnaryOpStorage(
             vector, 

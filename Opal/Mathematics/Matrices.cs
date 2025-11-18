@@ -236,4 +236,13 @@ public static class Matrices
     #endregion
     
     public static double[,] Zeros(int rows, int cols) => new double[rows, cols];
+
+    public static double[,] Fill(int rows, int cols, double value)
+    {
+        double[,] matrix = new double[rows, cols];
+        for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            matrix[i, j] = value;
+        return matrix;
+    }
 }

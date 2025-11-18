@@ -53,7 +53,7 @@ public abstract class FfNetwork<TInput, THidden, TOutput, TWeightsIn, TWeightsHi
         return OutputLayer.Forward(hidden);
     }
 
-    public void UpdateParameters(double learningRate)
+    public void UpdateParameters(ScalarTensorStorage learningRate)
     {
         InputLayer.UpdateParameters(learningRate);
         foreach (var layer in HiddenLayers)
@@ -61,12 +61,16 @@ public abstract class FfNetwork<TInput, THidden, TOutput, TWeightsIn, TWeightsHi
         OutputLayer.UpdateParameters(learningRate);
     }
 
-    public void Train(TInput[] inputs, TOutput[] targets, int epochs, double learningRate) =>
+    public void Train(TInput[] inputs, TOutput[] targets, int epochs, double learningRate)
+    {
+        var lr = Operations.NewDefaultScalarStorage(learningRate);
         NetworkHelpers.Train(
             i => InputLayer.Catalog.ZeroGradient(i), 
             Forward, LossFunction, 
-            () => UpdateParameters(learningRate),
+            () => UpdateParameters(lr),
             inputs, targets, epochs);
+    }
+        
 
     public double EvaluateLoss(TInput[] inputs, TOutput[] targets) =>
         NetworkHelpers.EvaluateLoss(

@@ -18,5 +18,6 @@ internal static class Program
         //RecurrentTests.RunAll();
         //Operations.GpuAvailable = true;
         //LstmTests.RunAll();
+        Console.WriteLine($"Total return count: {Operations.Queue.Count}");
     }
 }

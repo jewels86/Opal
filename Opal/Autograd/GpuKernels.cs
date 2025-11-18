@@ -186,5 +186,26 @@ public static class GpuKernels
         ArrayView2D<double, Stride2D.DenseX> matrix,
         double value) =>
         matrix[index] = value;
+    
+    public static void MatrixTransposeVectorMultiplyAccumulateKernel(
+        Index1D col,
+        ArrayView2D<double, Stride2D.DenseX> matrix,
+        ArrayView1D<double, Stride1D.Dense> vector,
+        ArrayView1D<double, Stride1D.Dense> gradient)
+    {
+        double sum = 0;
+        for (int row = 0; row < matrix.Extent.X; row++) 
+            sum += matrix[row, col] * vector[row];
+    
+        Atomic.Add(ref gradient[col], sum);
+    }
+    public static void OuterProductAccumulateKernel(
+        Index2D index,
+        ArrayView1D<double, Stride1D.Dense> a,
+        ArrayView1D<double, Stride1D.Dense> b,
+        ArrayView2D<double, Stride2D.DenseX> gradient)
+    {
+        Atomic.Add(ref gradient[index], a[index.X] * b[index.Y]);
+    }
     #endregion
 }

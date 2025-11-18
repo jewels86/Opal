@@ -20,11 +20,15 @@ public class VectorCatalog :
     public VectorTensorStorage Subtract(VectorTensorStorage a, VectorTensorStorage b) => Operations.SubtractStorage(a, b);
     public MatrixTensorStorage Scale(MatrixTensorStorage a, double scale) => Operations.ScaleMatrixStorage(a, Operations.NewDefaultScalarStorage(scale));
     public VectorTensorStorage Scale(VectorTensorStorage a, double scale) => Operations.ScaleVectorStorage(a, Operations.NewDefaultScalarStorage(scale));
+    public VectorTensorStorage Scale(VectorTensorStorage a, ScalarTensorStorage scale) => Operations.ScaleVectorStorage(a, scale);
+    public MatrixTensorStorage Scale(MatrixTensorStorage a, ScalarTensorStorage scale) => Operations.ScaleMatrixStorage(a, scale);
     public VectorTensor ConcatHidden(VectorTensor input, VectorTensor prevHidden) => Operations.Concat(input, prevHidden);
     public VectorTensor ConcatInputHidden(VectorTensor input, VectorTensor prevHidden) => Operations.Concat(input, prevHidden);
 
     public VectorTensorStorage ZeroGradient(VectorTensorStorage a) => Operations.NewDefaultVectorStorage(Vectors.Zeros(a.TotalElements));
     public MatrixTensorStorage ZeroGradient(MatrixTensorStorage a) => Operations.NewDefaultMatrixStorage(Matrices.Zeros(a.Shape[0], a.Shape[1]));
+    public void Fill(VectorTensorStorage a, double value) => Operations.FillStorage(a, value);
+    public void Fill(MatrixTensorStorage a, double value) => Operations.FillStorage(a, value);
 
     public VectorTensorStorage ReadBias(BinaryReader reader) => Operations.NewDefaultVectorStorage(BinaryWriting.ReadVector(reader));
     public MatrixTensorStorage ReadWeights(BinaryReader reader) => Operations.NewDefaultMatrixStorage(BinaryWriting.ReadMatrix(reader));

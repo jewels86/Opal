@@ -45,6 +45,10 @@ public static partial class Operations
     public static Action<Index2D, ArrayView2D<double, Stride2D.DenseX>, 
         ArrayView1D<double, Stride1D.Dense>, ArrayView2D<double, Stride2D.DenseX>> MatrixScalarMultiplyKernel { get; private set; }
     public static Action<Index2D, ArrayView2D<double, Stride2D.DenseX>, double> MatrixFillKernel { get; private set; }
+    public static Action<Index1D, ArrayView2D<double, Stride2D.DenseX>, 
+        ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>> MatrixTransposeVectorMultiplyAccumulateKernel { get; private set; }
+    public static Action<Index2D, ArrayView1D<double, Stride1D.Dense>, 
+        ArrayView1D<double, Stride1D.Dense>, ArrayView2D<double, Stride2D.DenseX>> OuterProductAccumulateKernel { get; private set; }
     #endregion
     #region Helpers
     public static bool UseGpu(params MatrixTensorStorage[] storages) => storages.Any(s => s is GpuMatrixStorage) && GpuAvailable;
@@ -165,7 +169,14 @@ public static partial class Operations
             gpuMatrix.GpuData.View,
             gpuScalar.GpuData.View,
             result.View));
-        return new GpuMatrixStorage(result);;
+        return new GpuMatrixStorage(result);
+    }
+
+    public static void FillStorage(MatrixTensorStorage matrix, double value)
+    {
+        if (!UseGpu(matrix)) ((CpuStorage<double[,]>)matrix).Data = Matrices.Fill(matrix.Shape[0], matrix.Shape[1], value);
+        var gpuMatrix = ToGpuMatrix(matrix);
+        Queue.Enqueue(() => MatrixFillKernel(gpuMatrix.GpuData.IntExtent, gpuMatrix.GpuData.View, value));
     }
     #endregion
     
@@ -194,21 +205,19 @@ public static partial class Operations
             
             void Backward(VectorTensor output)
             {
-                var gradVectorBuffer = AllocateBuffer(gpuMatrix.GpuData.Extent.Y);
-                Queue.Enqueue(() => MatrixTransposeVectorMultiplyKernel(
+                var gpuVectorGrad = ToGpuVector(vector.Gradient);
+                Queue.Enqueue(() => MatrixTransposeVectorMultiplyAccumulateKernel(
                     (int)gpuMatrix.GpuData.Extent.Y,
                     gpuMatrix.GpuData.View,
                     ((GpuVectorStorage)output.Gradient).GpuData.View,
-                    gradVectorBuffer.View));
-                AccumulateGradient(vector.Gradient, new GpuVectorStorage(gradVectorBuffer));
+                    gpuVectorGrad.GpuData.View)); 
                 
-                var gradMatrixBuffer = AllocateBuffer(gpuMatrix.GpuData.Extent);
-                Queue.Enqueue(() => OuterProductKernel(
+                var gpuMatrixGrad = ToGpuMatrix(matrix.Gradient);
+                Queue.Enqueue(() => OuterProductAccumulateKernel(
                     gpuMatrix.GpuData.Extent.ToIntIndex(),
                     ((GpuVectorStorage)output.Gradient).GpuData.View,
                     gpuVector.GpuData.View,
-                    gradMatrixBuffer.View));
-                AccumulateGradient(matrix.Gradient, new GpuMatrixStorage(gradMatrixBuffer));
+                    gpuMatrixGrad.GpuData.View));
             }
         }
         else

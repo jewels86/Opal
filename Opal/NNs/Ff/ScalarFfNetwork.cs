@@ -26,10 +26,11 @@ public class ScalarFfNetwork : VectorFfNetwork
 
     public void Backwards(ScalarTensor input, ScalarTensor target, double learningRate = 0.01)
     {
-        var output = Forward(input);
-        var loss = LossFunction(output, Operations.VectorFromScalarStorage(target.Value));
+        var lr = Operations.NewDefaultScalarStorage(learningRate);
+        using var output = Forward(input);
+        using var loss = LossFunction(output, Operations.VectorFromScalarStorage(target.Value));
         loss.Backwards(Operations.NewScalar(1.0, 0.0));
-        UpdateParameters(learningRate);
+        UpdateParameters(lr);
     }
         
 }

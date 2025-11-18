@@ -28,19 +28,19 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
     }
     public TOut Forward(TIn input) => Forward(new Tensor<TIn>(input, null, _ => { }, Catalog.ZeroGradient(input))).Value;
 
-    public void UpdateParameters(double lr)
+    public void UpdateParameters(ScalarTensorStorage lr)
     {
         Weights.Value = Catalog.Subtract(Weights.Value, Catalog.Scale(Weights.Gradient, lr));
-        Weights.Gradient = Catalog.ZeroGradient(Weights.Value);
+        Catalog.Fill(Weights.Gradient, 0.0);
         
         Biases.Value = Catalog.Subtract(Biases.Value, Catalog.Scale(Biases.Gradient, lr));
-        Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
+        Catalog.Fill(Biases.Gradient, 0.0);
     }
     
     public void ZeroGradients()
     {
-        Weights.Gradient = Catalog.ZeroGradient(Weights.Value);
-        Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
+        Catalog.Fill(Weights.Gradient, 0.0);
+        Catalog.Fill(Biases.Gradient, 0.0);
     }
 
     public void Write(BinaryWriter writer)
@@ -65,12 +65,15 @@ public interface IFfCatalog<TIn, TOut, TWeights>
     public Tensor<TOut> Add(Tensor<TOut> a, Tensor<TOut> b);
     public TWeights Subtract(TWeights a, TWeights b);
     public TOut Subtract(TOut a, TOut b);
-    public TWeights Scale(TWeights a, double scale);
-    public TOut Scale(TOut a, double scale);
+    public TWeights Scale(TWeights a, ScalarTensorStorage scale);
+    public TOut Scale(TOut a, ScalarTensorStorage scale);
     
     public TOut ZeroGradient(TOut a);
     public TIn ZeroGradient(TIn a);
     public TWeights ZeroGradient(TWeights a);
+
+    public void Fill(TOut a, double value);
+    public void Fill(TWeights a, double value);
     
     public void WriteWeights(BinaryWriter writer, TWeights weight);
     public TWeights ReadWeights(BinaryReader reader);
