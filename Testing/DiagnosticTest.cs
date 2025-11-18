@@ -186,5 +186,12 @@ public class DiagnosticTest
             lossTensor.Dispose();
         }
     }
+
+    public static void RunAll()
+    {
+        TestLossComputation();
+        TestNetworkForward();
+        TestEvaluateLoss();
+    }
 }
 

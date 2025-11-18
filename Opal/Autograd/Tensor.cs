@@ -118,11 +118,20 @@ public class Tensor<T> : ITensor where T : notnull
     public Action<Tensor<T>> Backwards { get; set; }
     public T Gradient { get; set; }
     
-    private bool _disposed;
-
-    public Tensor(T value, List<object>? inputs, Action<Tensor<T>> backwards, T gradient) =>
-        (Value, Inputs, Backwards, Gradient) = (value, inputs, backwards, gradient);
     
+    private int _refCount = 1;
+    private bool _disposed;
+    private readonly object _lock = new();
+
+    public Tensor(T value, List<object>? inputs, Action<Tensor<T>> backwards, T gradient)
+    {
+        (Value, Inputs, Backwards, Gradient) = (value, inputs, backwards, gradient);
+        if (inputs == null) return;
+        foreach (var input in inputs)
+            if (input is Tensor<T> inputTensor)
+                inputTensor.AddRef();
+    }
+
     public void Backward(T initialGradient)
     {
         var topo = new List<object>();
@@ -144,42 +153,43 @@ public class Tensor<T> : ITensor where T : notnull
 
         topo.Add(node);
     }
-    
-    public void DisposeGraph()
-    {
-        var stack = new Stack<ITensor>();
-        var disposed = new HashSet<ITensor>();
-    
-        stack.Push(this);
-    
-        while (stack.Count > 0)
-        {
-            var node = stack.Pop();
-            if (!disposed.Add(node)) continue;
-        
-            node.DisposeValues();
-            node.MarkDisposed();
 
-            if (node.Inputs == null) continue;
-            foreach (var input in node.Inputs)
-                if (input is ITensor tensor)
-                    stack.Push(tensor);
+    private void AddRef()
+    {
+        lock (_lock)
+        {
+            if (_disposed) throw new ObjectDisposedException(nameof(Tensor<T>));
+            _refCount++;
         }
     }
-    
+
+    public void Dispose()
+    {
+        lock (_lock)
+        {
+            if (_disposed) return;
+
+            _refCount--;
+            if (_refCount != 0) return;
+            (Value as IDisposable)?.Dispose();
+            (Gradient as IDisposable)?.Dispose();
+            _disposed = true;
+
+            if (Inputs == null) return;
+            foreach (var input in Inputs)
+            {
+                if (input is Tensor<T> inputTensor)
+                    inputTensor.Dispose();
+            }
+            SuppressFinalize(this);
+        }
+    }
+
+    public void MarkDisposed() => _disposed = true;
+
     public void DisposeValues()
     {
         (Value as IDisposable)?.Dispose();
         (Gradient as IDisposable)?.Dispose();
     }
-    
-    public void Dispose()
-    {
-        if (_disposed) return;
-        DisposeGraph();
-        _disposed = true;
-        SuppressFinalize(this);
-    }
-    
-    public void MarkDisposed() => _disposed = true;
 }
