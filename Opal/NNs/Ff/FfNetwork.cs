@@ -65,7 +65,7 @@ public abstract class FfNetwork<TInput, THidden, TOutput, TWeightsIn, TWeightsHi
         NetworkHelpers.Train(
             i => InputLayer.Catalog.ZeroGradient(i), 
             Forward, LossFunction, 
-            () => UpdateParameters(learningRate), 
+            () => UpdateParameters(learningRate),
             inputs, targets, epochs);
 
     public double EvaluateLoss(TInput[] inputs, TOutput[] targets) =>

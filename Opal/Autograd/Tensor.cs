@@ -55,7 +55,13 @@ public class GpuScalarStorage : ScalarTensorStorage
 
     public GpuVectorStorage ToVector() => new(GpuData);
     
-    public void Dispose() => Operations.Queue.Return(GpuData);
+    public void Dispose()
+    {
+        Operations.Queue.Return(GpuData);
+        GC.SuppressFinalize(this);
+    }
+
+    
 }
 
 public class GpuVectorStorage : VectorTensorStorage
@@ -78,7 +84,13 @@ public class GpuVectorStorage : VectorTensorStorage
         GpuData.CopyFromCPU(data);
     }
     
-    public void Dispose() => Operations.Queue.Return(GpuData);
+    public void Dispose()
+    {
+        Operations.Queue.Return(GpuData);
+        GC.SuppressFinalize(this);
+    }
+
+    
 }
 
 public class GpuMatrixStorage : MatrixTensorStorage
@@ -101,7 +113,11 @@ public class GpuMatrixStorage : MatrixTensorStorage
         GpuData.CopyFromCPU(data);
     }
     
-    public void Dispose() => Operations.Queue.Return(GpuData);
+    public void Dispose()
+    {
+        Operations.Queue.Return(GpuData);
+        GC.SuppressFinalize(this);
+    }
 }
 
 public interface ITensor : IDisposable 
@@ -181,7 +197,6 @@ public class Tensor<T> : ITensor where T : notnull
                 if (input is Tensor<T> inputTensor)
                     inputTensor.Dispose();
             }
-            SuppressFinalize(this);
         }
     }
 

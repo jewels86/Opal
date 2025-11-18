@@ -14,7 +14,7 @@ public class GpuExecutionQueue
     private readonly Dictionary<int, Stack<MemoryBuffer1D<double, Stride1D.Dense>>> _vectorPools = [];
     private readonly Dictionary<(int, int), Stack<MemoryBuffer2D<double, Stride2D.DenseX>>> _matrixPools = [];
     
-    public int Threshold { get; set; } = 50;
+    public int Threshold { get; set; } = 100;
     
     public GpuExecutionQueue(Accelerator accelerator) => _accelerator = accelerator;
 
@@ -46,9 +46,7 @@ public class GpuExecutionQueue
 
         if (pool.Contains(buffer)) return;
 
-        Operations.VectorFillKernel(buffer.IntExtent, buffer.View, 0.0);
-        _accelerator.Synchronize();
-
+        Enqueue(() => Operations.VectorFillKernel(buffer.IntExtent, buffer.View, 0.0));
         pool.Push(buffer);
     }
     public void Return(MemoryBuffer2D<double, Stride2D.DenseX> buffer)
@@ -62,9 +60,7 @@ public class GpuExecutionQueue
 
         if (pool.Contains(buffer)) return;
 
-        Operations.MatrixFillKernel(buffer.IntExtent, buffer.View, 0.0);
-        _accelerator.Synchronize();
-
+        Enqueue(() => Operations.MatrixFillKernel(buffer.IntExtent, buffer.View, 0.0));
         pool.Push(buffer);
     }
 

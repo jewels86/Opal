@@ -1,4 +1,4 @@
-﻿using Opal.Autograd;
+﻿﻿using Opal.Autograd;
 using Opal.Mathematics;
 using Opal.Utilities;
 
@@ -28,7 +28,7 @@ public static class NetworkHelpers
         {
             for (int i = 0; i < inputs.Length; i++)
             {
-                var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { }, 
+                var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { },
                     zeroInput(inputs[i]));
             
                 var outputTensor = forward(inputTensor);
@@ -37,6 +37,17 @@ public static class NetworkHelpers
                 lossTensor.Backward(Operations.NewDefaultScalarStorage(1.0));
             
                 updateParameters();
+                
+                // Dispose loss tensor to start the cleanup chain
+                lossTensor.Dispose();
+            }
+
+            // Force GC every 10 epochs to reclaim leaked buffers via finalizers
+            if (epoch % 10 == 0)
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
             }
         }
     }

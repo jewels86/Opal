@@ -18,8 +18,7 @@ public static partial class Operations
         int rows = matrix.GetLength(0);
         int cols = matrix.GetLength(1);
         var buffer = Queue.Get(rows, cols);
-        buffer.CopyFromCPU(matrix);
-        Accelerator.Synchronize();
+        Queue.Enqueue(() => buffer.CopyFromCPU(matrix));
         return new GpuMatrixStorage(buffer);
     }
     public static MatrixTensorStorage NewDefaultMatrixStorage(double[,] matrix) => GpuAvailable ? NewGpuMatrixStorage(matrix) : NewCpuMatrixStorage(matrix);

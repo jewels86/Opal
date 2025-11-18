@@ -5,7 +5,7 @@ using Opal.Utilities;
 
 namespace Opal.Autograd.Catalogs;
 
-public class ScalarCatalog : IFfCatalog<ScalarTensorStorage, ScalarTensorStorage, VectorTensorStorage>
+public class ScalarCatalog 
 {
     public ScalarTensor Multiply(VectorTensor a, ScalarTensor b) => Operations.Sum(Operations.Multiply(a, b));
     public ScalarTensor Add(ScalarTensor a, ScalarTensor b) => Operations.Add(a, b);

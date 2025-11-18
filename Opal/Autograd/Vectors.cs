@@ -20,8 +20,7 @@ public static partial class Operations
     public static VectorTensorStorage NewGpuVectorStorage(double[] vector)
     {
         var buffer = Queue.Get(vector.Length);
-        buffer.CopyFromCPU(vector);
-        Accelerator.Synchronize();
+        Queue.Enqueue(() => buffer.CopyFromCPU(vector));
         return new GpuVectorStorage(buffer);
     }
     public static VectorTensorStorage NewDefaultVectorStorage(double[] vector) => 

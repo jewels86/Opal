@@ -21,8 +21,8 @@ public static partial class Operations
     public static ScalarTensorStorage NewGpuScalarStorage(double value)
     {
         var buffer = AllocateScalar();
-        buffer.CopyFromCPU([value]);
-        Accelerator.Synchronize();
+        Queue.Enqueue(() => buffer.CopyFromCPU([value]));
+        
         return new GpuScalarStorage(buffer);
     }
     public static ScalarTensorStorage NewDefaultScalarStorage(double value) => GpuAvailable ? NewGpuScalarStorage(value) : NewCpuScalarStorage(value);
