@@ -21,7 +21,7 @@ public static partial class Operations
     public static ScalarTensorStorage NewGpuScalarStorage(double value)
     {
         var buffer = AllocateScalar();
-        Queue.Enqueue(() => buffer.CopyFromCPU([value]));
+        buffer.CopyFromCPU([value]);
         
         return new GpuScalarStorage(buffer);
     }
@@ -41,17 +41,12 @@ public static partial class Operations
     
         var gpuGrad = ToGpuScalar(gradient);
         var gpuIncoming = ToGpuScalar(incomingGrad);
-        Queue.Enqueue(() => VectorAddKernel(Index1D.One, gpuGrad.GpuData.View, gpuIncoming.GpuData.View, gpuGrad.GpuData.View));
-    
-        if (gradient is not GpuScalarStorage)
-        {
-            Queue.Enqueue(() =>
-            {
-                var result = new double[1];
-                gpuGrad.GpuData.CopyToCPU(result);
-                gradient.CopyFrom(result[0]);
-            });
-        }
+        VectorAddKernel(Index1D.One, gpuGrad.GpuData.View, gpuIncoming.GpuData.View, gpuGrad.GpuData.View);
+
+        if (gradient is GpuScalarStorage) return;
+        var result = new double[1];
+        gpuGrad.GpuData.CopyToCPU(result);
+        gradient.CopyFrom(result[0]);
     }
 
     public static ScalarTensorStorage SubtractStorage(ScalarTensorStorage a, ScalarTensorStorage b)
@@ -61,7 +56,7 @@ public static partial class Operations
         var gpuB = ToGpuScalar(b);
         var result = AllocateScalar();
         
-        Queue.Enqueue(() => VectorSubtractKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View));
+        VectorSubtractKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View);
         return new GpuScalarStorage(result);;
     }
     public static ScalarTensorStorage MultiplyStorage(ScalarTensorStorage a, ScalarTensorStorage b)
@@ -71,7 +66,7 @@ public static partial class Operations
         var gpuB = ToGpuScalar(b);
         var result = AllocateScalar();
         
-        Queue.Enqueue(() => VectorMultiplyKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View));
+        VectorMultiplyKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View);
         return new GpuScalarStorage(result);;
     }
     public static ScalarTensorStorage AddStorage(ScalarTensorStorage a, ScalarTensorStorage b)
@@ -81,7 +76,7 @@ public static partial class Operations
         var gpuB = ToGpuScalar(b);
         var result = AllocateScalar();
         
-        Queue.Enqueue(() => VectorAddKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View));
+        VectorAddKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View);
         return new GpuScalarStorage(result);
     }
     public static ScalarTensorStorage NegateStorage(ScalarTensorStorage a) => MultiplyStorage(a, NewDefaultScalarStorage(-1.0));
@@ -101,9 +96,9 @@ public static partial class Operations
         var gpuB = ToGpuScalar(b.Value);
         var result = AllocateScalar();
         
-        Queue.Enqueue(() => {
-            VectorAddKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View);
-        });
+        
+        VectorAddKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View);
+        
         return new ScalarTensor(new GpuScalarStorage(result), [a, b], Backward, NewGpuScalarStorage(0.0));
 
         void Backward(ScalarTensor output)
@@ -119,11 +114,11 @@ public static partial class Operations
             var gpuA = ToGpuScalar(a.Value);
             var gpuB = ToGpuScalar(b.Value);
             var result = AllocateScalar();
-            Queue.Enqueue(() => VectorMultiplyKernel(
+            VectorMultiplyKernel(
                 Index1D.One, 
                 gpuA.GpuData.View, 
                 gpuB.GpuData.View, 
-                result.View));
+                result.View);
             return new ScalarTensor(new GpuScalarStorage(result), [a, b], output =>
             {
                 AccumulateGradient(a.Gradient, MultiplyStorage(output.Gradient, b.Value));
@@ -159,9 +154,9 @@ public static partial class Operations
         var gpuA = ToGpuScalar(a.Value);
         var gpuB = ToGpuScalar(b.Value);
         var result = AllocateScalar();
-        Queue.Enqueue(() => {
-            VectorSubtractKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View);
-        });
+        
+        VectorSubtractKernel(Index1D.One, gpuA.GpuData.View, gpuB.GpuData.View, result.View);
+        
         return new ScalarTensor(new GpuScalarStorage(result), [a, b], Backward, NewGpuScalarStorage(0.0));
 
         void Backward(ScalarTensor output)

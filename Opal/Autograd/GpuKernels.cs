@@ -100,6 +100,13 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> b,
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = XMath.Max(a[index], b[index]);
+    public static void VectorMaskedMultiplyKernel(Index1D i, 
+        ArrayView1D<double, Stride1D.Dense> mask,
+        ArrayView1D<double, Stride1D.Dense> values,
+        ArrayView1D<double, Stride1D.Dense> result)
+    {
+        result[i] = mask[i] > 0 ? values[i] : 0.0;
+    }
     
     public static void VectorTanhKernel(
         Index1D index,
@@ -119,6 +126,11 @@ public static class GpuKernels
         ArrayView1D<double, Stride1D.Dense> scalar,
         ArrayView1D<double, Stride1D.Dense> result) =>
         result[index] = XMath.Max(vector[index], scalar[0]);
+    public static void VectorCopyKernel(
+        Index1D index,
+        ArrayView1D<double, Stride1D.Dense> source,
+        ArrayView1D<double, Stride1D.Dense> dest) =>
+        dest[index] = source[index];
     #endregion
     #region Matrices
     public static void MatrixAddKernel(
@@ -203,9 +215,12 @@ public static class GpuKernels
         Index2D index,
         ArrayView1D<double, Stride1D.Dense> a,
         ArrayView1D<double, Stride1D.Dense> b,
-        ArrayView2D<double, Stride2D.DenseX> gradient)
-    {
+        ArrayView2D<double, Stride2D.DenseX> gradient) =>
         Atomic.Add(ref gradient[index], a[index.X] * b[index.Y]);
-    }
+    public static void MatrixCopyKernel(
+        Index2D index,
+        ArrayView2D<double, Stride2D.DenseX> source,
+        ArrayView2D<double, Stride2D.DenseX> dest) =>
+        dest[index] = source[index];
     #endregion
 }

@@ -10,7 +10,7 @@ public static partial class Operations
 {
     public static Context Context { get; private set; }
     public static Accelerator Accelerator { get; private set; }
-    public static GpuExecutionQueue Queue { get; } 
+    public static GpuExecutionController Controller { get; } 
     public static bool GpuAvailable { get; set; }
     
     static Operations()
@@ -29,7 +29,7 @@ public static partial class Operations
             Accelerator = Context.CreateCPUAccelerator(0);
             GpuAvailable = false;
         }
-        Queue = new(Accelerator);
+        Controller = new(Accelerator);
         
         VectorAddKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorAddKernel);
@@ -64,6 +64,10 @@ public static partial class Operations
             ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorExpKernel);
         VectorScalarMaxKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorScalarMaxKernel);
+        VectorCopyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>,
+            ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorCopyKernel);
+        VectorMaskedMultiplyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView1D<double, Stride1D.Dense>,
+            ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.VectorMaskedMultiplyKernel);
         
         MatrixVectorMultiplyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index1D, ArrayView2D<double, Stride2D.DenseX>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.MatrixVectorMultiplyKernel);
@@ -84,7 +88,9 @@ public static partial class Operations
             ArrayView1D<double, Stride1D.Dense>, ArrayView1D<double, Stride1D.Dense>>(GpuKernels.MatrixTransposeVectorMultiplyAccumulateKernel);
         OuterProductAccumulateKernel = Accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView1D<double, Stride1D.Dense>, 
             ArrayView1D<double, Stride1D.Dense>, ArrayView2D<double, Stride2D.DenseX>>(GpuKernels.OuterProductAccumulateKernel);
+        MatrixCopyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView2D<double, Stride2D.DenseX>,
+            ArrayView2D<double, Stride2D.DenseX>>(GpuKernels.MatrixCopyKernel);
     }
     
-    public static void Sync() => Queue.Execute();
+    public static void Sync() => Controller.Sync();
 }

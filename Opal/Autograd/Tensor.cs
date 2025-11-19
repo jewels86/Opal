@@ -57,11 +57,12 @@ public class GpuScalarStorage : ScalarTensorStorage
     
     public void Dispose()
     {
-        Operations.Queue.Return(GpuData);
+        Operations.Controller.Return(GpuData);
         GC.SuppressFinalize(this);
     }
 
-    
+    public static implicit operator MemoryBuffer1D<double, Stride1D.Dense>(GpuScalarStorage storage) => storage.GpuData;
+    public static implicit operator ArrayView1D<double, Stride1D.Dense>(GpuScalarStorage storage) => storage.GpuData.View;
 }
 
 public class GpuVectorStorage : VectorTensorStorage
@@ -86,11 +87,12 @@ public class GpuVectorStorage : VectorTensorStorage
     
     public void Dispose()
     {
-        Operations.Queue.Return(GpuData);
+        Operations.Controller.Return(GpuData);
         GC.SuppressFinalize(this);
     }
 
-    
+    public static implicit operator MemoryBuffer1D<double, Stride1D.Dense>(GpuVectorStorage storage) => storage.GpuData;
+    public static implicit operator ArrayView1D<double, Stride1D.Dense>(GpuVectorStorage storage) => storage.GpuData.View;
 }
 
 public class GpuMatrixStorage : MatrixTensorStorage
@@ -115,9 +117,12 @@ public class GpuMatrixStorage : MatrixTensorStorage
     
     public void Dispose()
     {
-        Operations.Queue.Return(GpuData);
+        Operations.Controller.Return(GpuData);
         GC.SuppressFinalize(this);
     }
+    
+    public static implicit operator MemoryBuffer2D<double, Stride2D.DenseX>(GpuMatrixStorage storage) => storage.GpuData;
+    public static implicit operator ArrayView2D<double, Stride2D.DenseX>(GpuMatrixStorage storage) => storage.GpuData.View;
 }
 
 public interface ITensor : IDisposable 

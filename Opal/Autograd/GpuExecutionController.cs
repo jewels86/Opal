@@ -5,18 +5,17 @@ using ILGPU.Runtime;
 
 namespace Opal.Autograd;
 
-public class GpuExecutionQueue
+public class GpuExecutionController
 {
     public bool AutoExecute { get; set; } = false;
     
     private readonly Accelerator _accelerator;
-    private readonly Queue<Action> _operations = [];
     private readonly Dictionary<int, Stack<MemoryBuffer1D<double, Stride1D.Dense>>> _vectorPools = [];
     private readonly Dictionary<(int, int), Stack<MemoryBuffer2D<double, Stride2D.DenseX>>> _matrixPools = [];
-    
-    public int Threshold { get; set; } = 4000;
-    
-    public GpuExecutionQueue(Accelerator accelerator) => _accelerator = accelerator;
+    private readonly List<MemoryBuffer1D<double, Stride1D.Dense>> _vectorDeferred = [];
+    private readonly List<MemoryBuffer2D<double, Stride2D.DenseX>> _matrixDeferred = [];
+
+    public GpuExecutionController(Accelerator accelerator) => _accelerator = accelerator;
     public int Count = 0;
 
     public MemoryBuffer1D<double, Stride1D.Dense> Get(int size)
@@ -34,6 +33,20 @@ public class GpuExecutionQueue
         _matrixPools[(rows, cols)] = pool;
         
         return TryGetFrom(pool, rows, cols);
+    }
+
+    public MemoryBuffer1D<double, Stride1D.Dense> GetTemp(int size)
+    {
+        var buffer = Get(size);
+        DeferReturn(buffer);
+        return buffer;
+    }
+
+    public MemoryBuffer2D<double, Stride2D.DenseX> GetTemp(int rows, int cols)
+    {
+        var buffer = Get(rows, cols);
+        DeferReturn(buffer);
+        return buffer;
     }
 
     public void Return(MemoryBuffer1D<double, Stride1D.Dense> buffer)
@@ -64,43 +77,42 @@ public class GpuExecutionQueue
 
         pool.Push(buffer);
     }
+    public void DeferReturn(MemoryBuffer1D<double, Stride1D.Dense> buffer) => _vectorDeferred.Add(buffer);
+    public void DeferReturn(MemoryBuffer2D<double, Stride2D.DenseX> buffer) => _matrixDeferred.Add(buffer);
+    public void DeferReturn(params MemoryBuffer1D<double, Stride1D.Dense>[] buffers) => _vectorDeferred.AddRange(buffers);
+    public void DeferReturn(params MemoryBuffer2D<double, Stride2D.DenseX>[] buffers) => _matrixDeferred.AddRange(buffers);
 
-    public void Enqueue(Action operation)
+    public void Return(params MemoryBuffer1D<double, Stride1D.Dense>[] buffers)
     {
-        if (AutoExecute)
-        {
-            operation();
-            return;
-        }
-        
-        _operations.Enqueue(operation);
-        if (_operations.Count >= Threshold) Execute();
+        foreach (var buffer in buffers) Return(buffer);
     }
-
-    public void Execute()
+    public void Return(params MemoryBuffer2D<double, Stride2D.DenseX>[] buffers)
     {
-        if (_operations.Count == 0) return;
-        Console.WriteLine($"Executing {_operations.Count} operations");
-        
-        while (_operations.Count > 0) _operations.Dequeue()();
-        _accelerator.Synchronize();
-        _operations.Clear();
+        foreach (var buffer in buffers) Return(buffer);
     }
     
+    public void Sync()
+    {
+        _accelerator.Synchronize();
+        foreach (var buffer in _vectorDeferred) Return(buffer);
+        foreach (var buffer in _matrixDeferred) Return(buffer);
+        _vectorDeferred.Clear();
+        _matrixDeferred.Clear();
+    }
+
     public void Flush()
     {
-        Execute();
-
         foreach (var pool in _vectorPools.Values)
         {
-            while (pool.Count > 0) pool.Pop().Dispose();
+            foreach (var buffer in pool)
+                buffer.Dispose();
         }
-        _vectorPools.Clear();
-        
         foreach (var pool in _matrixPools.Values)
         {
-            while (pool.Count > 0) pool.Pop().Dispose();
+            foreach (var buffer in pool)
+                buffer.Dispose();
         }
+        _vectorPools.Clear();
         _matrixPools.Clear();
     }
 
@@ -109,7 +121,7 @@ public class GpuExecutionQueue
         if (pool.Count > 0) return pool.Pop();
         
         var buffer = _accelerator.Allocate1D<double>(size);
-        Enqueue(() => Operations.VectorFillKernel(buffer.IntExtent, buffer.View, 0.0));
+        Operations.VectorFillKernel(buffer.IntExtent, buffer.View, 0.0);
         return buffer;
     }
 
@@ -118,7 +130,7 @@ public class GpuExecutionQueue
         if (pool.Count > 0) return pool.Pop();
         
         var buffer = _accelerator.Allocate2DDenseX<double>(new LongIndex2D(rows, cols));
-        Enqueue(() => Operations.MatrixFillKernel(buffer.IntExtent, buffer.View, 0.0));
+        Operations.MatrixFillKernel(buffer.IntExtent, buffer.View, 0.0);
         return buffer;
     }
 }
