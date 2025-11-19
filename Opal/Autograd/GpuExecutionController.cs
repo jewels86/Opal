@@ -51,7 +51,7 @@ public class GpuExecutionController
 
     public void Return(MemoryBuffer1D<double, Stride1D.Dense> buffer)
     {
-        Count++;
+        //Console.WriteLine($"Return {buffer.Length}");
         int size = (int)buffer.Length;
         if (!_vectorPools.TryGetValue(size, out var pool))
         {
@@ -59,13 +59,12 @@ public class GpuExecutionController
             _vectorPools[size] = pool;
         }
 
-        if (pool.Contains(buffer)) return;
+        //if (pool.Contains(buffer)) return;
         
         pool.Push(buffer);
     }
     public void Return(MemoryBuffer2D<double, Stride2D.DenseX> buffer)
     {
-        Count++;
         (int rows, int cols) = ((int)buffer.Extent.X, (int)buffer.Extent.Y);
         if (!_matrixPools.TryGetValue((rows, cols), out var pool))
         {
@@ -77,7 +76,11 @@ public class GpuExecutionController
 
         pool.Push(buffer);
     }
-    public void DeferReturn(MemoryBuffer1D<double, Stride1D.Dense> buffer) => _vectorDeferred.Add(buffer);
+    public void DeferReturn(MemoryBuffer1D<double, Stride1D.Dense> buffer)
+    {
+        _vectorDeferred.Add(buffer);
+    }
+
     public void DeferReturn(MemoryBuffer2D<double, Stride2D.DenseX> buffer) => _matrixDeferred.Add(buffer);
     public void DeferReturn(params MemoryBuffer1D<double, Stride1D.Dense>[] buffers) => _vectorDeferred.AddRange(buffers);
     public void DeferReturn(params MemoryBuffer2D<double, Stride2D.DenseX>[] buffers) => _matrixDeferred.AddRange(buffers);
@@ -93,6 +96,7 @@ public class GpuExecutionController
     
     public void Sync()
     {
+        //Console.WriteLine($"Sync!");
         _accelerator.Synchronize();
         foreach (var buffer in _vectorDeferred) Return(buffer);
         foreach (var buffer in _matrixDeferred) Return(buffer);
@@ -118,6 +122,7 @@ public class GpuExecutionController
 
     private MemoryBuffer1D<double, Stride1D.Dense> TryGetFrom(Stack<MemoryBuffer1D<double, Stride1D.Dense>> pool, int size)
     {
+        //Console.WriteLine($"Getting from {size} (pool count: {pool.Count})");
         if (pool.Count > 0) return pool.Pop();
         
         var buffer = _accelerator.Allocate1D<double>(size);

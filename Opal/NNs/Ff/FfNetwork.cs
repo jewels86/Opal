@@ -6,8 +6,8 @@ namespace Opal.NNs.Ff;
 
 public abstract class FfNetwork<TInput, THidden, TOutput, TWeightsIn, TWeightsHidden, TWeightsOut>
     : INetwork<TInput, TOutput>
-    where TInput : notnull where TOutput : notnull where THidden : notnull
-    where TWeightsIn : notnull where TWeightsHidden : notnull where TWeightsOut : notnull
+    where TInput : notnull, IDisposable where TOutput : notnull, IDisposable where THidden : notnull, IDisposable
+    where TWeightsIn : notnull, IDisposable where TWeightsHidden : notnull, IDisposable where TWeightsOut : notnull, IDisposable
 {
     public FfLayer<TInput, THidden, TWeightsIn> InputLayer { get; }
     public List<FfLayer<THidden, THidden, TWeightsHidden>> HiddenLayers { get; }

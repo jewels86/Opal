@@ -90,6 +90,9 @@ public static partial class Operations
             ArrayView1D<double, Stride1D.Dense>, ArrayView2D<double, Stride2D.DenseX>>(GpuKernels.OuterProductAccumulateKernel);
         MatrixCopyKernel = Accelerator.LoadAutoGroupedStreamKernel<Index2D, ArrayView2D<double, Stride2D.DenseX>,
             ArrayView2D<double, Stride2D.DenseX>>(GpuKernels.MatrixCopyKernel);
+
+        One = NewDefaultScalarStorage(1.0);
+        Zero = NewDefaultScalarStorage(0.0);
     }
     
     public static void Sync() => Controller.Sync();

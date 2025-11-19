@@ -56,6 +56,7 @@ public static partial class Operations
     public static bool UseGpu(params MatrixTensorStorage[] storages) => storages.Any(s => s is GpuMatrixStorage) && GpuAvailable;
     public static GpuMatrixStorage ToGpuMatrix(MatrixTensorStorage storage) => storage as GpuMatrixStorage ?? (GpuMatrixStorage)storage.ToGpu();
     public static MemoryBuffer2D<double, Stride2D.DenseX> AllocateBuffer(in LongIndex2D extent) => Controller.Get((int)extent.X, (int)extent.Y);
+    public static MemoryBuffer2D<double, Stride2D.DenseX> AllocateTemp(in LongIndex2D extent) => Controller.GetTemp((int)extent.X, (int)extent.Y);
     public static MatrixTensor BinaryOp(
         MatrixTensor a,
         MatrixTensor b,

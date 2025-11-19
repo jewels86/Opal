@@ -28,26 +28,16 @@ public static class NetworkHelpers
         {
             for (int i = 0; i < inputs.Length; i++)
             {
-                var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { },
+                using var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { },
                     zeroInput(inputs[i]));
             
                 var outputTensor = forward(inputTensor);
                 
-                var lossTensor = lossFunction(outputTensor, targets[i]);
+                using var lossTensor = lossFunction(outputTensor, targets[i]);
                 lossTensor.Backward(Operations.NewDefaultScalarStorage(1.0));
             
                 updateParameters();
-                
-                // Dispose loss tensor to start the cleanup chain
-                lossTensor.Dispose();
-            }
-
-            // Force GC every 10 epochs to reclaim leaked buffers via finalizers
-            if (epoch % 10 == 0)
-            {
-                GC.Collect();
-                GC.WaitForPendingFinalizers();
-                GC.Collect();
+                Operations.Sync();
             }
         }
     }
@@ -118,14 +108,16 @@ public static class NetworkHelpers
             
             foreach (var input in sequences[i])
             {
-                var inputTensor = new Tensor<TIn>(input, null, _ => { }, 
+                using var inputTensor = new Tensor<TIn>(input, null, _ => { }, 
                     zeroInput(input));
             
                 outputTensor = forward(inputTensor);
             }
         
-            var lossTensor = lossFunction(outputTensor, targets[i]);
+            using var lossTensor = lossFunction(outputTensor, targets[i]);
             totalLoss = Operations.AddStorage(totalLoss, lossTensor.Value);
+            outputTensor.Dispose();
+            Operations.Sync();
         }
         return totalLoss.ToHost() / sequences.Length;
     }

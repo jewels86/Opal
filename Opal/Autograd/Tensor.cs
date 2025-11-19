@@ -212,4 +212,5 @@ public class Tensor<T> : ITensor where T : notnull
         (Value as IDisposable)?.Dispose();
         (Gradient as IDisposable)?.Dispose();
     }
+    public static implicit operator T(Tensor<T> tensor) => tensor.Value;
 }

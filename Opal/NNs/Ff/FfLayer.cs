@@ -4,7 +4,7 @@ using Opal.Mathematics;
 namespace Opal.NNs.Ff;
 
 public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
-    where TIn : notnull where TOut : notnull where TWeights : notnull
+    where TIn : notnull, IDisposable where TOut : notnull, IDisposable where TWeights : notnull, IDisposable
 {
     public Tensor<TWeights> Weights { get; set; }
     public Tensor<TOut> Biases { get; set; }
@@ -21,19 +21,21 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        Tensor<TOut> weightedSum = Catalog.Multiply(Weights, input);
-        Tensor<TOut> preActivation = Catalog.Add(weightedSum, Biases);
-        Tensor<TOut> output = Activation(preActivation);
+        using var weightedSum = Catalog.Multiply(Weights, input);
+        using var preActivation = Catalog.Add(weightedSum, Biases);
+        var output = Activation(preActivation);
         return output;
     }
     public TOut Forward(TIn input) => Forward(new Tensor<TIn>(input, null, _ => { }, Catalog.ZeroGradient(input))).Value;
 
     public void UpdateParameters(ScalarTensorStorage lr)
     {
-        Weights.Value = Catalog.Subtract(Weights.Value, Catalog.Scale(Weights.Gradient, lr));
+        using var scaledWeights = Catalog.Scale(Weights.Gradient, lr);
+        Weights.Value = Catalog.Subtract(Weights.Value, scaledWeights);
         Catalog.Fill(Weights.Gradient, 0.0);
         
-        Biases.Value = Catalog.Subtract(Biases.Value, Catalog.Scale(Biases.Gradient, lr));
+        using var scaledBiases = Catalog.Scale(Biases.Gradient, lr);
+        Biases.Value = Catalog.Subtract(Biases.Value, scaledBiases);
         Catalog.Fill(Biases.Gradient, 0.0);
     }
     
