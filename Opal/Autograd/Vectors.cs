@@ -84,7 +84,7 @@ public static partial class Operations
     public static bool UseGpu(params VectorTensorStorage[] storages) => storages.Any(s => s is GpuVectorStorage) && GpuAvailable;
     public static GpuVectorStorage ToGpuVector(VectorTensorStorage storage) => storage as GpuVectorStorage ?? (GpuVectorStorage)storage.ToGpu();
     public static MemoryBuffer1D<double, Stride1D.Dense> AllocateBuffer(long length) => Controller.Get((int)length);
-    public static MemoryBuffer1D<double, Stride1D.Dense> AllocateTemp(long length) => Controller.Get((int)length);
+    public static MemoryBuffer1D<double, Stride1D.Dense> AllocateTemp(long length) => Controller.GetTemp((int)length);
     
     public static VectorTensor BinaryOp(
         VectorTensor a,
@@ -414,6 +414,8 @@ public static partial class Operations
         VectorLogKernel(a.IntExtent, a, result);
     public static void FillMemory(ArrayView1D<double, Stride1D.Dense> storage, double value) => 
         VectorFillKernel(storage.IntExtent, storage, value);
+    public static void FillMemory(ArrayView1D<double, Stride1D.Dense> storage, ArrayView1D<double, Stride1D.Dense> scalar) =>
+        VectorFillScalarKernel(storage.IntExtent, storage, scalar);
     public static void ExpMemory(ArrayView1D<double, Stride1D.Dense> storage, ArrayView1D<double, Stride1D.Dense> result) => 
         VectorExpKernel(storage.IntExtent, storage, result);
     public static void PowerMemory(ArrayView1D<double, Stride1D.Dense> storage, ArrayView1D<double, Stride1D.Dense> exponent, ArrayView1D<double, Stride1D.Dense> result) => 
@@ -608,10 +610,12 @@ public static partial class Operations
             {
                 var gpuOutGrad = ToGpuScalar(output.Gradient);
                 var gpuAGrad = ToGpuVector(a.Gradient);
+                var gpuAVal = ToGpuVector(a.Value);
                 var gpuBGrad = ToGpuVector(b.Gradient);
+                var gpuBVal = ToGpuVector(b.Value);
                 
-                AccumulateInto(gpuAGrad, temp => MultiplyMemory(gpuOutGrad, gpuBGrad, temp));
-                AccumulateInto(gpuBGrad, temp => MultiplyMemory(gpuOutGrad, gpuAGrad, temp));
+                AccumulateInto(gpuAGrad, temp => ScaleMemory(gpuBVal, gpuOutGrad, temp));
+                AccumulateInto(gpuBGrad, temp => ScaleMemory(gpuAVal, gpuOutGrad, temp));
             }
         }
         else
@@ -722,11 +726,13 @@ public static partial class Operations
                 if (UseGpu(a.Gradient))
                 {
                     var gpuAGrad = ToGpuVector(a.Gradient);
+                    var gpuAVal = ToGpuVector(a.Value);
                     var gpuScalarGrad = ToGpuScalar(scalar.Gradient);
+                    var gpuScalarVal = ToGpuScalar(scalar.Value);
                     var gpuOutGrad = ToGpuVector(output.Gradient);
                     
-                    AccumulateInto(gpuAGrad, temp => ScalarVectorMultiplyKernel(gpuOutGrad.GpuData.IntExtent, gpuOutGrad, gpuScalarGrad, temp));
-                    AccumulateInto(gpuScalarGrad, temp => DotMemory(gpuOutGrad, gpuAGrad, temp));
+                    AccumulateInto(gpuAGrad, temp => ScalarVectorMultiplyKernel(gpuOutGrad.GpuData.IntExtent, gpuOutGrad, gpuScalarVal, temp));
+                    AccumulateInto(gpuScalarGrad, temp => DotMemory(gpuOutGrad, gpuAVal, temp));
                 }
                 else
                 {
@@ -742,10 +748,7 @@ public static partial class Operations
         {
             var gpuVec = ToGpuVector(vector.Value);
             var result = AllocateScalar();
-            Accelerator.Reduce<double, AddDouble>(
-                Accelerator.DefaultStream,
-                gpuVec.GpuData.View,
-                result.View);
+            SumMemory(gpuVec, result);
         
             var resultStorage = new GpuScalarStorage(result);
             var gradStorage = new GpuScalarStorage(AllocateBuffer(1));
@@ -757,7 +760,7 @@ public static partial class Operations
                 var gpuGrad = ToGpuVector(vector.Gradient);
                 var gpuOutGrad = ToGpuScalar(output.Gradient);
             
-                AccumulateInto(gpuGrad, temp => VectorFillScalarKernel(gpuGrad.GpuData.IntExtent, temp, gpuOutGrad));
+                AccumulateInto(gpuGrad, temp => FillMemory(temp, gpuOutGrad));
             }
         }
         else
@@ -778,7 +781,6 @@ public static partial class Operations
             }
         }
     }
-
     public static VectorTensor Power(VectorTensor a, ScalarTensor exponent)
     {
         if (UseGpu(a.Value))
