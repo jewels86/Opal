@@ -96,8 +96,8 @@ public class GpuExecutionController
     
     public void Sync()
     {
-        Console.WriteLine($"=== SYNC START ===");
-        Console.WriteLine($"Deferred buffers: {_vectorDeferred.Count}");
+        //Console.WriteLine($"=== SYNC START ===");
+        //Console.WriteLine($"Deferred buffers: {_vectorDeferred.Count}");
     
         _accelerator.Synchronize();
     
@@ -114,15 +114,15 @@ public class GpuExecutionController
             returned++;
         }
     
-        Console.WriteLine($"Returned {returned} buffers");
+        //Console.WriteLine($"Returned {returned} buffers");
         foreach (var kvp in _vectorPools)
         {
-            Console.WriteLine($"  Pool size {kvp.Key}: {kvp.Value.Count} buffers");
+            //Console.WriteLine($"  Pool size {kvp.Key}: {kvp.Value.Count} buffers");
         }
     
         _vectorDeferred.Clear();
         _matrixDeferred.Clear();
-        Console.WriteLine($"=== SYNC END ===\n");
+        //Console.WriteLine($"=== SYNC END ===\n");
     }
 
     public void Flush()

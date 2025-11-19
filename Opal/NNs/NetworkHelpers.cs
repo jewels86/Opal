@@ -26,21 +26,19 @@ public static class NetworkHelpers
     {
         for (int epoch = 0; epoch < epochs; epoch++)
         {
+            //Console.WriteLine($">>> EPOCH {epoch} START");
             for (int i = 0; i < inputs.Length; i++)
             {
-                Console.WriteLine($">>> EPOCH {epoch} START");
                 using var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { },
                     zeroInput(inputs[i]));
-            
-                var outputTensor = forward(inputTensor);
-                
+                using var outputTensor = forward(inputTensor);
                 using var lossTensor = lossFunction(outputTensor, targets[i]);
-                lossTensor.Backward(Operations.NewDefaultScalarStorage(1.0));
-            
+                lossTensor.Backward(Operations.One);
+                
                 updateParameters();
-                Console.WriteLine($">>> EPOCH {epoch} CALLING SYNC");
-                Operations.Sync();
             }
+            //Console.WriteLine($">>> EPOCH {epoch} CALLING SYNC");
+            Operations.Sync();
         }
     }
     
@@ -80,7 +78,7 @@ public static class NetworkHelpers
         TIn[] inputs, TOut[] targets)
     where TIn : notnull where TOut : notnull
     {
-        ScalarTensorStorage totalLoss = Operations.NewDefaultScalarStorage(0.0);
+        using var totalLoss = Operations.NewDefaultScalarStorage(0.0);
         for (int i = 0; i < inputs.Length; i++)
         {
             using var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { }, 
@@ -89,11 +87,9 @@ public static class NetworkHelpers
             using var outputTensor = forward(inputTensor);
         
             using var lossTensor = lossFunction(outputTensor, targets[i]);
-            totalLoss = Operations.AddStorage(totalLoss, lossTensor.Value);
+            totalLoss.UpdateWith(Operations.AddStorage(totalLoss, lossTensor.Value));
         }
-        var result = totalLoss.ToHost() / inputs.Length;
-        totalLoss.Dispose();
-        return result;
+        return totalLoss.ToHost() / inputs.Length;
     }
     
     public static double EvaluateLossSequences<TIn, TOut>(

@@ -57,7 +57,7 @@ public class GpuScalarStorage : ScalarTensorStorage
     
     public void Dispose()
     {
-        Operations.Controller.Return(GpuData);
+        Operations.Controller.DeferReturn(GpuData);
         GC.SuppressFinalize(this);
     }
 
@@ -87,7 +87,7 @@ public class GpuVectorStorage : VectorTensorStorage
     
     public void Dispose()
     {
-        Operations.Controller.Return(GpuData);
+        Operations.Controller.DeferReturn(GpuData);
         GC.SuppressFinalize(this);
     }
 
@@ -117,7 +117,7 @@ public class GpuMatrixStorage : MatrixTensorStorage
     
     public void Dispose()
     {
-        Operations.Controller.Return(GpuData);
+        Operations.Controller.DeferReturn(GpuData);
         GC.SuppressFinalize(this);
     }
     
@@ -139,19 +139,10 @@ public class Tensor<T> : ITensor where T : notnull
     public Action<Tensor<T>> Backwards { get; set; }
     public T Gradient { get; set; }
     
-    
-    private int _refCount = 0;
     private bool _disposed;
     private readonly object _lock = new();
 
-    public Tensor(T value, List<object>? inputs, Action<Tensor<T>> backwards, T gradient)
-    {
-        (Value, Inputs, Backwards, Gradient) = (value, inputs, backwards, gradient);
-        if (inputs == null) return;
-        foreach (var input in inputs)
-            if (input is Tensor<T> inputTensor)
-                inputTensor.AddRef();
-    }
+    public Tensor(T value, List<object>? inputs, Action<Tensor<T>> backwards, T gradient) => (Value, Inputs, Backwards, Gradient) = (value, inputs, backwards, gradient);
 
     public void Backward(T initialGradient)
     {
@@ -175,33 +166,19 @@ public class Tensor<T> : ITensor where T : notnull
         topo.Add(node);
     }
 
-    private void AddRef()
-    {
-        lock (_lock)
-        {
-            if (_disposed) throw new ObjectDisposedException(nameof(Tensor<T>));
-            _refCount++;
-        }
-    }
+    
 
     public void Dispose()
     {
         lock (_lock)
         {
             if (_disposed) return;
-
-            _refCount--;
-            if (_refCount != 0) return;
-            (Value as IDisposable)?.Dispose();
-            (Gradient as IDisposable)?.Dispose();
             _disposed = true;
+            
+            DisposeValues();
 
-            if (Inputs == null) return;
-            foreach (var input in Inputs)
-            {
-                if (input is Tensor<T> inputTensor)
-                    inputTensor.Dispose();
-            }
+            if (Inputs is null) return;
+            foreach (var input in Inputs) (input as IDisposable)?.Dispose();
         }
     }
 

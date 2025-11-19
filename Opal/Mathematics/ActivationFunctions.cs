@@ -78,7 +78,7 @@ public static class ActivationFunctions
         var expNegX = Exp(negX);
         var onePlusExp = Add(Fill(x.Value.TotalElements, 1.0, 0.0), expNegX);
         var ones = Fill(x.Value.TotalElements, 1.0, 0.0);
-        return Divide(ones, onePlusExp);
+        return Divide(ones, onePlusExp).Defer();
     }
 
     public static VectorTensor TanhVector(VectorTensor x) => Operations.Tanh(x);
@@ -94,10 +94,10 @@ public static class ActivationFunctions
 
     public static VectorTensor SoftmaxVector(VectorTensor x)
     {
-        var expX = Exp(x);
-        var sumExp = Sum(expX);
-        var ones = Fill(x.Value.TotalElements, 1.0, 0.0);
-        var sumVector = Multiply(ones, sumExp);
+        using var expX = Exp(x);
+        using var sumExp = Sum(expX);
+        using var ones = Fill(x.Value.TotalElements, 1.0, 0.0);
+        using var sumVector = Multiply(ones, sumExp);
     
         return new VectorTensor(
             DivideStorage(expX.Value, sumVector.Value),

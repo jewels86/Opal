@@ -2,7 +2,7 @@
 
 public static class TensorStorageExtensions
 {
-    public static ITensorStorage<double> ToGpu(this ITensorStorage<double> storage)
+    public static ScalarTensorStorage ToGpu(this ScalarTensorStorage storage)
     {
         if (storage is GpuScalarStorage)
             return storage;
@@ -28,7 +28,7 @@ public static class TensorStorageExtensions
         return Operations.NewGpuMatrixStorage(data);
     }
 
-    public static ITensorStorage<double> ToCpu(this ITensorStorage<double> storage)
+    public static ScalarTensorStorage ToCpu(this ScalarTensorStorage storage)
     {
         if (storage is CpuStorage<double>)
             return storage;
@@ -53,5 +53,57 @@ public static class TensorStorageExtensions
         
         var data = storage.ToHost();
         return Operations.NewCpuMatrixStorage(data);
+    }
+    
+    public static TStorage Defer<TStorage>(this TStorage storage) 
+        where TStorage : IDisposable
+    {
+        storage.Dispose();
+        return storage;
+    }
+
+    public static TStorage Replace<TStorage>(this TStorage storage, TStorage replacement)
+        where TStorage : IDisposable
+    {
+        storage.Dispose();
+        return replacement;
+    }
+
+    public static void UpdateWith(this ScalarTensorStorage storage, ScalarTensorStorage newValue)
+    {
+        if (storage is GpuScalarStorage gpuStorage && newValue is GpuScalarStorage gpuNewValue)
+            Operations.VectorCopyKernel(
+                gpuStorage.GpuData.IntExtent,
+                gpuNewValue.GpuData.View,
+                gpuStorage.GpuData.View);
+        else
+            storage.CopyFrom(newValue.ToHost());
+        newValue.Dispose();
+    }
+    public static void UpdateWith(this VectorTensorStorage storage, VectorTensorStorage newValue)
+    {
+        if (storage is GpuVectorStorage gpuStorage && newValue is GpuVectorStorage gpuNewValue)
+        {
+            Operations.VectorCopyKernel(
+                gpuStorage.GpuData.IntExtent, 
+                gpuNewValue.GpuData.View, 
+                gpuStorage.GpuData.View);
+        }
+        else
+            storage.CopyFrom(newValue.ToHost());
+        newValue.Dispose();
+    }
+    public static void UpdateWith(this MatrixTensorStorage storage, MatrixTensorStorage newValue)
+    {
+        if (storage is GpuMatrixStorage gpuStorage && newValue is GpuMatrixStorage gpuNewValue)
+        {
+            Operations.MatrixCopyKernel(
+                gpuStorage.GpuData.IntExtent, 
+                gpuNewValue.GpuData.View, 
+                gpuStorage.GpuData.View);
+        }
+        else
+            storage.CopyFrom(newValue.ToHost());
+        newValue.Dispose();
     }
 }
