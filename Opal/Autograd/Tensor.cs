@@ -140,7 +140,7 @@ public class Tensor<T> : ITensor where T : notnull
     public T Gradient { get; set; }
     
     
-    private int _refCount = 1;
+    private int _refCount = 0;
     private bool _disposed;
     private readonly object _lock = new();
 

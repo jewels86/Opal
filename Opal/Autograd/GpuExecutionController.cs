@@ -96,12 +96,33 @@ public class GpuExecutionController
     
     public void Sync()
     {
-        //Console.WriteLine($"Sync!");
+        Console.WriteLine($"=== SYNC START ===");
+        Console.WriteLine($"Deferred buffers: {_vectorDeferred.Count}");
+    
         _accelerator.Synchronize();
-        foreach (var buffer in _vectorDeferred) Return(buffer);
-        foreach (var buffer in _matrixDeferred) Return(buffer);
+    
+        int returned = 0;
+        foreach (var buffer in _vectorDeferred)
+        {
+            int size = (int)buffer.Length;
+            if (!_vectorPools.TryGetValue(size, out var pool))
+            {
+                pool = new();
+                _vectorPools[size] = pool;
+            }
+            pool.Push(buffer);
+            returned++;
+        }
+    
+        Console.WriteLine($"Returned {returned} buffers");
+        foreach (var kvp in _vectorPools)
+        {
+            Console.WriteLine($"  Pool size {kvp.Key}: {kvp.Value.Count} buffers");
+        }
+    
         _vectorDeferred.Clear();
         _matrixDeferred.Clear();
+        Console.WriteLine($"=== SYNC END ===\n");
     }
 
     public void Flush()

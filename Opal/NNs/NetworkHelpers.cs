@@ -28,6 +28,7 @@ public static class NetworkHelpers
         {
             for (int i = 0; i < inputs.Length; i++)
             {
+                Console.WriteLine($">>> EPOCH {epoch} START");
                 using var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { },
                     zeroInput(inputs[i]));
             
@@ -37,6 +38,7 @@ public static class NetworkHelpers
                 lossTensor.Backward(Operations.NewDefaultScalarStorage(1.0));
             
                 updateParameters();
+                Console.WriteLine($">>> EPOCH {epoch} CALLING SYNC");
                 Operations.Sync();
             }
         }
