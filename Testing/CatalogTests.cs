@@ -40,7 +40,7 @@ public static class CatalogTests
         var catalog = new ScalarCatalog();
         
         // Test 1: Vector * Scalar -> Sum (this is Multiply in catalog)
-        Console.WriteLine("Test 1: Multiply (vector * scalar + sum)");
+        Console.WriteLine("Test 1: Multiply (vector * scalar then sum)");
         var weights = NewVector([2.0, 3.0, 4.0]);
         var input = NewScalar(5.0, 0.0);
         

@@ -751,7 +751,7 @@ public static partial class Operations
             SumMemory(gpuVec, result);
         
             var resultStorage = new GpuScalarStorage(result);
-            var gradStorage = new GpuScalarStorage(AllocateBuffer(1));
+            var gradStorage = new GpuScalarStorage(AllocateScalar());
         
             return new ScalarTensor(resultStorage, [vector], Backward, gradStorage);
         
