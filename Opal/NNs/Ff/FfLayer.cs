@@ -31,13 +31,11 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
     public void UpdateParameters(ScalarTensorStorage lr)
     {
         using var scaledWeights = Catalog.Scale(Weights.Gradient, lr);
-        using var updatedWeights = Catalog.Subtract(Weights.Value, scaledWeights);
-        Weights.Value.UpdateWith(updatedWeights);
+        Weights.Value = Catalog.Subtract(Weights.Value, scaledWeights);
         Catalog.Fill(Weights.Gradient, 0.0);
     
         using var scaledBiases = Catalog.Scale(Biases.Gradient, lr);
-        using var updatedBiases = Catalog.Subtract(Biases.Value, scaledBiases);
-        Biases.Value.UpdateWith(updatedBiases);
+        Biases.Value = Catalog.Subtract(Biases.Value, scaledBiases);
         Catalog.Fill(Biases.Gradient, 0.0);
     }
     

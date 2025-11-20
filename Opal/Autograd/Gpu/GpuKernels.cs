@@ -2,7 +2,7 @@
 using ILGPU.Algorithms;
 using ILGPU.Runtime;
 
-namespace Opal.Autograd;
+namespace Opal.Autograd.Gpu;
 
 public static class GpuKernels
 {

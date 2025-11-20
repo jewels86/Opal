@@ -3,6 +3,7 @@ using ILGPU.Algorithms;
 using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
 using ILGPU.Runtime.Cuda;
+using Opal.Autograd.Gpu;
 
 namespace Opal.Autograd;
 

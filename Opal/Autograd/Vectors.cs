@@ -8,6 +8,7 @@ using ILGPU.Algorithms.ScanReduceOperations;
 using ILGPU.IR.Values;
 using ILGPU.Runtime;
 using ILGPU.Runtime.CPU;
+using Opal.Autograd.Gpu;
 using Opal.Mathematics;
 
 namespace Opal.Autograd;

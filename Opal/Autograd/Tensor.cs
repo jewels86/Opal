@@ -13,6 +13,8 @@ public interface ITensorStorage<T> : IDisposable where T : notnull
     public void CopyFrom(T source);
     public int[] Shape { get; }
     public int TotalElements { get; }
+    
+    public void UpdateWith(ITensorStorage<T> newValue);
 }
 
 public class CpuStorage<T> : ITensorStorage<T> where T : notnull
@@ -31,99 +33,11 @@ public class CpuStorage<T> : ITensorStorage<T> where T : notnull
     public T ToHost() => Data;
     public void CopyFrom(T source) => Data = source;
     public void Dispose() { }
+    
+    public void UpdateWith(ITensorStorage<T> newValue) => Data = newValue.ToHost();
 }
 
-public class GpuScalarStorage : ScalarTensorStorage
-{
-    public MemoryBuffer1D<double, Stride1D.Dense> GpuData { get; set; }
-    public int[] Shape => [1];
-    public int TotalElements => 1;
-    
-    public GpuScalarStorage(MemoryBuffer1D<double, Stride1D.Dense> gpuData) => GpuData = gpuData;
 
-    public double ToHost()
-    {
-        Operations.Sync();
-        return GpuData.GetAsArray1D()[0];
-    }
-
-    public void CopyFrom(double source)
-    {
-        Operations.Sync();
-        GpuData.CopyFromCPU([source]);
-    }
-
-    public GpuVectorStorage ToVector() => new(GpuData);
-    
-    public void Dispose()
-    {
-        Operations.Controller.DeferReturn(GpuData);
-        GC.SuppressFinalize(this);
-    }
-
-    public static implicit operator MemoryBuffer1D<double, Stride1D.Dense>(GpuScalarStorage storage) => storage.GpuData;
-    public static implicit operator ArrayView1D<double, Stride1D.Dense>(GpuScalarStorage storage) => storage.GpuData.View;
-}
-
-public class GpuVectorStorage : VectorTensorStorage
-{
-    public MemoryBuffer1D<double, Stride1D.Dense> GpuData { get; set; }
-    public int[] Shape => [(int)GpuData.Length];
-    public int TotalElements => (int)GpuData.Length;
-    
-    public GpuVectorStorage(MemoryBuffer1D<double, Stride1D.Dense> gpuData) => GpuData = gpuData;
-
-    public double[] ToHost()
-    {
-        Operations.Sync();
-        return GpuData.GetAsArray1D();
-    }
-
-    public void CopyFrom(double[] data)
-    {
-        Operations.Sync();
-        GpuData.CopyFromCPU(data);
-    }
-    
-    public void Dispose()
-    {
-        Operations.Controller.DeferReturn(GpuData);
-        GC.SuppressFinalize(this);
-    }
-
-    public static implicit operator MemoryBuffer1D<double, Stride1D.Dense>(GpuVectorStorage storage) => storage.GpuData;
-    public static implicit operator ArrayView1D<double, Stride1D.Dense>(GpuVectorStorage storage) => storage.GpuData.View;
-}
-
-public class GpuMatrixStorage : MatrixTensorStorage
-{
-    public MemoryBuffer2D<double, Stride2D.DenseX> GpuData { get; set; }
-    public int[] Shape => [(int)GpuData.Extent.X, (int)GpuData.Extent.Y];
-    public int TotalElements => (int)GpuData.Length;
-    
-    public GpuMatrixStorage(MemoryBuffer2D<double, Stride2D.DenseX> gpuData) => GpuData = gpuData;
-
-    public double[,] ToHost()
-    {
-        Operations.Sync();
-        return GpuData.GetAsArray2D();
-    }
-
-    public void CopyFrom(double[,] data)
-    {
-        Operations.Sync();
-        GpuData.CopyFromCPU(data);
-    }
-    
-    public void Dispose()
-    {
-        Operations.Controller.DeferReturn(GpuData);
-        SuppressFinalize(this);
-    }
-    
-    public static implicit operator MemoryBuffer2D<double, Stride2D.DenseX>(GpuMatrixStorage storage) => storage.GpuData;
-    public static implicit operator ArrayView2D<double, Stride2D.DenseX>(GpuMatrixStorage storage) => storage.GpuData.View;
-}
 
 public interface ITensor : IDisposable 
 {

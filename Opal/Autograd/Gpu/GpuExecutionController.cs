@@ -1,9 +1,7 @@
-﻿using System.Diagnostics;
-using System.Diagnostics.Tracing;
-using ILGPU;
+﻿using ILGPU;
 using ILGPU.Runtime;
 
-namespace Opal.Autograd;
+namespace Opal.Autograd.Gpu;
 
 public class GpuExecutionController
 {
@@ -59,7 +57,6 @@ public class GpuExecutionController
             _vectorPools[size] = pool;
         }
 
-        //if (pool.Contains(buffer)) return;
         
         pool.Push(buffer);
     }
@@ -71,8 +68,6 @@ public class GpuExecutionController
             pool = new();
             _matrixPools[(rows, cols)] = pool;
         }
-
-        if (pool.Contains(buffer)) return;
 
         pool.Push(buffer);
     }
@@ -105,20 +100,14 @@ public class GpuExecutionController
 
     private MemoryBuffer1D<double, Stride1D.Dense> TryGetFrom(Stack<MemoryBuffer1D<double, Stride1D.Dense>> pool, int size)
     {
-        //Console.WriteLine($"Getting from {size} (pool count: {pool.Count})");
-        if (pool.Count > 0) return pool.Pop();
-        
-        var buffer = _accelerator.Allocate1D<double>(size);
+        MemoryBuffer1D<double, Stride1D.Dense> buffer = pool.Count > 0 ? pool.Pop() : _accelerator.Allocate1D<double>(size);
         Operations.VectorFillKernel(buffer.IntExtent, buffer.View, 0.0);
-        
         return buffer;
     }
 
     private MemoryBuffer2D<double, Stride2D.DenseX> TryGetFrom(Stack<MemoryBuffer2D<double, Stride2D.DenseX>> pool, int rows, int cols)
     {
-        if (pool.Count > 0) return pool.Pop();
-        
-        var buffer = _accelerator.Allocate2DDenseX<double>(new LongIndex2D(rows, cols));
+        MemoryBuffer2D<double, Stride2D.DenseX> buffer = pool.Count > 0 ? pool.Pop() : _accelerator.Allocate2DDenseX<double>(new LongIndex2D(rows, cols));
         Operations.MatrixFillKernel(buffer.IntExtent, buffer.View, 0.0);
         return buffer;
     }
