@@ -6,8 +6,9 @@ namespace Opal.Autograd;
 
 public static partial class Operations
 {
-    public static GpuScalarStorage ToGpuScalar(ScalarTensorStorage storage) => (storage as GpuScalarStorage) ?? (GpuScalarStorage)storage.ToGpu();
+    public static GpuScalarStorage ToGpuScalar(ScalarTensorStorage storage) => storage as GpuScalarStorage ?? (GpuScalarStorage)storage.ToGpu();
     public static MemoryBuffer1D<double, Stride1D.Dense> AllocateScalar() => AllocateBuffer(1);
+    public static MemoryBuffer1D<double, Stride1D.Dense> AllocateTemp() => AllocateTemp(1);
     public static bool UseGpu(params ScalarTensorStorage[] storages) => GpuAvailable && storages.Any(s => s is GpuScalarStorage);
     public static VectorTensorStorage VectorFromScalarStorage(ScalarTensorStorage storage) =>
         UseGpu(storage)
@@ -26,7 +27,7 @@ public static partial class Operations
         return new GpuScalarStorage(buffer);
     }
     public static ScalarTensorStorage NewDefaultScalarStorage(double value) => GpuAvailable ? NewGpuScalarStorage(value) : NewCpuScalarStorage(value);
-    public static ScalarTensor NewScalar(ScalarTensorStorage storage, List<object>? inputs, Action<ScalarTensor> backwards,
+    public static ScalarTensor NewScalar(ScalarTensorStorage storage, List<ITensor>? inputs, Action<ScalarTensor> backwards,
         ScalarTensorStorage gradient) => new(storage, inputs, backwards, gradient);
     public static ScalarTensor NewScalar(double value, double gradient) => NewScalar(NewDefaultScalarStorage(value), null, _ => { }, NewDefaultScalarStorage(gradient));
     #endregion

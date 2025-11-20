@@ -118,7 +118,7 @@ public class GpuMatrixStorage : MatrixTensorStorage
     public void Dispose()
     {
         Operations.Controller.DeferReturn(GpuData);
-        GC.SuppressFinalize(this);
+        SuppressFinalize(this);
     }
     
     public static implicit operator MemoryBuffer2D<double, Stride2D.DenseX>(GpuMatrixStorage storage) => storage.GpuData;
@@ -127,27 +127,25 @@ public class GpuMatrixStorage : MatrixTensorStorage
 
 public interface ITensor : IDisposable 
 {
-    List<object>? Inputs { get; }
-    void DisposeValues();
-    public void MarkDisposed();
+    List<ITensor>? Inputs { get; }
 }
 
 public class Tensor<T> : ITensor where T : notnull
 {
     public T Value { get; set; }
-    public List<object>? Inputs { get; set; }
+    public List<ITensor>? Inputs { get; set; }
     public Action<Tensor<T>> Backwards { get; set; }
     public T Gradient { get; set; }
     
     private bool _disposed;
     private readonly object _lock = new();
 
-    public Tensor(T value, List<object>? inputs, Action<Tensor<T>> backwards, T gradient) => (Value, Inputs, Backwards, Gradient) = (value, inputs, backwards, gradient);
+    public Tensor(T value, List<ITensor>? inputs, Action<Tensor<T>> backwards, T gradient) => (Value, Inputs, Backwards, Gradient) = (value, inputs, backwards, gradient);
 
     public void Backward(T initialGradient)
     {
-        var topo = new List<object>();
-        var visited = new HashSet<object>();
+        var topo = new List<ITensor>();
+        var visited = new HashSet<ITensor>();
         BuildTopo(this, topo, visited);
 
         Gradient = initialGradient;
@@ -155,12 +153,12 @@ public class Tensor<T> : ITensor where T : notnull
         foreach (var node in topo.AsEnumerable().Reverse()) ((dynamic)node).Backwards((dynamic)node);
     }
     
-    private static void BuildTopo(object node, List<object> topo, HashSet<object> visited)
+    private static void BuildTopo(ITensor node, List<ITensor> topo, HashSet<ITensor> visited)
     {
-        if (node is not ITensor tensor || !visited.Add(node)) return;
+        if (!visited.Add(node)) return;
 
-        if (tensor.Inputs != null)
-            foreach (var input in tensor.Inputs)
+        if (node.Inputs != null)
+            foreach (var input in node.Inputs)
                 BuildTopo(input, topo, visited);
 
         topo.Add(node);
@@ -178,7 +176,7 @@ public class Tensor<T> : ITensor where T : notnull
             DisposeValues();
 
             if (Inputs is null) return;
-            foreach (var input in Inputs) (input as IDisposable)?.Dispose();
+            foreach (var input in Inputs) input.Dispose();
         }
     }
 

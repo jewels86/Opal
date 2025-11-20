@@ -24,7 +24,7 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
         using var weightedSum = Catalog.Multiply(Weights, input);
         using var preActivation = Catalog.Add(weightedSum, Biases);
         var output = Activation(preActivation);
-        return output;
+        return output.Defer();
     }
     public TOut Forward(TIn input) => Forward(new Tensor<TIn>(input, null, _ => { }, Catalog.ZeroGradient(input))).Value;
 

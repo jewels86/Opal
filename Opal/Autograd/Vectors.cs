@@ -25,7 +25,7 @@ public static partial class Operations
     }
     public static VectorTensorStorage NewDefaultVectorStorage(double[] vector) => 
         GpuAvailable ? NewGpuVectorStorage(vector) : NewCpuVectorStorage(vector);
-    public static VectorTensor NewVector(VectorTensorStorage storage, List<object>? inputs, Action<VectorTensor> backwards,
+    public static VectorTensor NewVector(VectorTensorStorage storage, List<ITensor>? inputs, Action<VectorTensor> backwards,
         VectorTensorStorage gradient) =>
         new(storage, inputs, backwards, gradient);
     public static VectorTensor NewVector(double[] vector, double[] gradient) => 

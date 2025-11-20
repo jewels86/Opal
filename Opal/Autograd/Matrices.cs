@@ -23,7 +23,7 @@ public static partial class Operations
     }
     public static MatrixTensorStorage NewDefaultMatrixStorage(double[,] matrix) => GpuAvailable ? NewGpuMatrixStorage(matrix) : NewCpuMatrixStorage(matrix);
     
-    public static MatrixTensor NewMatrix(MatrixTensorStorage storage, List<object>? inputs, Action<Tensor<MatrixTensorStorage>> backwards,
+    public static MatrixTensor NewMatrix(MatrixTensorStorage storage, List<ITensor>? inputs, Action<MatrixTensor> backwards,
         MatrixTensorStorage gradient) => new(storage, inputs, backwards, gradient);
     public static MatrixTensor NewMatrix(double[,] matrix, double[,] gradient) =>
         NewMatrix(NewDefaultMatrixStorage(matrix), null, _ => { }, NewDefaultMatrixStorage(gradient));
@@ -123,6 +123,17 @@ public static partial class Operations
         gpuGrad.GpuData.CopyToCPU(result);
         gradient.CopyFrom(result);
     }
+
+    public static void AccumulateInto(
+        ArrayView2D<double, Stride2D.DenseX> gradient,
+        Action<ArrayView2D<double, Stride2D.DenseX>> computeIntoTemp,
+        bool subtract = false)
+    {
+        var temp = AllocateTemp(gradient.IntExtent);
+        computeIntoTemp(temp.View);
+        if (!subtract) MatrixAddKernel(temp.IntExtent, gradient, temp.View, gradient);
+        else MatrixSubtractKernel(temp.IntExtent, gradient, temp.View, gradient);
+    }
     #endregion
     #region Storage Operations
     public static MatrixTensorStorage AddStorage(MatrixTensorStorage a, MatrixTensorStorage b)
@@ -204,13 +215,13 @@ public static partial class Operations
             void Backward(VectorTensor output)
             {
                 var gpuVectorGrad = ToGpuVector(vector.Gradient);
+                var gpuMatrixGrad = ToGpuMatrix(matrix.Gradient);
                 MatrixTransposeVectorMultiplyAccumulateKernel(
                     (int)gpuMatrix.GpuData.Extent.Y,
                     gpuMatrix.GpuData.View,
                     ((GpuVectorStorage)output.Gradient).GpuData.View,
                     gpuVectorGrad.GpuData.View); 
                 
-                var gpuMatrixGrad = ToGpuMatrix(matrix.Gradient);
                 OuterProductAccumulateKernel(
                     gpuMatrix.GpuData.Extent.ToIntIndex(),
                     ((GpuVectorStorage)output.Gradient).GpuData.View,
