@@ -22,7 +22,7 @@ public class FfTests
         var inputStorage = inputs.Select(x => NewDefaultVectorStorage([x])).ToArray();
         var targetStorage = targets.Select(x => NewDefaultVectorStorage([x])).ToArray();
         
-        Console.WriteLine($"Initial weights: {string.Join(", ", network.InputLayer.Weights.Value.ToHost())}");
+        Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
         Stopwatch sw = Stopwatch.StartNew();
         sw.Start();
         var initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
@@ -33,6 +33,7 @@ public class FfTests
         sw.Start();
         network.Train(inputStorage, targetStorage, 1000, 0.01);
         sw.Stop();
+        Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
         Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000.0:F2} ms per epoch)");
     }
     

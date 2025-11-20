@@ -86,6 +86,7 @@ public static class NetworkHelpers
         
             using var lossTensor = lossFunction(outputTensor, targets[i]);
             totalLoss.UpdateWith(Operations.AddStorage(totalLoss, lossTensor.Value));
+            Operations.Sync();
         }
         return totalLoss.ToHost() / inputs.Length;
     }
