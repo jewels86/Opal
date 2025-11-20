@@ -1,4 +1,5 @@
-﻿using Opal.Autograd;
+﻿using System.Diagnostics;
+using Opal.Autograd;
 using Opal.Mathematics;
 using Opal.NNs.Ff;
 using static Opal.Autograd.Operations;
@@ -22,10 +23,17 @@ public class FfTests
         var targetStorage = targets.Select(x => NewDefaultVectorStorage([x])).ToArray();
         
         Console.WriteLine($"Initial weights: {string.Join(", ", network.InputLayer.Weights.Value.ToHost())}");
-        
-        Console.WriteLine($"Initial loss: {network.EvaluateLoss(inputStorage, targetStorage)}");
+        Stopwatch sw = Stopwatch.StartNew();
+        sw.Start();
+        var initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
+        Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
+        sw.Stop();
+        sw = Stopwatch.StartNew();
+        Console.WriteLine($"Training for 1000 epochs...");
+        sw.Start();
         network.Train(inputStorage, targetStorage, 1000, 0.01);
-        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)}");
+        sw.Stop();
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000.0:F2} ms per epoch)");
     }
     
     public static void NonlinearFunctionTest()

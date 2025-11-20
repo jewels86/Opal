@@ -96,49 +96,11 @@ public class GpuExecutionController
     
     public void Sync()
     {
-        //Console.WriteLine($"=== SYNC START ===");
-        //Console.WriteLine($"Deferred buffers: {_vectorDeferred.Count}");
-    
         _accelerator.Synchronize();
-    
-        int returned = 0;
-        foreach (var buffer in _vectorDeferred)
-        {
-            int size = (int)buffer.Length;
-            if (!_vectorPools.TryGetValue(size, out var pool))
-            {
-                pool = new();
-                _vectorPools[size] = pool;
-            }
-            pool.Push(buffer);
-            returned++;
-        }
-    
-        //Console.WriteLine($"Returned {returned} buffers");
-        foreach (var kvp in _vectorPools)
-        {
-            //Console.WriteLine($"  Pool size {kvp.Key}: {kvp.Value.Count} buffers");
-        }
-    
+        foreach (var buffer in _vectorDeferred) Return(buffer);
+        foreach (var buffer in _matrixDeferred) Return(buffer);
         _vectorDeferred.Clear();
         _matrixDeferred.Clear();
-        //Console.WriteLine($"=== SYNC END ===\n");
-    }
-
-    public void Flush()
-    {
-        foreach (var pool in _vectorPools.Values)
-        {
-            foreach (var buffer in pool)
-                buffer.Dispose();
-        }
-        foreach (var pool in _matrixPools.Values)
-        {
-            foreach (var buffer in pool)
-                buffer.Dispose();
-        }
-        _vectorPools.Clear();
-        _matrixPools.Clear();
     }
 
     private MemoryBuffer1D<double, Stride1D.Dense> TryGetFrom(Stack<MemoryBuffer1D<double, Stride1D.Dense>> pool, int size)
@@ -148,6 +110,7 @@ public class GpuExecutionController
         
         var buffer = _accelerator.Allocate1D<double>(size);
         Operations.VectorFillKernel(buffer.IntExtent, buffer.View, 0.0);
+        
         return buffer;
     }
 
