@@ -7,7 +7,11 @@ namespace Opal.Autograd.Catalogs;
 
 public class ScalarCatalog 
 {
-    public ScalarTensor Multiply(VectorTensor a, ScalarTensor b) => Operations.Sum(Operations.Multiply(a, b));
+    public ScalarTensor Multiply(VectorTensor a, ScalarTensor b)
+    {
+        using var scaled = Operations.Multiply(a, b);
+        return Operations.Sum(scaled);
+    }
     public ScalarTensor Add(ScalarTensor a, ScalarTensor b) => Operations.Add(a, b);
     public VectorTensorStorage Subtract(VectorTensorStorage a, VectorTensorStorage b) => Operations.SubtractStorage(a, b);
     public ScalarTensorStorage Subtract(ScalarTensorStorage a, ScalarTensorStorage b) => Operations.SubtractStorage(a, b);

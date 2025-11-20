@@ -32,7 +32,9 @@ public static class NetworkHelpers
                     zeroInput(inputs[i]));
                 using var outputTensor = forward(inputTensor);
                 using var lossTensor = lossFunction(outputTensor, targets[i]);
-                lossTensor.Backward(Operations.One);
+                Console.WriteLine(((dynamic)outputTensor.Value).ToHost()[0]);
+                Console.WriteLine(lossTensor.Value.ToHost());
+                lossTensor.Backward(Operations.NewDefaultScalarStorage(1));
                 
                 updateParameters();
             }

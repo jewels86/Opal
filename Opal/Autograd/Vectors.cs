@@ -421,7 +421,7 @@ public static partial class Operations
     public static void PowerMemory(ArrayView1D<double, Stride1D.Dense> storage, ArrayView1D<double, Stride1D.Dense> exponent, ArrayView1D<double, Stride1D.Dense> result) => 
         VectorPowerKernel(storage.IntExtent, storage, exponent, result);
     public static void ScaleMemory(ArrayView1D<double, Stride1D.Dense> storage, ArrayView1D<double, Stride1D.Dense> scalar, ArrayView1D<double, Stride1D.Dense> result) => 
-        VectorScalarMaxKernel(storage.IntExtent, storage, scalar, result);
+        ScalarVectorMultiplyKernel(storage.IntExtent, storage, scalar, result);
 
     public static void SumMemory(ArrayView1D<double, Stride1D.Dense> storage, ArrayView1D<double, Stride1D.Dense> result) =>
         Accelerator.Reduce<double, AddDouble>(
@@ -513,8 +513,8 @@ public static partial class Operations
             v => v.Select(s => Math.Log(s)).ToArray(), 
             (_, output) => UnaryGradientOp(
                 vector, output, (gpuGrad, gpuOut, gpuVal) => 
-                    AccumulateInto(gpuGrad, temp => DivideMemory(gpuGrad, gpuOut, temp)),
-                (_, _, outGrad) => AccumulateGradient(vector.Gradient, DivideStorage(outGrad, outGrad))));
+                    AccumulateInto(gpuGrad, temp => DivideMemory(gpuOut, gpuVal, temp)),
+                (_, _, outGrad) => AccumulateGradient(vector.Gradient, DivideStorage(outGrad, vector.Value))));
     public static VectorTensor Fill(long length, double value, double gradValue) => NewVector(
         FillStorage(length, value), null,
         _ => { }, FillStorage(length, gradValue));
@@ -552,6 +552,7 @@ public static partial class Operations
                     var gpuOutVal = ToGpuVector(output.Value);
                     
                     var (gpuMask, ones) = (AllocateTemp(gpuInputVal.GpuData.Length), AllocateTemp(gpuInputVal.GpuData.Length));
+                    FillMemory(ones, 1.0);
                     MaskedMultiplyMemory(gpuOutVal, ones, gpuMask);
                     AccumulateInto(gpuInputGrad, temp => MultiplyMemory(gpuMask, gpuOutGrad, temp));
                 }

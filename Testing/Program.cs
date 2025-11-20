@@ -10,8 +10,8 @@ internal static class Program
     {
         //Operations.GpuAvailable = false;
         Console.WriteLine($"GPU Available: {Operations.GpuAvailable}");
-        ScalarMultiplyDiagnosticTest.RunAll();
-        //FfTests.OverfittingTest();
+        //ScalarMultiplyDiagnosticTest.RunAll();
+        FfTests.OverfittingTest();
         //DiagnosticTest.RunAll();
         //GpuTest.TestGpuBufferZeroing();
         //CatalogTests.RunAll();

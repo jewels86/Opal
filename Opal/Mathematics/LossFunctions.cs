@@ -19,10 +19,10 @@ public static class LossFunctions
         if (predicted.Value.TotalElements != actual.TotalElements)
             throw new ArgumentException("Vectors must be of the same length.");
         
-        var actualTensor = NewVector(actual, null, _ => { }, NewDefaultVectorStorage(Vectors.Zeros(actual.TotalElements)));
-        var diff = Subtract(predicted, actualTensor);
-        var squared = Multiply(diff, diff);
-        var sumSquared = Sum(squared);
+        using var actualTensor = NewVector(actual, null, _ => { }, NewDefaultVectorStorage(Vectors.Zeros(actual.TotalElements)));
+        using var diff = Subtract(predicted, actualTensor);
+        using var squared = Multiply(diff, diff);
+        using var sumSquared = Sum(squared);
         return Multiply(sumSquared, NewScalar(1.0 / actual.TotalElements, 0.0));
     }
     

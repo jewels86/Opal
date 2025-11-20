@@ -122,6 +122,7 @@ public static partial class Operations
         var result = new double[rows, cols];
         gpuGrad.GpuData.CopyToCPU(result);
         gradient.CopyFrom(result);
+
     }
 
     public static void AccumulateInto(

@@ -24,18 +24,20 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
         using var weightedSum = Catalog.Multiply(Weights, input);
         using var preActivation = Catalog.Add(weightedSum, Biases);
         var output = Activation(preActivation);
-        return output.Defer();
+        return output;
     }
     public TOut Forward(TIn input) => Forward(new Tensor<TIn>(input, null, _ => { }, Catalog.ZeroGradient(input))).Value;
 
     public void UpdateParameters(ScalarTensorStorage lr)
     {
         using var scaledWeights = Catalog.Scale(Weights.Gradient, lr);
-        Weights.Value = Catalog.Subtract(Weights.Value, scaledWeights);
+        using var updatedWeights = Catalog.Subtract(Weights.Value, scaledWeights);
+        Weights.Value.UpdateWith(updatedWeights);
         Catalog.Fill(Weights.Gradient, 0.0);
-        
+    
         using var scaledBiases = Catalog.Scale(Biases.Gradient, lr);
-        Biases.Value = Catalog.Subtract(Biases.Value, scaledBiases);
+        using var updatedBiases = Catalog.Subtract(Biases.Value, scaledBiases);
+        Biases.Value.UpdateWith(updatedBiases);
         Catalog.Fill(Biases.Gradient, 0.0);
     }
     
