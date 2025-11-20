@@ -8,6 +8,7 @@ internal static class Program
 {
     public static void Main()
     {
+        //Operations.GpuAvailable = false;
         Console.WriteLine($"GPU Available: {Operations.GpuAvailable}");
         FfTests.OverfittingTest();
         //DiagnosticTest.RunAll();

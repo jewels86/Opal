@@ -26,7 +26,6 @@ public static class NetworkHelpers
     {
         for (int epoch = 0; epoch < epochs; epoch++)
         {
-            //Console.WriteLine($">>> EPOCH {epoch} START");
             for (int i = 0; i < inputs.Length; i++)
             {
                 using var inputTensor = new Tensor<TIn>(inputs[i], null, _ => { },
@@ -37,7 +36,6 @@ public static class NetworkHelpers
                 
                 updateParameters();
             }
-            //Console.WriteLine($">>> EPOCH {epoch} CALLING SYNC");
             Operations.Sync();
         }
     }
