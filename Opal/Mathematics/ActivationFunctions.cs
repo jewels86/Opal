@@ -74,11 +74,11 @@ public static class ActivationFunctions
 
     public static VectorTensor SigmoidVector(VectorTensor x)
     {
-        var negX = Negate(x);
-        var expNegX = Exp(negX);
-        var onePlusExp = Add(Fill(x.Value.TotalElements, 1.0, 0.0), expNegX);
-        var ones = Fill(x.Value.TotalElements, 1.0, 0.0);
-        return Divide(ones, onePlusExp).Defer();
+        using var negX = Negate(x);
+        using var expNegX = Exp(negX);
+        using var onePlusExp = Add(Fill(x.Value.TotalElements, 1.0, 0.0), expNegX);
+        using var ones = Fill(x.Value.TotalElements, 1.0, 0.0);
+        return Divide(ones, onePlusExp);
     }
 
     public static VectorTensor TanhVector(VectorTensor x) => Operations.Tanh(x);

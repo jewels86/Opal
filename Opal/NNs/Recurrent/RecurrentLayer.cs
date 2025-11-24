@@ -4,8 +4,8 @@ using Opal.Mathematics;
 namespace Opal.NNs.Recurrent;
 
 public class RecurrentLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
-    where TIn : notnull where TOut : notnull
-    where TWeights : notnull 
+    where TIn : notnull, IDisposable where TOut : notnull, IDisposable
+    where TWeights : notnull, IDisposable
 {
     public RecurrentLayer(
         Tensor<TWeights> inputWeights, Tensor<TWeights> recurrentWeights, 
@@ -29,10 +29,10 @@ public class RecurrentLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        var inputPart = Catalog.Multiply(InputWeights, input);
-        var hiddenPart = Catalog.Multiply(RecurrentWeights, State);
-        var sum1 = Catalog.Add(inputPart, hiddenPart);
-        var sum2 = Catalog.Add(sum1, Biases);
+        using var inputPart = Catalog.Multiply(InputWeights, input);
+        using var hiddenPart = Catalog.Multiply(RecurrentWeights, State);
+        using var sum1 = Catalog.Add(inputPart, hiddenPart);
+        using var sum2 = Catalog.Add(sum1, Biases);
         var output = Activation(sum2);
         State = output;
         return output;
@@ -42,13 +42,13 @@ public class RecurrentLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
 
     public void UpdateParameters(double lr)
     {
-        InputWeights.Value = Catalog.Subtract(InputWeights.Value, Catalog.Scale(InputWeights.Gradient, lr));
+        InputWeights.Value = Catalog.Subtract(InputWeights.Value, Catalog.Scale(InputWeights.Gradient, lr).Defer());
         InputWeights.Gradient = Catalog.ZeroGradient(InputWeights.Value);
         
-        RecurrentWeights.Value = Catalog.Subtract(RecurrentWeights.Value, Catalog.Scale(RecurrentWeights.Gradient, lr));
+        RecurrentWeights.Value = Catalog.Subtract(RecurrentWeights.Value, Catalog.Scale(RecurrentWeights.Gradient, lr).Defer());
         RecurrentWeights.Gradient = Catalog.ZeroGradient(RecurrentWeights.Value);
         
-        Biases.Value = Catalog.Subtract(Biases.Value, Catalog.Scale(Biases.Gradient, lr));
+        Biases.Value = Catalog.Subtract(Biases.Value, Catalog.Scale(Biases.Gradient, lr).Defer());
         Biases.Gradient = Catalog.ZeroGradient(Biases.Value);
     }
 

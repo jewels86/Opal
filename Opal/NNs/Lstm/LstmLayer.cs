@@ -36,15 +36,14 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
     #region Encoder/Decoder
     public virtual (Tensor<TOut> hidden, Tensor<TOut> state) Encoder(Tensor<TIn> input, Tensor<TOut> state, Tensor<TOut> prevHidden)
     {
-        Tensor<TOut> concat = Catalog.ConcatInputHidden(input, prevHidden);
-        Tensor<TOut> forgetGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(EncoderForgetWeights, concat), EncoderForgetBiases));
-        Tensor<TOut> inputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(EncoderInputWeights, concat), EncoderInputBiases));
-        Tensor<TOut> cellGate = TanhActivation(Catalog.Add(Catalog.Multiply(EncoderCellWeights, concat), EncoderCellBiases));
-        Tensor<TOut> outputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(EncoderOutputWeights, concat), EncoderOutputBiases));
-
+        using Tensor<TOut> concat = Catalog.ConcatInputHidden(input, prevHidden);
+        using Tensor<TOut> forgetGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(EncoderForgetWeights, concat).Defer(), EncoderForgetBiases).Defer());
+        using Tensor<TOut> inputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(EncoderInputWeights, concat).Defer(), EncoderInputBiases).Defer());
+        using Tensor<TOut> cellGate = TanhActivation(Catalog.Add(Catalog.Multiply(EncoderCellWeights, concat).Defer(), EncoderCellBiases).Defer());
+        using Tensor<TOut> outputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(EncoderOutputWeights, concat).Defer(), EncoderOutputBiases).Defer());
         
-        Tensor<TOut> newState = Catalog.Add(Catalog.Multiply(forgetGate, state), Catalog.Multiply(inputGate, cellGate));
-        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, TanhActivation(newState));
+        using Tensor<TOut> newState = Catalog.Add(Catalog.Multiply(forgetGate, state).Defer(), Catalog.Multiply(inputGate, cellGate).Defer());
+        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, TanhActivation(newState).Defer());
         
         return (newHidden, newState);
     }
@@ -52,14 +51,14 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
     public virtual (Tensor<TOut> hidden, Tensor<TOut> state) Decoder(Tensor<TOut> input, Tensor<TOut> state, Tensor<TOut> prevHidden)
     {
         Tensor<TOut> concat = Catalog.ConcatHidden(input, prevHidden);
-        Tensor<TOut> forgetGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderForgetWeights, concat), DecoderForgetBiases));
-        Tensor<TOut> inputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderInputWeights, concat), DecoderInputBiases));
-        Tensor<TOut> cellGate = TanhActivation(Catalog.Add(Catalog.Multiply(DecoderCellWeights, concat), DecoderCellBiases));
-        Tensor<TOut> outputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderOutputWeights, concat), DecoderOutputBiases));
+        Tensor<TOut> forgetGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderForgetWeights, concat).Defer(), DecoderForgetBiases).Defer());
+        Tensor<TOut> inputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderInputWeights, concat).Defer(), DecoderInputBiases).Defer());
+        Tensor<TOut> cellGate = TanhActivation(Catalog.Add(Catalog.Multiply(DecoderCellWeights, concat).Defer(), DecoderCellBiases).Defer());
+        Tensor<TOut> outputGate = SigmoidActivation(Catalog.Add(Catalog.Multiply(DecoderOutputWeights, concat).Defer(), DecoderOutputBiases).Defer());
 
         
-        Tensor<TOut> newState = Catalog.Add(Catalog.Multiply(forgetGate, state), Catalog.Multiply(inputGate, cellGate));
-        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, TanhActivation(newState));
+        Tensor<TOut> newState = Catalog.Add(Catalog.Multiply(forgetGate, state).Defer(), Catalog.Multiply(inputGate, cellGate).Defer());
+        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, TanhActivation(newState).Defer());
         
         return (newHidden, newState);
     }

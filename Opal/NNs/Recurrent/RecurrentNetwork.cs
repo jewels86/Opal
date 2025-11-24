@@ -6,14 +6,13 @@ namespace Opal.NNs.Recurrent;
 
 public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden, TWeightsOut>
     : INetwork<TIn, TOut>, ISequentialNetwork<TIn, TOut>
-    where TIn : notnull
-    where TOut : notnull
-    where THidden : notnull
-    where TWeightsIn : notnull
-    where TWeightsHidden : notnull
-    where TWeightsOut : notnull
+    where TIn : notnull, IDisposable
+    where TOut : notnull, IDisposable
+    where THidden : notnull, IDisposable
+    where TWeightsIn : notnull, IDisposable
+    where TWeightsHidden : notnull, IDisposable
+    where TWeightsOut : notnull, IDisposable
 {
-
     protected RecurrentNetwork(int hiddenSize, RecurrentLayer<TIn, THidden, TWeightsIn> inputLayer, List<RecurrentLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
         RecurrentLayer<THidden, TOut, TWeightsOut> outputLayer, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction, Func<Tensor<TOut>, Tensor<TOut>> outputActivation, 
         Func<Tensor<THidden>, Tensor<THidden>> hiddenActivation)

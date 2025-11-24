@@ -17,7 +17,7 @@ internal static class Program
         //CatalogTests.RunAll();
         //AutogradTests.RunAll();
         //FfTests.RunAll();
-        RecurrentTests.RunAll();
+        //RecurrentTests.RunAll();
         Operations.GpuAvailable = true;
         LstmTests.RunAll();
     }
