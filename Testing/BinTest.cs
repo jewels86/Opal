@@ -1,6 +1,4 @@
-﻿using Opal.Autograd;
-
-namespace Testing;
+﻿namespace Testing;
 
 public static class BinTest
 {

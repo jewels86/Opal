@@ -1,5 +1,4 @@
-﻿﻿using Opal.Autograd;
-using Opal.Mathematics;
+﻿using Opal.Mathematics;
 using Opal.Utilities;
 
 namespace Opal.NNs;

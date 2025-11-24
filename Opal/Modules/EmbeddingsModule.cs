@@ -1,11 +1,11 @@
 ﻿using System.Collections.Concurrent;
-using Opal.Utilities.Opal.Utilities;
 using Opal.Utilities;
 using static Opal.Utilities.MathFunctions;
 using static Opal.Utilities.Logging.LogLevel;
 using static Opal.Utilities.Logging.AddedLogLevel;
 using static Opal.Utilities.Logging;
 using Opal.Utilities.Concurrency;
+using Opal.Utilities.Opal.Utilities;
 
 namespace Opal.Modules
 {

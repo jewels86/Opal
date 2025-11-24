@@ -1,12 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Opal.Utilities
+﻿namespace Opal.Utilities
 {
-	using System;
 
 	namespace Opal.Utilities
 	{

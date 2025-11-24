@@ -1,5 +1,4 @@
 ﻿using System.Numerics;
-using Opal.Autograd;
 using Opal.Autograd.Catalogs;
 using Opal.Mathematics;
 using Opal.Utilities;

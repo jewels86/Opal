@@ -1,5 +1,4 @@
-﻿using Opal.Autograd;
-using Opal.Autograd.Catalogs;
+﻿using Opal.Autograd.Catalogs;
 using Opal.Mathematics;
 using static Opal.Autograd.Operations;
 

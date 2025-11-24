@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics;
-using Opal.Autograd;
+using Opal;
 using Opal.Mathematics;
 using Opal.NNs.Ff;
 using static Opal.Autograd.Operations;

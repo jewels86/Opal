@@ -1,6 +1,5 @@
 ﻿using System.Runtime.InteropServices;
 using Opal;
-using Opal.Autograd;
 
 namespace Testing;
 

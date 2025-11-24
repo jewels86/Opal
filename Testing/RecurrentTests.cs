@@ -1,4 +1,4 @@
-﻿using Opal.Autograd;
+﻿using Opal;
 using Opal.Mathematics;
 using Opal.NNs.Recurrent;
 
