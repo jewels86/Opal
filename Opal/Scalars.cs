@@ -2,7 +2,7 @@
 
 namespace Opal;
 
-public partial class TensorOperations
+public partial class Operations
 {
     public static Tensor<float> New(float scalar, float? gradient = null, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null, int? aidx = null) =>
         new(new ScalarValue(scalar, aidx ?? DefaultAcceleratorIndex), new ScalarValue(gradient ?? 0, aidx ?? DefaultAcceleratorIndex), backwardAction, inputs);

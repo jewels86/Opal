@@ -35,7 +35,7 @@ public static class LossFunctions
         Compute.Call(aidx, Compute.ElementwiseFloatMultiplyKernels, temp2, result, 1 / (float)actual.TotalSize);
         Compute.Return(temp1, temp2);
         
-        return TensorOperations.New(new ScalarValue(result), new ScalarValue(0.0f, aidx), Backward, [predicted]);
+        return Operations.New(new ScalarValue(result), new ScalarValue(0.0f, aidx), Backward, [predicted]);
         
         void Backward(ITensor t) => Compute.Call(aidx, MeanSquaredErrorBackwardKernels, predicted.Value.Data, actual.Data, predicted.Gradient.Data, actual.TotalSize);
     }
@@ -60,7 +60,7 @@ public static class LossFunctions
     
         Compute.Return(temp1, temp2);
     
-        return TensorOperations.New(new ScalarValue(result), new ScalarValue(0.0f, aidx), Backward, [predicted]);
+        return Operations.New(new ScalarValue(result), new ScalarValue(0.0f, aidx), Backward, [predicted]);
     
         void Backward(ITensor t) => Compute.Call(aidx, CrossEntropyBackwardKernels, 
             predicted.Value.Data, actual, predicted.Gradient.Data, actual.TotalSize);

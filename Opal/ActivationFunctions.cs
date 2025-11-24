@@ -30,7 +30,7 @@ public static class ActivationFunctions
         int aidx = x.Value.AcceleratorIndex;
         var result = Compute.Get(aidx, x.Value.TotalSize);
         forward(aidx, result);
-        return TensorOperations.New(new ScalarValue(result), new ScalarValue(0.0f, aidx), backward(aidx, result), [x]);
+        return Operations.New(new ScalarValue(result), new ScalarValue(0.0f, aidx), backward(aidx, result), [x]);
     }
     
     public static ITensor ReLu(ITensor x) => ActivationFunction(x, 

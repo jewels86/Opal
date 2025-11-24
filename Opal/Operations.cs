@@ -2,11 +2,11 @@
 
 namespace Opal;
 
-public static partial class TensorOperations
+public static partial class Operations
 {
     public static int DefaultAcceleratorIndex { get; }
 
-    static TensorOperations()
+    static Operations()
     {
         Compute.InitializeExtraKernels();
         DefaultAcceleratorIndex = Compute.RequestAccelerator();
