@@ -1,55 +1,51 @@
-﻿using Opal.Autograd.Catalogs;
-using Opal.Mathematics;
+﻿using Jewels.Lazulite;
 using Opal.Utilities;
 
 namespace Opal.NNs.Ff;
 
-public class VectorFfNetwork : FfNetwork<VectorTensorStorage, VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage, MatrixTensorStorage, MatrixTensorStorage>
+public class VectorFfNetwork : FfNetwork<float[], float[], float[], float[,], float[,], float[,]>
 {
     public VectorFfNetwork(
         int inputSize,
         int hiddenSize,
         int outputSize,
         int numHiddenLayers,
-        Func<VectorTensor, VectorTensor> hiddenActivation,
-        Func<VectorTensor, VectorTensor> outputActivation,
-        Func<VectorTensor, VectorTensorStorage, ScalarTensor> lossFunction,
-        string name = "VectorFfNetwork")
+        Func<Tensor<float[]>, Tensor<float[]>> hiddenActivation,
+        Func<Tensor<float[]>, Tensor<float[]>> outputActivation,
+        Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction)
         : base(
             CreateLayer(inputSize, hiddenSize, hiddenActivation),
             CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
             CreateLayer(hiddenSize, outputSize, outputActivation),
             lossFunction,
             hiddenSize,
-            hiddenActivation,
-            name)
+            hiddenActivation)
     {
     }
     
-    public double[] Forward(double[] input) => Forward(Operations.NewVector(input, Vectors.Zeros(input.Length))).Value.ToHost();
 
-    protected override FfLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateHiddenLayer() =>
+    protected override FfLayer<float[], float[], float[,]> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, HiddenActivation);
 
-    private static FfLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateLayer(
+    private static FfLayer<float[], float[], float[,]> CreateLayer(
         int inputSize,
         int outputSize,
-        Func<VectorTensor, VectorTensor> activation)
+        Func<Tensor<float[]>, Tensor<float[]>> activation)
     {
         var catalog = new VectorCatalog();
     
-        MatrixTensor weights = TensorGeneration.XavierMatrix(outputSize, inputSize);
-        VectorTensor biases = TensorGeneration.HeVector(outputSize, inputSize);
+        var weights = TensorGeneration.XavierMatrix(outputSize, inputSize);
+        var biases = TensorGeneration.HeVector(outputSize, inputSize);
     
         return new(weights, biases, activation, catalog);
     }
 
-    private static List<FfLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>> CreateHiddenLayers(
+    private static List<FfLayer<float[], float[], float[,]>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
-        Func<VectorTensor, VectorTensor> activation)
+        Func<Tensor<float[]>, Tensor<float[]>> activation)
     {
-        var layers = new List<FfLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>>();
+        List<FfLayer<float[], float[], float[,]>> layers = [];
         for (int i = 0; i < numLayers; i++)
             layers.Add(CreateLayer(hiddenSize, hiddenSize, activation));
         return layers;

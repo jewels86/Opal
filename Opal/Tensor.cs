@@ -20,12 +20,15 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
     public Action<ITensor> BackwardAction { get; set; } = backwardFunction ?? (_ => { });
     public List<ITensor> Inputs { get; set; } = inputs ?? [];
     
+    public int AcceleratorIndex => Value.AcceleratorIndex;
+    
     IValue ITensor.Value => Value;
     IValue ITensor.Gradient => Gradient;
     
     private bool _isDisposed = false;
 
     #region Backward Pass
+    // initialGradient should be of the same type as the tensor's value
     public void Backward(object initialGradient)
     {
         if (initialGradient is not Value<T> valueGrad) throw new ArgumentException("Invalid gradient type");
@@ -52,6 +55,8 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
         foreach (var input in Inputs) input.Dispose();
         _isDisposed = true;
     }
+    
+    ~Tensor() => Dispose();
     
     public static implicit operator Value<T>(Tensor<T> tensor) => tensor.Value;
 }

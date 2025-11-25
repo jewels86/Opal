@@ -1,15 +1,10 @@
-﻿using Opal.Mathematics;
+﻿using ILGPU.Runtime;
+using Jewels.Lazulite;
 
 namespace Opal.NNs.Ff;
 
-public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
-    where TIn : notnull, IDisposable where TOut : notnull, IDisposable where TWeights : notnull, IDisposable
+public class FfLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut> where TIn : notnull where TOut : notnull where TWeights : notnull
 {
-    public Tensor<TWeights> Weights { get; set; }
-    public Tensor<TOut> Biases { get; set; }
-    public Func<Tensor<TOut>, Tensor<TOut>> Activation { get; set; }
-    public IFfCatalog<TIn, TOut, TWeights> Catalog { get; set; }
-
     public FfLayer(Tensor<TWeights> weights, Tensor<TOut> biases, Func<Tensor<TOut>, Tensor<TOut>> activation, IFfCatalog<TIn, TOut, TWeights> catalog)
     {
         Weights = weights;
@@ -18,30 +13,40 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
         Catalog = catalog;
     }
 
+    public Tensor<TWeights> Weights { get; private set; }
+    public Tensor<TOut> Biases { get; private set; }
+    public Func<Tensor<TOut>, Tensor<TOut>> Activation { get; set; }
+    public IFfCatalog<TIn, TOut, TWeights> Catalog { get; set; }
+
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        using var weightedSum = Catalog.Multiply(Weights, input);
-        using var preActivation = Catalog.Add(weightedSum, Biases);
-        var output = Activation(preActivation);
-        return output;
-    }
-    public TOut Forward(TIn input) => Forward(new Tensor<TIn>(input, null, _ => { }, Catalog.ZeroGradient(input))).Value;
+        var multiplied = Catalog.Multiply(Weights, input);
+        var sum = new Tensor<TOut>(Compute.BinaryCall(
+                Compute.ElementwiseAddKernels, multiplied.Value, Biases.Value), 
+            multiplied.Gradient.Create(Compute.GetLike(multiplied.Gradient), multiplied.Gradient.Shape),
+            BackwardFunction,
+            [multiplied, Biases]);
+        return Activation(sum);
 
-    public void UpdateParameters(ScalarTensorStorage lr)
+        void BackwardFunction(ITensor t)
+        {
+            Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, multiplied.Gradient, multiplied.Gradient);
+            Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, Biases.Gradient, Biases.Gradient);
+        }
+    }
+    public Value<TOut> Forward(Value<TIn> input) => Forward(new(input, input.Create(Compute.GetLike(input), input.Shape))).Value;
+
+    public void UpdateParameters(float lr)
     {
-        using var scaledWeights = Catalog.Scale(Weights.Gradient, lr);
-        Weights.Value = Catalog.Subtract(Weights.Value, scaledWeights);
-        Catalog.Fill(Weights.Gradient, 0.0);
-    
-        using var scaledBiases = Catalog.Scale(Biases.Gradient, lr);
-        Biases.Value = Catalog.Subtract(Biases.Value, scaledBiases);
-        Catalog.Fill(Biases.Gradient, 0.0);
+        Compute.Call(Weights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Weights.Value, Weights.Value, Weights.Value, lr);
+        Compute.Call(Biases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Biases.Value, Biases.Value, Biases.Value, lr);
+        ZeroGradients();
     }
     
     public void ZeroGradients()
     {
-        Catalog.Fill(Weights.Gradient, 0.0);
-        Catalog.Fill(Biases.Gradient, 0.0);
+        Weights.Gradient.UpdateWith(Weights.Gradient.Zeros());
+        Biases.Gradient.UpdateWith(Biases.Gradient.Zeros());
     }
 
     public void Write(BinaryWriter writer)
@@ -54,8 +59,8 @@ public class FfLayer<TIn, TOut, TWeights>  : ILayer<TIn, TOut>
     {
         var weightsValue = Catalog.ReadWeights(reader);
         var biasValue = Catalog.ReadBias(reader);
-        Weights = new Tensor<TWeights>(weightsValue, null, _ => { }, Catalog.ZeroGradient(weightsValue));
-        Biases = new Tensor<TOut>(biasValue, null, _ => { }, Catalog.ZeroGradient(biasValue));
+        Weights = new(weightsValue, weightsValue.Zeros());
+        Biases = new(biasValue, biasValue.Zeros());
     }
 }
 
@@ -63,21 +68,9 @@ public interface IFfCatalog<TIn, TOut, TWeights>
     where TIn : notnull where TOut : notnull where TWeights : notnull
 {
     public Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TIn> b);
-    public Tensor<TOut> Add(Tensor<TOut> a, Tensor<TOut> b);
-    public TWeights Subtract(TWeights a, TWeights b);
-    public TOut Subtract(TOut a, TOut b);
-    public TWeights Scale(TWeights a, ScalarTensorStorage scale);
-    public TOut Scale(TOut a, ScalarTensorStorage scale);
     
-    public TOut ZeroGradient(TOut a);
-    public TIn ZeroGradient(TIn a);
-    public TWeights ZeroGradient(TWeights a);
-
-    public void Fill(TOut a, double value);
-    public void Fill(TWeights a, double value);
-    
-    public void WriteWeights(BinaryWriter writer, TWeights weight);
-    public TWeights ReadWeights(BinaryReader reader);
-    public void WriteBias(BinaryWriter writer, TOut bias);
-    public TOut ReadBias(BinaryReader reader);
+    public void WriteWeights(BinaryWriter writer, Value<TWeights> weight);
+    public Value<TWeights> ReadWeights(BinaryReader reader);
+    public void WriteBias(BinaryWriter writer, Value<TOut> bias);
+    public Value<TOut> ReadBias(BinaryReader reader);
 }
