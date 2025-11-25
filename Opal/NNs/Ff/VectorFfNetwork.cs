@@ -38,8 +38,8 @@ public class VectorFfNetwork : FfNetwork<VectorTensorStorage, VectorTensorStorag
     {
         var catalog = new VectorCatalog();
     
-        MatrixTensor weights = ParameterGeneration.XavierMatrix(outputSize, inputSize);
-        VectorTensor biases = ParameterGeneration.HeVector(outputSize, inputSize);
+        MatrixTensor weights = TensorGeneration.XavierMatrix(outputSize, inputSize);
+        VectorTensor biases = TensorGeneration.HeVector(outputSize, inputSize);
     
         return new(weights, biases, activation, catalog);
     }

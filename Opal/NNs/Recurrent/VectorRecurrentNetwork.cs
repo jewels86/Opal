@@ -52,10 +52,10 @@ public class VectorRecurrentNetwork : RecurrentNetwork<VectorTensorStorage, Vect
     {
         var catalog = new VectorCatalog();
     
-        MatrixTensor inputWeights = ParameterGeneration.RandomMatrix(1, -1, outputSize, inputSize);
-        MatrixTensor recurrentWeights = ParameterGeneration.RandomMatrix(1, -1, outputSize, outputSize);
-        VectorTensor biases = ParameterGeneration.GenerateVector(_ => 0.0, outputSize);
-        VectorTensor state = ParameterGeneration.GenerateVector(_ => 0.0, outputSize);
+        MatrixTensor inputWeights = TensorGeneration.RandomMatrix(1, -1, outputSize, inputSize);
+        MatrixTensor recurrentWeights = TensorGeneration.RandomMatrix(1, -1, outputSize, outputSize);
+        VectorTensor biases = TensorGeneration.GenerateVector(_ => 0.0, outputSize);
+        VectorTensor state = TensorGeneration.GenerateVector(_ => 0.0, outputSize);
     
         return new(inputWeights, recurrentWeights, biases, state, activation, catalog);
     }

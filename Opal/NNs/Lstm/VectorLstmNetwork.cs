@@ -29,7 +29,7 @@ public class VectorLstmNetwork : LstmNetwork<VectorTensorStorage, VectorTensorSt
     protected override LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, TanhHiddenActivation, SigmoidHiddenActivation);
 
-    private static MatrixTensor CreateWeightArray(int outputSize, int weightSize) => ParameterGeneration.XavierMatrix(outputSize, weightSize);
+    private static MatrixTensor CreateWeightArray(int outputSize, int weightSize) => TensorGeneration.XavierMatrix(outputSize, weightSize);
 
     private static VectorTensor CreateBiasTensor(int size) =>  Operations.Fill(size, 0.0, 0.0);
 

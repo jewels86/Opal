@@ -2,46 +2,43 @@
 
 public static class BinaryWriting
 {
-    public static void WriteMatrix(BinaryWriter writer, double[,] matrix)
+    public static void WriteMatrix(BinaryWriter writer, float[,] matrix)
     {
         int rows = matrix.GetLength(0);
         int cols = matrix.GetLength(1);
         writer.Write(rows);
         writer.Write(cols);
         for (int i = 0; i < rows; i++)
-        {
-            for (int j = 0; j < cols; j++) writer.Write(matrix[i, j]);
-        }
+        for (int j = 0; j < cols; j++) 
+            writer.Write(matrix[i, j]);
     }
-    public static double[,] ReadMatrix(BinaryReader reader)
+    public static float[,] ReadMatrix(BinaryReader reader)
     {
         int rows = reader.ReadInt32();
         int cols = reader.ReadInt32();
-        var matrix = new double[rows, cols];
+        var matrix = new float[rows, cols];
         for (int i = 0; i < rows; i++)
-        {
-            for (int j = 0; j < cols; j++) matrix[i, j] = reader.ReadDouble();
-        }
-        
+        for (int j = 0; j < cols; j++) 
+            matrix[i, j] = (float)reader.ReadDouble();
         return matrix;
     }
-    public static void WriteVector(BinaryWriter writer, double[] vector)
+    public static void WriteVector(BinaryWriter writer, float[] vector)
     {
         writer.Write(vector.Length);
-        for (int i = 0; i < vector.Length; i++) writer.Write(vector[i]);
+        foreach (float t in vector) writer.Write(t);
     }
-    public static double[] ReadVector(BinaryReader reader)
+    public static float[] ReadVector(BinaryReader reader)
     {
         int len = reader.ReadInt32();
-        var v = new double[len];
-        for (int i = 0; i < len; i++) v[i] = reader.ReadDouble();
+        var v = new float[len];
+        for (int i = 0; i < len; i++) v[i] = (float)reader.ReadDouble();
         return v;
     }
     
     public static void WriteShape(BinaryWriter writer, int[] shape)
     {
         writer.Write(shape.Length);
-        for (int i = 0; i < shape.Length; i++) writer.Write(shape[i]);
+        foreach (int t in shape) writer.Write(t);
     }
 
     public static int[] ReadShape(BinaryReader reader)

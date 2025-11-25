@@ -2,7 +2,7 @@
 
 namespace Opal;
 
-public partial class Operations
+public static partial class Operations
 {
     #region Quick Helpers
     public static float[] Fill(float value, int size) => new float[size].Select(_ => value).ToArray();

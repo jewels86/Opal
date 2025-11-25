@@ -8,8 +8,8 @@ namespace Opal.Utilities
 {
 	public static class StringParsing
 	{
-		public static List<string> Stopwords = [];
-		public static List<string> Separators = [" ", "\n", "."];
+		public static List<string> Stopwords { get; set; } = StandardStopwords;
+		public static List<string> Separators { get; set; } = StandardSeparators;
 
 		public static string[] Parse(string input)
 		{
@@ -21,14 +21,8 @@ namespace Opal.Utilities
 				.Select(word => word.Trim())
 				.Select(word =>
 				{
-					foreach (var prefix in Prefixes)
-					{
-						if (word.StartsWith(prefix)) word = word.Substring(prefix.Length);
-					}
-					foreach (var suffix in Suffixes)
-					{
-						if (word.EndsWith(suffix)) word = word.Substring(0, word.Length - suffix.Length);
-					}
+					foreach (string prefix in Prefixes.Where(prefix => word.StartsWith(prefix))) word = word[prefix.Length..];
+					foreach (string suffix in Suffixes.Where(suffix => word.EndsWith(suffix))) word = word[..^suffix.Length];
 					return word;
 				})
 				.ToArray();
@@ -41,16 +35,16 @@ namespace Opal.Utilities
 			return words;
 		}
 
-		public static List<string> StandardStopwords = [
+		public static readonly List<string> StandardStopwords = [
 			"the", "is", "in", "and", "to", "a", "of", "that", "it", "for",
 			"on", "with", "as", "was", "at", "by", "an", "be", "this", "which",
 			"or", "from", "but", "not", "are", "all", "if", "can", "we", "you",
 		];
-		public static List<string> StandardSeparators = [
+		public static readonly List<string> StandardSeparators = [
 			" ", "\n", "\t", ".", ",", ";", ":", "!", "?", "\"", "(", ")", "[", "]", "{", "}", "<", ">", "/", "\\"
 		];
-		
-		public static List<string> Prefixes = [];
-		public static List<string> Suffixes = [];
+
+		public static List<string> Prefixes { get; } = [];
+		public static List<string> Suffixes { get; } = [];
 	}
 }
