@@ -17,6 +17,7 @@ public static partial class Operations
         DefaultAcceleratorIndex = Compute.RequestAccelerator();
     }
 
+    #region Value Operations
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, float>> ElementwiseFloatMulAndSubKernels { get; }
         = Compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> a, ArrayView1D<float, Stride1D.Dense> b, ArrayView1D<float, Stride1D.Dense> r, float alpha) =>
             r[i] = b[i] - a[i] * alpha);
@@ -26,9 +27,52 @@ public static partial class Operations
         = Compute.Load((i, a, b, c, r) => r[i] = a[i] + b[i] + c[i]);
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseLstmStateKernels { get; } 
-        = Compute.Load((i, forget, state, input, cell, r) => r[i] = forget[i] * state[i] + input[i] * cell[i]);
+        = Compute.Load((i, forget, state, input, cell, r) => 
+            r[i] = forget[i] * state[i] + input[i] * cell[i]);
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseAccumulateKernels { get; } = Compute.Load((i, a, r) => r[i] += a[i]);
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseNegAccumulateKernels { get; } = Compute.Load((i, a, r) => r[i] -= a[i]);
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>>> ElementwiseMulAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += b[i] * a[i]);
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>>> ElementwiseDivAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += a[i] / b[i]);
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseDivBackwardKernels { get; } 
+        = Compute.Load((i, a, b, grad, r) => r[i] += grad[i] * a[i] / (b[i] * b[i]));
+    public static Value<T> Multiply<T>(Value<T> a, Value<T> b) where T : notnull => 
+        a.Create(Compute.BinaryCall(Compute.ElementwiseMultiplyKernels, a.Data, b.Data), a.Shape);
+    public static void Multiply(IValue a, IValue b, IValue result) => 
+        Compute.BinaryCall(Compute.ElementwiseMultiplyKernels, a.Data, b.Data, result.Data);
+    
+    public static Value<T> Add<T>(Value<T> a, Value<T> b) where T : notnull => 
+        a.Create(Compute.BinaryCall(Compute.ElementwiseAddKernels, a.Data, b.Data), a.Shape);
+    public static void Add(IValue a, IValue b, IValue result) => 
+        Compute.BinaryCall(Compute.ElementwiseAddKernels, a.Data, b.Data, result.Data);
+    
+    public static Value<T> Subtract<T>(Value<T> a, Value<T> b) where T : notnull => 
+        a.Create(Compute.BinaryCall(Compute.ElementwiseSubtractKernels, a.Data, b.Data), a.Shape);
+    public static void Subtract(IValue a, IValue b, IValue result) => 
+        Compute.BinaryCall(Compute.ElementwiseSubtractKernels, a.Data, b.Data, result.Data);
+    
+    public static Value<T> Divide<T>(Value<T> a, Value<T> b) where T : notnull => 
+        a.Create(Compute.BinaryCall(Compute.ElementwiseDivideKernels, a.Data, b.Data), a.Shape);
+    public static void Divide<T>(Value<T> a, Value<T> b, Value<T> result) where T : notnull => 
+        Compute.BinaryCall(Compute.ElementwiseDivideKernels, a.Data, b.Data, result.Data);
+    
+    public static void Accumulate(IValue a, IValue result) => 
+        Compute.Call(a.AcceleratorIndex, ElementwiseAccumulateKernels, a.Data, result.Data);
+    public static void NegAccumulate(IValue a, IValue result) => 
+        Compute.Call(a.AcceleratorIndex, ElementwiseNegAccumulateKernels, a.Data, result.Data);
+    public static void MulAccumulate(IValue a, IValue b, IValue result) => 
+        Compute.Call(a.AcceleratorIndex, ElementwiseMulAccumulateKernels, a.Data, b.Data, result.Data);
+    public static void DivAccumulate(IValue a, IValue b, IValue result) => 
+        Compute.Call(a.AcceleratorIndex, ElementwiseDivAccumulateKernels, a.Data, b.Data, result.Data);
+    public static void DivBackward(IValue a, IValue b, IValue grad, IValue result) => 
+        Compute.Call(a.AcceleratorIndex, ElementwiseDivBackwardKernels, a.Data, b.Data, grad.Data, result.Data);
+    #endregion
     
 
+    #region Tensor Operations
+    #region Add & Subtract
     public static Tensor<T> Add<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
     {
         var result = Compute.GetLike(a.Value);
@@ -60,6 +104,46 @@ public static partial class Operations
             if (disposeC) c.Dispose();
         }
     }
+    public static Tensor<T> Subtract<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
+    {
+        return new(Subtract(a.Value, b.Value), a.Value.Zeros(), Backward, [a, b]);
+
+        void Backward(ITensor t)
+        {
+            Accumulate(t.Gradient, a.Gradient);
+            NegAccumulate(t.Gradient, b.Gradient);
+            if (disposeA) a.Dispose();
+            if (disposeB) b.Dispose();
+        }
+    }
+    #endregion
+    #region Multiply & Divide
+    public static Tensor<T> Multiply<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
+    {
+        return new(Multiply(a.Value, b.Value), a.Value.Zeros(), Backward, [a, b]);
+
+        void Backward(ITensor t)
+        {
+            MulAccumulate(t.Gradient, b.Value, a.Gradient);
+            MulAccumulate(t.Gradient, a.Value, b.Gradient);
+            if (disposeA) a.Dispose();
+            if (disposeB) b.Dispose();
+        }
+    }
+
+    public static Tensor<T> Divide<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
+    {
+        return new(Divide(a.Value, b.Value), a.Value.Zeros(), Backward, [a, b]);;
+        
+        void Backward(ITensor t)
+        {
+            DivAccumulate(t.Gradient, b.Value, a.Gradient);
+            DivBackward(a.Value, b.Value, t.Gradient, b.Gradient);
+            if (disposeA) a.Dispose();
+            if (disposeB) b.Dispose();
+        }
+    }
+    #endregion
 
     public static Tensor<T> Concat<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
     {
@@ -128,5 +212,6 @@ public static partial class Operations
             if (disposeState) state.Dispose();
         }
     }
+    #endregion
     #endregion
 }

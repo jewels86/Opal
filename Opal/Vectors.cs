@@ -13,7 +13,27 @@ public static partial class Operations
     public static Tensor<float[]> New(Value<float[]> vector, Value<float[]> gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) => 
         new(vector, gradient, backwardAction, inputs);
     
-    #region Vector Operations
+    #region Value Operations
+    public static Value<float> Dot(Value<float[]> a, Value<float[]> b)
+    {
+        var result = Compute.Get(a.AcceleratorIndex, 1);
+        Compute.Dot(a, b, result);
+        return new ScalarValue(result);
+    }
+    #endregion
     
+    #region Vector Operations
+    public static Tensor<float> Dot(Tensor<float[]> a, Tensor<float[]> b, bool disposeA = true, bool disposeB = true)
+    {
+        return new(Dot(a.Value, b.Value), new ScalarValue(0, a.AcceleratorIndex), Backward, [a, b]);
+        
+        void Backward(ITensor t)
+        {
+            MulAccumulate(t.Gradient, b.Value, a.Gradient);
+            MulAccumulate(t.Gradient, a.Value, b.Gradient);
+            if (disposeA) a.Dispose();
+            if (disposeB) b.Dispose();
+        }
+    }
     #endregion
 }

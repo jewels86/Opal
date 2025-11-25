@@ -1,15 +1,10 @@
 ﻿using System.Collections.Concurrent;
 using Opal.Utilities;
-using static Opal.Utilities.MathFunctions;
-using static Opal.Utilities.Logging.LogLevel;
-using static Opal.Utilities.Logging.AddedLogLevel;
 using static Opal.Utilities.Logging;
-using Opal.Utilities.Concurrency;
-using Opal.Utilities.Opal.Utilities;
 
 namespace Opal.Modules
 {
-	public class EmbeddingsModule<T> : IModule where T : notnull
+	public class EmbeddingsModule<T> where T : notnull
 	{
 		public string Name { get; }
 
@@ -31,8 +26,6 @@ namespace Opal.Modules
 		public SimHashGenerator<double[]> HashGenerator { get; }
 
 		public bool LoggingEnabled { get; set; } = false;
-
-		public LogLevel Baseline { get; set; } = LowDebug;
 
 		readonly private Func<ulong, int> _reduce;
 

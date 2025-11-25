@@ -11,4 +11,16 @@
     <PackageReference Include="ILGPU.Algorithms" Version="1.5.3" />
     <PackageReference Include="Jewels.Lazulite" Version="1.0.8-alpha" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Modules\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="Modules\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Modules\**" />
+  </ItemGroup>
 </Project>
