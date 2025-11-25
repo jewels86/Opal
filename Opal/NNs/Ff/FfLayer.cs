@@ -21,9 +21,9 @@ public class FfLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut> where TIn : notnul
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
         var multiplied = Catalog.Multiply(Weights, input);
-        var sum = new Tensor<TOut>(Compute.BinaryCall(
-                Compute.ElementwiseAddKernels, multiplied.Value, Biases.Value), 
-            multiplied.Gradient.Create(Compute.GetLike(multiplied.Gradient), multiplied.Gradient.Shape),
+        using var sum = new Tensor<TOut>(
+            Compute.BinaryCall(Compute.ElementwiseAddKernels, multiplied.Value, Biases.Value), 
+            multiplied.Gradient.Zeros(),
             BackwardFunction,
             [multiplied, Biases]);
         return Activation(sum);
@@ -32,6 +32,7 @@ public class FfLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut> where TIn : notnul
         {
             Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, multiplied.Gradient, multiplied.Gradient);
             Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, Biases.Gradient, Biases.Gradient);
+            multiplied.Dispose();
         }
     }
     public Value<TOut> Forward(Value<TIn> input) => Forward(new(input, input.Create(Compute.GetLike(input), input.Shape))).Value;
