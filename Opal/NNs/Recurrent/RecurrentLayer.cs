@@ -29,23 +29,9 @@ public class RecurrentLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
     {
         var inputPart = Catalog.Multiply(InputWeights, input);
         var hiddenPart = Catalog.Multiply(RecurrentWeights, State);
-        var resultBuffer = inputPart.Value.Zeros();
-        Compute.Call(inputPart.AcceleratorIndex, Operations.ElementwiseTripleAddKernels, inputPart.Value, hiddenPart.Value, Biases.Value, resultBuffer);
-        var result = new Tensor<TOut>(
-            inputPart.Value.Create(resultBuffer, inputPart.Value.Shape), 
-            inputPart.Gradient.Zeros(), BackwardFunction, [inputPart, hiddenPart, Biases]);
-        var output = Activation(result);
+        var output = Activation(Operations.Add(inputPart, hiddenPart, Biases));
         State = output;
         return output;
-
-        void BackwardFunction(ITensor t)
-        {
-            Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, inputPart.Gradient, inputPart.Gradient);
-            Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, hiddenPart.Gradient, hiddenPart.Gradient);
-            Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, Biases.Gradient, Biases.Gradient);
-            inputPart.Dispose();
-            hiddenPart.Dispose();
-        }
     }
 
     public Value<TOut> Forward(Value<TIn> input) => Forward(new Tensor<TIn>(input, input.Zeros())).Value;

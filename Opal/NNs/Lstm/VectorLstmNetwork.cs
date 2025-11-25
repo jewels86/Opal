@@ -1,44 +1,35 @@
 ﻿using System.Numerics;
-using Opal.Autograd.Catalogs;
-using Opal.Mathematics;
+using Jewels.Lazulite;
 using Opal.Utilities;
 
 namespace Opal.NNs.Lstm;
 
-public class VectorLstmNetwork : LstmNetwork<VectorTensorStorage, VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage, MatrixTensorStorage, MatrixTensorStorage>
+public class VectorLstmNetwork : LstmNetwork<float[], float[], float[], float[,], float[,], float[,]>
 {
     public VectorLstmNetwork(
         int inputSize,
         int hiddenSize,
         int outputSize,
         int numHiddenLayers,
-        Func<VectorTensor, VectorTensor> sigmoidActivation,
-        Func<VectorTensor, VectorTensor> tanhActivation,
-        Func<VectorTensor, VectorTensorStorage, ScalarTensor> lossFunction)
+        Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction)
         : base(
-            CreateLayer(inputSize, hiddenSize, tanhActivation, sigmoidActivation),
-            CreateHiddenLayers(numHiddenLayers, hiddenSize, tanhActivation, sigmoidActivation),
-            CreateLayer(hiddenSize, outputSize, tanhActivation, sigmoidActivation),
-            lossFunction,
-            hiddenSize,
-            sigmoidActivation, tanhActivation,
-            tanhActivation, sigmoidActivation)
+            CreateLayer(inputSize, hiddenSize),
+            CreateHiddenLayers(numHiddenLayers, hiddenSize),
+            CreateLayer(hiddenSize, outputSize),
+            lossFunction, hiddenSize)
     {
     }
     
-    protected override LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateHiddenLayer() =>
-        CreateLayer(HiddenSize, HiddenSize, TanhHiddenActivation, SigmoidHiddenActivation);
+    protected override LstmLayer<float[], float[], float[,]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize);
 
-    private static MatrixTensor CreateWeightArray(int outputSize, int weightSize) => TensorGeneration.XavierMatrix(outputSize, weightSize);
+    private static Tensor<float[,]> CreateWeightArray(int outputSize, int weightSize) => TensorGeneration.XavierMatrix(outputSize, weightSize);
 
-    private static VectorTensor CreateBiasTensor(int size) =>  Operations.Fill(size, 0.0, 0.0);
+    private static Tensor<float[]> CreateBiasTensor(int size) =>  TensorGeneration.HeVector(size, size);
 
 
-    private static LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage> CreateLayer(
+    private static LstmLayer<float[], float[], float[,]> CreateLayer(
         int inputSize,
-        int outputSize,
-        Func<VectorTensor, VectorTensor> tanhActivation,
-        Func<VectorTensor, VectorTensor> sigmoidActivation)
+        int outputSize)
     {
         var catalog = new VectorCatalog();
         
@@ -54,17 +45,17 @@ public class VectorLstmNetwork : LstmNetwork<VectorTensorStorage, VectorTensorSt
         var decoderCellWeights = CreateWeightArray(outputSize, decoderConcatSize);
         var decoderOutputWeights = CreateWeightArray(outputSize, decoderConcatSize);
         
-        var encoderForgetBiases = Operations.Fill(outputSize, 1.0, 0.0);
+        var encoderForgetBiases = TensorGeneration.GenerateVector(_ => 0, outputSize);
         var encoderInputBiases = CreateBiasTensor(outputSize);
         var encoderCellBiases = CreateBiasTensor(outputSize);
         var encoderOutputBiases = CreateBiasTensor(outputSize);
         
-        var decoderForgetBiases = Operations.Fill(outputSize, 1.0, 0.0);
+        var decoderForgetBiases = TensorGeneration.GenerateVector(_ => 0, outputSize);
         var decoderInputBiases = CreateBiasTensor(outputSize);
         var decoderCellBiases = CreateBiasTensor(outputSize);
         var decoderOutputBiases = CreateBiasTensor(outputSize);
         
-        return new LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>
+        return new LstmLayer<float[], float[], float[,]>
         {
             EncoderForgetWeights = encoderForgetWeights,
             EncoderInputWeights = encoderInputWeights,
@@ -82,23 +73,17 @@ public class VectorLstmNetwork : LstmNetwork<VectorTensorStorage, VectorTensorSt
             DecoderInputBiases = decoderInputBiases,
             DecoderCellBiases = decoderCellBiases,
             DecoderOutputBiases = decoderOutputBiases,
-            SigmoidActivation = sigmoidActivation,
-            TanhActivation = tanhActivation,
-            DefaultHidden = Operations.NewVector(Vectors.Zeros(outputSize)),
-            DefaultState = Operations.NewVector(Vectors.Zeros(outputSize)),
+            DefaultHidden = Operations.New(Operations.Fill(0, outputSize)),
+            DefaultState = Operations.New(Operations.Fill(0, outputSize)),
             Catalog = catalog
         };
     }
 
-    private static List<LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>> CreateHiddenLayers(
-        int numLayers,
-        int hiddenSize,
-        Func<VectorTensor, VectorTensor> tanhActivation,
-        Func<VectorTensor, VectorTensor> sigmoidActivation)
+    private static List<LstmLayer<float[], float[], float[,]>> CreateHiddenLayers(int numLayers, int hiddenSize)
     {
-        var layers = new List<LstmLayer<VectorTensorStorage, VectorTensorStorage, MatrixTensorStorage>>();
+        var layers = new List<LstmLayer<float[], float[], float[,]>>();
         for (int i = 0; i < numLayers; i++)
-            layers.Add(CreateLayer(hiddenSize, hiddenSize, tanhActivation, sigmoidActivation));
+            layers.Add(CreateLayer(hiddenSize, hiddenSize));
         return layers;
     }
 }
