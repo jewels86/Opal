@@ -1,19 +1,19 @@
-﻿using Opal.Mathematics;
+﻿using Jewels.Lazulite;
 using Opal.Utilities;
 
 namespace Opal.NNs.Recurrent;
 
 public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden, TWeightsOut>
     : INetwork<TIn, TOut>, ISequentialNetwork<TIn, TOut>
-    where TIn : notnull, IDisposable
-    where TOut : notnull, IDisposable
-    where THidden : notnull, IDisposable
-    where TWeightsIn : notnull, IDisposable
-    where TWeightsHidden : notnull, IDisposable
-    where TWeightsOut : notnull, IDisposable
+    where TIn : notnull
+    where TOut : notnull
+    where THidden : notnull
+    where TWeightsIn : notnull
+    where TWeightsHidden : notnull
+    where TWeightsOut : notnull
 {
     protected RecurrentNetwork(int hiddenSize, RecurrentLayer<TIn, THidden, TWeightsIn> inputLayer, List<RecurrentLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
-        RecurrentLayer<THidden, TOut, TWeightsOut> outputLayer, Func<Tensor<TOut>, TOut, ScalarTensor> lossFunction, Func<Tensor<TOut>, Tensor<TOut>> outputActivation, 
+        RecurrentLayer<THidden, TOut, TWeightsOut> outputLayer, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> lossFunction, Func<Tensor<TOut>, Tensor<TOut>> outputActivation, 
         Func<Tensor<THidden>, Tensor<THidden>> hiddenActivation)
     {
         InputLayer = inputLayer;
@@ -32,91 +32,54 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsH
     public List<RecurrentLayer<THidden, THidden, TWeightsHidden>> HiddenLayers { get; }
     public RecurrentLayer<THidden, TOut, TWeightsOut> OutputLayer { get; }
     
-    public Func<Tensor<TOut>, TOut, ScalarTensor> LossFunction { get; }
+    public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; }
     public Func<Tensor<TOut>, Tensor<TOut>> OutputActivation { get; }
     public Func<Tensor<THidden>, Tensor<THidden>> HiddenActivation { get; }
     
-    public TOut Forward(TIn input)
+    public Value<TOut> Forward(Value<TIn> input)
     {
-        THidden hidden = InputLayer.Forward(input);
-        foreach (var layer in HiddenLayers)
-            hidden = layer.Forward(hidden);
+        var hidden = InputLayer.Forward(input);
+        hidden = HiddenLayers.Aggregate(hidden, (current, layer) => layer.Forward(current));
         return OutputLayer.Forward(hidden);
     }
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        Tensor<THidden> hidden = InputLayer.Forward(input);
-        foreach (var layer in HiddenLayers)
-            hidden = layer.Forward(hidden);
+        var hidden = InputLayer.Forward(input);
+        hidden = HiddenLayers.Aggregate(hidden, (current, layer) => layer.Forward(current));
         return OutputLayer.Forward(hidden);
     }
 
-    public Tensor<TOut> ForwardSequence(Tensor<TIn>[] sequence) =>
-        NetworkHelpers.ForwardSequence(ResetState, Forward, sequence);
+    public Tensor<TOut> ForwardSequence(Tensor<TIn>[] sequence) => NetworkHelpers.ForwardSequence(ResetState, Forward, sequence);
+    public Value<TOut> ForwardSequence(Value<TIn>[] sequence) => 
+        ForwardSequence(sequence.Select(x => new Tensor<TIn>(x, x.Zeros())).ToArray()).Value;
 
-    public TOut ForwardSequence(TIn[] sequence) => 
-        ForwardSequence(
-            sequence.Select(i => new Tensor<TIn>(i, null, _ => { }, 
-                InputLayer.Catalog.ZeroGradient(i))).ToArray()).Value;
-
-    public void UpdateParameters(double learningRate)
+    public void UpdateParameters(float lr)
     {
-        InputLayer.UpdateParameters(learningRate);
+        InputLayer.UpdateParameters(lr);
         foreach (var layer in HiddenLayers)
-            layer.UpdateParameters(learningRate);
-        OutputLayer.UpdateParameters(learningRate);
+            layer.UpdateParameters(lr);
+        OutputLayer.UpdateParameters(lr);
     }
 
     public void ResetState()
     {
-        var inputZero = InputLayer.Catalog.ZeroGradient(InputLayer.State.Value);
-        InputLayer.State = new Tensor<THidden>(
-            inputZero,
-            null,
-            _ => { },
-            inputZero);
-        
-        foreach (var layer in HiddenLayers)
-        {
-            layer.State = new Tensor<THidden>(
-                inputZero,
-                null,
-                _ => { },
-                inputZero);
-        }
-        
-        
-        OutputLayer.State = new Tensor<TOut>(
-            OutputLayer.Catalog.ZeroGradient(OutputLayer.State.Value),
-            null,
-            _ => { },
-            OutputLayer.Catalog.ZeroGradient(OutputLayer.State.Value));
+        InputLayer.State = new Tensor<THidden>(InputLayer.State.Value.Zeros(), InputLayer.State.Gradient.Zeros());
+        foreach (var layer in HiddenLayers) layer.State = new Tensor<THidden>(layer.State.Value.Zeros(), layer.State.Gradient.Zeros());
+        OutputLayer.State = new Tensor<TOut>(OutputLayer.State.Value.Zeros(), OutputLayer.State.Gradient.Zeros());
     }
 
-    public void Train(TIn[] inputs, TOut[] targets, int epochs, double learningRate) =>
-        NetworkHelpers.Train(
-            i => InputLayer.Catalog.ZeroGradient(i), 
-            Forward, LossFunction, 
-            () => UpdateParameters(learningRate), 
-            inputs, targets, epochs);
+    public void Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) =>
+        NetworkHelpers.Train(Forward, LossFunction, () => UpdateParameters(lr), inputs, targets, epochs);
 
-    public double EvaluateLoss(TIn[] inputs, TOut[] targets) =>
-        NetworkHelpers.EvaluateLoss(
-            i => InputLayer.Catalog.ZeroGradient(i), 
-            Forward, LossFunction, 
-            inputs, targets);
+    public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
+        NetworkHelpers.EvaluateLoss(Forward, LossFunction, inputs, targets);
 
-    public void TrainSequences(TIn[][] sequences, TOut[] targets, int epochs, double learningRate) =>
-        NetworkHelpers.TrainSequences(
-            i => InputLayer.Catalog.ZeroGradient(i), Forward, LossFunction, 
-            () => UpdateParameters(learningRate), ResetState,
-            sequences, targets, epochs);
+    public void TrainSequences(Value<TIn>[][] sequences, Value<TOut>[] targets, int epochs, float lr) =>
+        NetworkHelpers.TrainSequences(ForwardSequence, LossFunction, ResetState, () => UpdateParameters(lr), sequences, targets, epochs);
     
-    public double EvaluateLossSequences(TIn[][] sequences, TOut[] targets) =>
-        NetworkHelpers.EvaluateLossSequences(
-            i => InputLayer.Catalog.ZeroGradient(i), Forward, LossFunction, ResetState,
-            sequences, targets);
+    public float EvaluateLossSequences(Value<TIn>[][] sequences, Value<TOut>[] targets) =>
+        NetworkHelpers.EvaluateLossSequences(ForwardSequence, LossFunction, sequences, targets);
     
     public void Save(string path) => NetworkHelpers.Save(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, path);
     public void Load(string path) => NetworkHelpers.Load(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, CreateHiddenLayer, path);

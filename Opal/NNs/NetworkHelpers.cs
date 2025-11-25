@@ -6,14 +6,30 @@ namespace Opal.NNs;
 
 public static class NetworkHelpers
 {
+    #region Forward
+    public static Tensor<TOut> ForwardSequence<TIn, TOut>(
+        Action resetState, Func<Tensor<TIn>, Tensor<TOut>> forward,
+        Tensor<TIn>[] sequence)
+        where TIn : notnull where TOut : notnull
+    {
+        resetState();
+        Tensor<TOut> output = null!;
+        foreach (var input in sequence)
+        {
+            output.Dispose();
+            output = forward(input);
+        }
+        return output;
+    }
+    #endregion
+    #region Training
     public static void Train<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action update,
         Value<TIn>[] inputs, Value<TOut>[] targets, int epochs)
         where TIn : notnull where TOut : notnull
     {
         int aidx = inputs[0].AcceleratorIndex;
-        var one = Compute.Get(aidx, 1);
-        one.CopyFromCPU([1.0f]);
+        var one = Compute.Make(aidx, 1, 1);
         for (int epoch = 0; epoch < epochs; epoch++)
         {
             for (int i = 0; i < inputs.Length; i++)
@@ -28,6 +44,29 @@ public static class NetworkHelpers
         }
     }
 
+    public static void TrainSequences<TIn, TOut>(Func<Tensor<TIn>[], Tensor<TOut>> forward, 
+        Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action reset, Action update,
+        Value<TIn>[][] inputs, Value<TOut>[] targets, int epochs)
+        where TIn : notnull where TOut : notnull
+    {
+        int aidx = inputs[0][0].AcceleratorIndex;
+        var one = Compute.Make(aidx, 1, 1);
+        for (int epoch = 0; epoch < epochs; epoch++)
+        {
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                reset();
+                using var outputTensor = forward(inputs[i].Select(t => new Tensor<TIn>(t, t.Zeros())).ToArray());
+                using var lossTensor = loss(outputTensor, targets[i]);
+                lossTensor.Backward(one);
+                update();
+            }
+            Compute.Flush(aidx);
+        }
+    }
+    #endregion
+
+    #region Evaluation
     public static float EvaluateLoss<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss,
         Value<TIn>[] inputs, Value<TOut>[] targets)
@@ -45,7 +84,26 @@ public static class NetworkHelpers
         }
         return totalLoss.ToHost() / inputs.Length;
     }
+    
+    public static float EvaluateLossSequences<TIn, TOut>(
+        Func<Tensor<TIn>[], Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss,
+        Value<TIn>[][] inputs, Value<TOut>[] targets)
+        where TIn : notnull where TOut : notnull
+    {
+        int aidx = inputs[0][0].AcceleratorIndex;
+        using var totalLoss = new ScalarValue(0, aidx);
+        for (int i = 0; i < inputs.Length; i++)
+        {
+            using var outputTensor = forward(inputs[i].Select(t => new Tensor<TIn>(t, t.Zeros())).ToArray());
+            using var lossTensor = loss(outputTensor, targets[i]);
+            totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
+            Compute.Flush(aidx);
+        }
+        return totalLoss.ToHost() / inputs.Length;
+    }
+    #endregion
 
+    #region Serialization
     public static void Save<TIn, THidden, TOut>(
         ILayer<TIn, THidden> inputLayer, List<ILayer<THidden, THidden>> hiddenLayers, ILayer<THidden, TOut> outputLayer, 
         string path)
@@ -78,4 +136,5 @@ public static class NetworkHelpers
         }
         outputLayer.Read(reader);
     }
+    #endregion
 }

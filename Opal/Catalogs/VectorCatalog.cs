@@ -1,11 +1,12 @@
 ﻿using System.Diagnostics;
 using Jewels.Lazulite;
 using Opal.NNs.Ff;
+using Opal.NNs.Recurrent;
 using Opal.Utilities;
 
 namespace Opal;
 
-public class VectorCatalog : IFfCatalog<float[], float[], float[,]>
+public class VectorCatalog : IFfCatalog<float[], float[], float[,]>, IRecurrentCatalog<float[], float[], float[,]>
 {
     public int AcceleratorIndex { get; set; } = Operations.DefaultAcceleratorIndex;
 
@@ -36,4 +37,6 @@ public class VectorCatalog : IFfCatalog<float[], float[], float[,]>
     public Value<float[,]> ReadWeights(BinaryReader reader) => new MatrixValue(BinaryWriting.ReadMatrix(reader), AcceleratorIndex);
     public void WriteBias(BinaryWriter writer, Value<float[]> bias) => BinaryWriting.WriteVector(writer, bias.ToHost());
     public void WriteWeights(BinaryWriter writer, Value<float[,]> weights) => BinaryWriting.WriteMatrix(writer, weights.ToHost());
+    public Value<float[]> ReadState(BinaryReader reader) => new VectorValue(BinaryWriting.ReadVector(reader), AcceleratorIndex);
+    public void WriteState(BinaryWriter writer, Value<float[]> state) => BinaryWriting.WriteVector(writer, state.ToHost());
 }
