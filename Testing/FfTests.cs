@@ -16,7 +16,7 @@ public class FfTests
         float[] targets = [1, -1];
 
         VectorFfNetwork network = new(
-            1, 8, 1, 1,
+            1, 1, 1, 1,
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
         
@@ -24,13 +24,12 @@ public class FfTests
         Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
         
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
-        Stopwatch sw = new();
-        sw.Start();
+        Stopwatch sw = Stopwatch.StartNew();
         var initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         sw.Stop();
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Training for 1000 epochs...");
-        sw.Start();
+        sw.Restart();
         network.Train(inputStorage, targetStorage, 1000, 0.01f);
         sw.Stop();
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);

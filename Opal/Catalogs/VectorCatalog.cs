@@ -11,7 +11,9 @@ public class VectorCatalog : IFfCatalog<float[], float[], float[,]>, IRecurrentC
 {
     public int AcceleratorIndex { get; set; } = Operations.DefaultAcceleratorIndex;
 
+    public Tensor<float[]> Multiply(Tensor<float[,]> a, Tensor<float[]> b, bool disposeA = true, bool disposeB = true) => Operations.Multiply(a, b, disposeA, disposeB);
     public Tensor<float[]> Multiply(Tensor<float[,]> a, Tensor<float[]> b) => Operations.Multiply(a, b);
+
     public Tensor<float[]> ConcatHidden(Tensor<float[]> a, Tensor<float[]> b) => Operations.Concat(a, b);
     public Tensor<float[]> ConcatInputHidden(Tensor<float[]> a, Tensor<float[]> b) => Operations.Concat(a, b);
 

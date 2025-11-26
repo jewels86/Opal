@@ -6,7 +6,7 @@ namespace Opal;
 public interface ITensor : IDisposable 
 {
     public List<ITensor> Inputs { get; }
-    public void Backward(object initialGradient);
+    public void Backward(IValue initialGradient);
     public Action<ITensor> BackwardAction { get; set; }
     public IValue Value { get; }
     public IValue Gradient { get; }
@@ -29,13 +29,13 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
 
     #region Backward Pass
     // initialGradient should be of the same type as the tensor's value
-    public void Backward(object initialGradient)
+    public void Backward(IValue initialGradient)
     {
-        if (initialGradient is not Tensor<T> valueGrad) throw new ArgumentException("Invalid gradient type");
+        if (initialGradient is not Value<T> valueGrad) throw new ArgumentException("Invalid gradient type");
         (List<ITensor> topo, HashSet<ITensor> visited) = ([], []);
         Build(this, topo, visited);
 
-        Gradient = valueGrad;
+        Gradient.UpdateWith(valueGrad);
         foreach (var node in topo.AsEnumerable().Reverse()) node.BackwardAction(node);
     }
 
@@ -52,7 +52,6 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
         if (_isDisposed) return;
         Value.Dispose();
         Gradient.Dispose();
-        foreach (var input in Inputs) input.Dispose();
         _isDisposed = true;
     }
     

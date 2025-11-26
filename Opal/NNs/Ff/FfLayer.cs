@@ -20,27 +20,16 @@ public class FfLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut> where TIn : notnul
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        var multiplied = Catalog.Multiply(Weights, input);
-        using var sum = new Tensor<TOut>(
-            Compute.BinaryCall(Compute.ElementwiseAddKernels, multiplied.Value, Biases.Value), 
-            multiplied.Gradient.Zeros(),
-            BackwardFunction,
-            [multiplied, Biases]);
+        var multiplied = Catalog.Multiply(Weights, input, disposeA: false);
+        var sum = Operations.Add(multiplied, Biases, disposeA: false);
         return Activation(sum);
-
-        void BackwardFunction(ITensor t)
-        {
-            Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, multiplied.Gradient, multiplied.Gradient);
-            Compute.BinaryCall(Compute.ElementwiseAddKernels, t.Gradient.Data, Biases.Gradient, Biases.Gradient);
-            multiplied.Dispose();
-        }
     }
     public Value<TOut> Forward(Value<TIn> input) => Forward(new(input, input.Create(Compute.GetLike(input), input.Shape))).Value;
 
     public void UpdateParameters(float lr)
     {
-        Compute.Call(Weights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Weights.Value, Weights.Value, Weights.Value, lr);
-        Compute.Call(Biases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Biases.Value, Biases.Value, Biases.Value, lr);
+        Compute.Call(Weights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Weights.Gradient, Weights.Value, Weights.Value, lr);
+        Compute.Call(Biases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Biases.Gradient, Biases.Value, Biases.Value, lr);
         ZeroGradients();
     }
     
@@ -68,7 +57,7 @@ public class FfLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut> where TIn : notnul
 public interface IFfCatalog<TIn, TOut, TWeights>
     where TIn : notnull where TOut : notnull where TWeights : notnull
 {
-    public Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TIn> b);
+    public Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TIn> b, bool disposeA = true, bool disposeB = true);
     
     public void WriteWeights(BinaryWriter writer, Value<TWeights> weight);
     public Value<TWeights> ReadWeights(BinaryReader reader);

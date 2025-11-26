@@ -46,7 +46,7 @@ public abstract class FfNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden, 
         return OutputLayer.Forward(hidden);
     }
 
-    protected void UpdateParameters(float lr)
+    public void UpdateParameters(float lr)
     {
         InputLayer.UpdateParameters(lr);
         foreach (var layer in HiddenLayers)

@@ -42,7 +42,7 @@ public static partial class Operations
         }
     }
 
-    public static Tensor<float[]> Multiply(Tensor<float[,]> matrix, Tensor<float[]> vector)
+    public static Tensor<float[]> Multiply(Tensor<float[,]> matrix, Tensor<float[]> vector, bool disposeA = true, bool disposeB = true)
     {
         var aidx = matrix.AcceleratorIndex;
         var m = matrix.Value.Shape[0];
@@ -54,15 +54,16 @@ public static partial class Operations
 
         void Backward(ITensor tensor)
         {
-            var gradMatrix = Compute.Get(aidx, m * n);
+            var gradMatrix = Compute.GetTemp(aidx, m * n);
             Compute.MatrixMultiply(tensor.Gradient.Data, vector.Value.Data, gradMatrix, m, 1, n);
             Compute.Call(aidx, Compute.ElementwiseAddKernels, matrix.Gradient.Data, gradMatrix, matrix.Gradient.Data);
 
-            var gradVector = Compute.Get(aidx, n);
-            Compute.MatrixVectorMultiply(matrix.Value.Data, tensor.Gradient.Data, gradVector, n, m, transposeMatrix: true);
+            var gradVector = Compute.GetTemp(aidx, n);
+            Compute.MatrixVectorMultiply(matrix.Value.Data, tensor.Gradient.Data, gradVector, m, n, transposeMatrix: true);
             Compute.Call(aidx, Compute.ElementwiseAddKernels, vector.Gradient.Data, gradVector, vector.Gradient.Data);
-    
-            Compute.Return(gradMatrix, gradVector);
+            
+            if (disposeA) matrix.Dispose();
+            if (disposeB) vector.Dispose();
         }
     }
 }

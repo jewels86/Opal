@@ -9,8 +9,8 @@ public static class ActivationFunctions
 {
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ReLuBackwardKernels { get; }
         = Compute.Load((i, x, grad, r) => r[i] += x[i] > 0 ? grad[i] : 0.0f);
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> SigmoidKernels { get; } 
-        = Compute.Load((i, x, grad, r) => r[i] = 1 / (1 + XMath.Exp(-x[i])));
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> SigmoidKernels { get; } 
+        = Compute.Load((i, x, r) => r[i] = 1 / (1 + XMath.Exp(-x[i])));
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> SigmoidBackwardKernels { get; } 
         = Compute.Load((i, x, grad, r) => r[i] += grad[i] * x[i] * (1 - x[i]));
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> TanhBackwardKernels { get; } 
@@ -39,16 +39,16 @@ public static class ActivationFunctions
             (a, _) => t => Compute.Call(a, ReLuBackwardKernels, x.Value.Data, t.Gradient.Data, x.Gradient.Data));
 
     public static Tensor<T> Sigmoid<T>(Tensor<T> x) where T : notnull => ActivationFunction(x, 
-        (a, r) => Compute.Call(a, SigmoidKernels, x.Value.Data, r, x.Gradient.Data),
-            (a, _) => t => Compute.Call(a, SigmoidBackwardKernels, x.Value.Data, t.Gradient.Data, x.Gradient.Data));
+        (a, r) => Compute.Call(a, SigmoidKernels, x.Value.Data, r),
+            (a, r) => t => Compute.Call(a, SigmoidBackwardKernels, r, t.Gradient.Data, x.Gradient.Data));
 
     public static Tensor<T> Tanh<T>(Tensor<T> x) where T : notnull =>
         ActivationFunction(x, (a, r) => Compute.Call(a, Compute.ElementwiseTanhKernels, x.Value.Data, r),
-            (a, _) => t => Compute.Call(a, TanhBackwardKernels, x.Value.Data, t.Gradient.Data, x.Gradient.Data));
+            (a, r) => t => Compute.Call(a, TanhBackwardKernels, r, t.Gradient.Data, x.Gradient.Data));
 
     public static Tensor<T> Identity<T>(Tensor<T> x) where T : notnull =>
         ActivationFunction(x, (a, r) => Compute.Call(a, Compute.CopyKernels, x.Value.Data, r), 
-            (a, r) => t => Compute.Call(a, AccumulateGradientKernels, t.Gradient.Data, r));
+            (a, r) => t => Compute.Call(a, AccumulateGradientKernels, t.Gradient.Data, x.Gradient.Data));
 
     public static Tensor<T> Softmax<T>(Tensor<T> x) where T : notnull =>
         ActivationFunction(x, (a, r) =>

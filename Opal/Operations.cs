@@ -43,7 +43,7 @@ public static partial class Operations
         ArrayView1D<float, Stride1D.Dense>>> ElementwiseDivAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += a[i] / b[i]);
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseDivBackwardKernels { get; } 
-        = Compute.Load((i, a, b, grad, r) => r[i] += grad[i] * a[i] / (b[i] * b[i]));
+        = Compute.Load((i, a, b, grad, r) => r[i] -= grad[i] * a[i] / (b[i] * b[i]));
     
     public static Value<T> Multiply<T>(Value<T> a, Value<T> b) where T : notnull => 
         a.Create(Compute.BinaryCall(Compute.ElementwiseMultiplyKernels, a.Data, b.Data), a.Shape);
@@ -168,8 +168,8 @@ public static partial class Operations
             Compute.Call(aidx, Compute.SliceKernels, t.Gradient.Data, slicedA, 0, a.Value.TotalSize);
             Compute.Call(aidx, Compute.SliceKernels, t.Gradient.Data, slicedB, a.Value.TotalSize, b.Value.TotalSize);
             
-            Compute.Call(aidx, Compute.ElementwiseAddKernels, t.Gradient.Data, a.Gradient, a.Gradient);
-            Compute.Call(aidx, Compute.ElementwiseAddKernels, t.Gradient.Data, b.Gradient, b.Gradient);
+            Compute.Call(aidx, Compute.ElementwiseAddKernels, slicedA, a.Gradient, a.Gradient);
+            Compute.Call(aidx, Compute.ElementwiseAddKernels, slicedB, b.Gradient, b.Gradient);
             
             if (disposeA) a.Dispose();
             if (disposeB) b.Dispose();
@@ -190,14 +190,15 @@ public static partial class Operations
         return new(state.Value.Create(result, state.Value.Shape), state.Value.Zeros(), Backward, [forget, state, input, cell]);
 
         void Backward(ITensor t)
-        {
+        { 
+            // these are REALLY wrong
             int aidx = t.Value.AcceleratorIndex;
             Compute.Call(aidx, ElementwiseTripleAddKernels, forget.Gradient.Data, state.Gradient.Data, t.Gradient.Data, forget.Gradient.Data);
             Compute.Call(aidx, ElementwiseTripleAddKernels, state.Gradient.Data, forget.Gradient.Data, t.Gradient.Data, state.Gradient.Data);
             Compute.Call(aidx, ElementwiseTripleAddKernels, input.Gradient.Data, cell.Gradient.Data, t.Gradient.Data, input.Gradient.Data);
             Compute.Call(aidx, ElementwiseTripleAddKernels, cell.Gradient.Data, input.Gradient.Data, t.Gradient.Data, cell.Gradient.Data);
             if (disposeForget) forget.Dispose();
-            if (disposeState) state.Dispose();
+            if (disposeState) state.Dispose(); 
             if (disposeInput) input.Dispose();
             if (disposeCell) cell.Dispose();
         }
@@ -211,6 +212,7 @@ public static partial class Operations
         
         void Backward(ITensor t)
         {
+            // these are REALLY wrong
             Compute.BinaryCallChain(t.Gradient.Data, output.Gradient.Data, 
                 (Compute.ElementwiseMultiplyKernels, state.Gradient.Data), 
                 (Compute.ElementwiseAddKernels, output.Gradient.Data));
