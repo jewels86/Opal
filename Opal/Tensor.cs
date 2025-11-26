@@ -31,7 +31,7 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
     // initialGradient should be of the same type as the tensor's value
     public void Backward(object initialGradient)
     {
-        if (initialGradient is not Value<T> valueGrad) throw new ArgumentException("Invalid gradient type");
+        if (initialGradient is not Tensor<T> valueGrad) throw new ArgumentException("Invalid gradient type");
         (List<ITensor> topo, HashSet<ITensor> visited) = ([], []);
         Build(this, topo, visited);
 

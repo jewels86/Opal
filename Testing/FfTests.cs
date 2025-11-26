@@ -20,16 +20,15 @@ public class FfTests
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
         
-        Value<float[]>[] inputStorage = inputs.Select(x => new VectorValue([x], _aidx)).ToArray();
-        Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray();
+        Value<float[]>[] inputStorage = inputs.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
+        Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
         
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
-        Stopwatch sw = Stopwatch.StartNew();
+        Stopwatch sw = new();
         sw.Start();
         var initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
-        Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         sw.Stop();
-        sw = Stopwatch.StartNew();
+        Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Training for 1000 epochs...");
         sw.Start();
         network.Train(inputStorage, targetStorage, 1000, 0.01f);

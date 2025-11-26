@@ -27,12 +27,11 @@ public static class LossFunctions
             throw new ArgumentException("Vectors must be of the same length.");
         
         var aidx = predicted.Value.AcceleratorIndex;
-        var result = Compute.Get(aidx, predicted.Value.TotalSize);
-        var (temp1, temp2) = (Compute.Get(aidx, predicted.Value.TotalSize), Compute.Get(aidx, 2));
+        var result = Compute.Get(aidx, 1);
+        var (temp1, temp2) = (Compute.GetTemp(aidx, predicted.Value.TotalSize), Compute.GetTemp(aidx, 1));
         Compute.Call(predicted.Value.AcceleratorIndex, MeanSquaredErrorKernels, predicted.Value.Data, actual.Data, temp1);
         Compute.Sum(temp1, temp2);
         Compute.Call(aidx, Compute.ElementwiseFloatMultiplyKernels, temp2, result, 1 / (float)actual.TotalSize);
-        Compute.Return(temp1, temp2);
         
         return Operations.New(new ScalarValue(result), new ScalarValue(0.0f, aidx), Backward, [predicted]);
         

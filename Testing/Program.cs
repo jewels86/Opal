@@ -8,6 +8,7 @@ internal static class Program
 {
     public static void Main()
     {
+        //Operations.DefaultAcceleratorIndex = Compute.RequestAccelerator(false);
         //Operations.GpuAvailable = false;
         Console.WriteLine($"GPU Available: {Compute.GpuInUse}");
         //ScalarMultiplyDiagnosticTest.RunAll();

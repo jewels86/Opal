@@ -9,7 +9,7 @@ namespace Opal;
 
 public static partial class Operations
 {
-    public static int DefaultAcceleratorIndex { get; }
+    public static int DefaultAcceleratorIndex { get; set; }
 
     static Operations()
     {

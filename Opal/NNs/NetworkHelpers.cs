@@ -29,7 +29,7 @@ public static class NetworkHelpers
         where TIn : notnull where TOut : notnull
     {
         int aidx = inputs[0].AcceleratorIndex;
-        var one = Compute.Make(aidx, 1, 1);
+        var one = Operations.New(new ScalarValue(Compute.Make(aidx, 1, 1)));
         for (int epoch = 0; epoch < epochs; epoch++)
         {
             for (int i = 0; i < inputs.Length; i++)
