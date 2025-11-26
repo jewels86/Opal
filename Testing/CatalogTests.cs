@@ -1,4 +1,5 @@
-﻿using Opal.Autograd.Catalogs;
+﻿using Opal;
+using Opal.Autograd.Catalogs;
 using Opal.Mathematics;
 using static Opal.Autograd.Operations;
 
@@ -33,89 +34,7 @@ public static class CatalogTests
         return true;
     }
 
-    public static void TestScalarCatalog()
-    {
-        Console.WriteLine("Testing ScalarCatalog...\n");
-        var catalog = new ScalarCatalog();
-        
-        // Test 1: Vector * Scalar -> Sum (this is Multiply in catalog)
-        Console.WriteLine("Test 1: Multiply (vector * scalar then sum)");
-        var weights = NewVector([2.0, 3.0, 4.0]);
-        var input = NewScalar(5.0, 0.0);
-        
-        var result = catalog.Multiply(weights, input);
-        var resultValue = result.Value.ToHost();
-        Console.WriteLine($"  Forward: {resultValue} (expected {2*5 + 3*5 + 4*5} = 45)");
-        Assert(ApproxEqual(resultValue, 45.0), "Forward pass failed");
-        
-        result.Backward(NewDefaultScalarStorage(1.0));
-        var weightsGrad = weights.Gradient.ToHost();
-        var inputGrad = input.Gradient.ToHost();
-        
-        Console.WriteLine($"  Weights gradient: [{string.Join(", ", weightsGrad)}]");
-        Console.WriteLine($"  Expected: [5.0, 5.0, 5.0]");
-        Console.WriteLine($"  Input gradient: {inputGrad} (expected {2+3+4} = 9)");
-        
-        Assert(VectorApproxEqual(weightsGrad, [5.0, 5.0, 5.0]), "Weights gradient failed");
-        Assert(ApproxEqual(inputGrad, 9.0), "Input gradient failed");
-        Console.WriteLine("  ✓ Passed\n");
-        
-        // Test 2: Scalar Add
-        Console.WriteLine("Test 2: Add (scalar + scalar)");
-        var a = NewScalar(3.0, 0.0);
-        var b = NewScalar(7.0, 0.0);
-        
-        var sum = catalog.Add(a, b);
-        Console.WriteLine($"  Forward: {sum.Value.ToHost()} (expected 10.0)");
-        Assert(ApproxEqual(sum.Value.ToHost(), 10.0), "Add forward failed");
-        
-        sum.Backward(NewCpuScalarStorage(1.0));
-        Console.WriteLine($"  da: {a.Gradient.ToHost()} (expected 1.0)");
-        Console.WriteLine($"  db: {b.Gradient.ToHost()} (expected 1.0)");
-        Assert(ApproxEqual(a.Gradient.ToHost(), 1.0), "Add gradient a failed");
-        Assert(ApproxEqual(b.Gradient.ToHost(), 1.0), "Add gradient b failed");
-        Console.WriteLine("  ✓ Passed\n");
-        
-        // Test 3: Vector Subtract (storage operation)
-        Console.WriteLine("Test 3: Subtract (vector storage)");
-        var vecA = NewDefaultVectorStorage([10.0, 20.0, 30.0]);
-        var vecB = NewDefaultVectorStorage([1.0, 2.0, 3.0]);
-        var diff = catalog.Subtract(vecA, vecB);
-        var diffHost = diff.ToHost();
-        Console.WriteLine($"  Result: [{string.Join(", ", diffHost)}]");
-        Console.WriteLine($"  Expected: [9.0, 18.0, 27.0]");
-        Assert(VectorApproxEqual(diffHost, [9.0, 18.0, 27.0]), "Vector subtract failed");
-        Console.WriteLine("  ✓ Passed\n");
-        
-        // Test 4: Vector Scale (storage operation)
-        Console.WriteLine("Test 4: Scale (vector storage)");
-        var vec = NewDefaultVectorStorage([2.0, 4.0, 6.0]);
-        var scaled = catalog.Scale(vec, 0.5);
-        var scaledHost = scaled.ToHost();
-        Console.WriteLine($"  Result: [{string.Join(", ", scaledHost)}]");
-        Console.WriteLine($"  Expected: [1.0, 2.0, 3.0]");
-        Assert(VectorApproxEqual(scaledHost, [1.0, 2.0, 3.0]), "Vector scale failed");
-        Console.WriteLine("  ✓ Passed\n");
-        
-        // Test 5: Parameter update simulation
-        Console.WriteLine("Test 5: Parameter update simulation");
-        var param = NewDefaultVectorStorage([1.0, 2.0, 3.0]);
-        var grad = NewDefaultVectorStorage([0.1, 0.2, 0.3]);
-        var lr = 0.1;
-        
-        var update = catalog.Scale(grad, lr);
-        var newParam = catalog.Subtract(param, update);
-        var newParamHost = newParam.ToHost();
-        
-        Console.WriteLine($"  Original: [{string.Join(", ", param.ToHost())}]");
-        Console.WriteLine($"  Gradient: [{string.Join(", ", grad.ToHost())}]");
-        Console.WriteLine($"  Updated:  [{string.Join(", ", newParamHost)}]");
-        Console.WriteLine($"  Expected: [0.99, 1.98, 2.97]");
-        Assert(VectorApproxEqual(newParamHost, [0.99, 1.98, 2.97]), "Parameter update failed");
-        Console.WriteLine("  ✓ Passed\n");
-        
-        Console.WriteLine("✓ All ScalarCatalog tests passed!\n");
-    }
+    
     
     public static void TestVectorCatalog()
     {

@@ -58,7 +58,7 @@ public abstract class FfNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden, 
         NetworkHelpers.Train(Forward, LossFunction, () => UpdateParameters(lr), inputs, targets, epochs);
 
 
-    public double EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
+    public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
         NetworkHelpers.EvaluateLoss(Forward, LossFunction, inputs, targets);
 
     public void Save(string path) => NetworkHelpers.Save(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, path);

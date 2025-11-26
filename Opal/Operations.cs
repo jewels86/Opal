@@ -17,6 +17,10 @@ public static partial class Operations
         DefaultAcceleratorIndex = Compute.RequestAccelerator();
     }
 
+    public static void Dispose() => Compute.ClearAll();
+
+    public static void Sync() => Compute.Synchronize(DefaultAcceleratorIndex);
+    
     #region Value Operations
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, float>> ElementwiseFloatMulAndSubKernels { get; }
         = Compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> a, ArrayView1D<float, Stride1D.Dense> b, ArrayView1D<float, Stride1D.Dense> r, float alpha) =>
@@ -34,10 +38,13 @@ public static partial class Operations
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>>> ElementwiseMulAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += b[i] * a[i]);
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>>> ElementwiseMulScalarAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += b[0] * a[i]);
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>>> ElementwiseDivAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += a[i] / b[i]);
     public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseDivBackwardKernels { get; } 
         = Compute.Load((i, a, b, grad, r) => r[i] += grad[i] * a[i] / (b[i] * b[i]));
+    
     public static Value<T> Multiply<T>(Value<T> a, Value<T> b) where T : notnull => 
         a.Create(Compute.BinaryCall(Compute.ElementwiseMultiplyKernels, a.Data, b.Data), a.Shape);
     public static void Multiply(IValue a, IValue b, IValue result) => 
@@ -59,13 +66,15 @@ public static partial class Operations
         Compute.BinaryCall(Compute.ElementwiseDivideKernels, a.Data, b.Data, result.Data);
     
     public static void Accumulate(IValue a, IValue result) => 
-        Compute.Call(a.AcceleratorIndex, ElementwiseAccumulateKernels, a.Data, result.Data);
+        Compute.UnaryCall(ElementwiseAccumulateKernels, a.Data, result.Data);
     public static void NegAccumulate(IValue a, IValue result) => 
-        Compute.Call(a.AcceleratorIndex, ElementwiseNegAccumulateKernels, a.Data, result.Data);
+        Compute.UnaryCall(ElementwiseNegAccumulateKernels, a.Data, result.Data);
     public static void MulAccumulate(IValue a, IValue b, IValue result) => 
-        Compute.Call(a.AcceleratorIndex, ElementwiseMulAccumulateKernels, a.Data, b.Data, result.Data);
+        Compute.BinaryCall(ElementwiseMulAccumulateKernels, a.Data, b.Data, result.Data);
+    public static void MulScalarAccumulate(IValue a, IValue b, IValue result) => 
+        Compute.BinaryCall(ElementwiseMulScalarAccumulateKernels, a.Data, b.Data, result.Data);
     public static void DivAccumulate(IValue a, IValue b, IValue result) => 
-        Compute.Call(a.AcceleratorIndex, ElementwiseDivAccumulateKernels, a.Data, b.Data, result.Data);
+        Compute.BinaryCall(ElementwiseDivAccumulateKernels, a.Data, b.Data, result.Data);
     public static void DivBackward(IValue a, IValue b, IValue grad, IValue result) => 
         Compute.Call(a.AcceleratorIndex, ElementwiseDivBackwardKernels, a.Data, b.Data, grad.Data, result.Data);
     #endregion
@@ -81,8 +90,8 @@ public static partial class Operations
 
         void Backward(ITensor t)
         {
-            Compute.Call(a.AcceleratorIndex, Compute.ElementwiseAddKernels, t.Gradient.Data, a.Gradient.Data, a.Gradient.Data);
-            Compute.Call(b.AcceleratorIndex, Compute.ElementwiseAddKernels, t.Gradient.Data, b.Gradient.Data, b.Gradient.Data);
+            Accumulate(t.Gradient, a.Gradient);
+            Accumulate(t.Gradient, b.Gradient);
             if (disposeA) a.Dispose();
             if (disposeB) b.Dispose();
         }

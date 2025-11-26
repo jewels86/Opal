@@ -12,6 +12,8 @@ public static partial class Operations
         new(new VectorValue(vector, aidx ?? DefaultAcceleratorIndex), new VectorValue(gradient ?? Fill(0.0f, vector.Length), aidx ?? DefaultAcceleratorIndex), backwardAction, inputs);
     public static Tensor<float[]> New(Value<float[]> vector, Value<float[]> gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) => 
         new(vector, gradient, backwardAction, inputs);
+
+    public static Value<float[]> NewValue(float[] vector) => new VectorValue(vector, DefaultAcceleratorIndex);
     
     #region Value Operations
     public static Value<float> Dot(Value<float[]> a, Value<float[]> b)
@@ -29,8 +31,8 @@ public static partial class Operations
         
         void Backward(ITensor t)
         {
-            MulAccumulate(t.Gradient, b.Value, a.Gradient);
-            MulAccumulate(t.Gradient, a.Value, b.Gradient);
+            MulScalarAccumulate(b.Value, t.Gradient, a.Gradient);
+            MulScalarAccumulate(a.Value, t.Gradient, b.Gradient);
             if (disposeA) a.Dispose();
             if (disposeB) b.Dispose();
         }

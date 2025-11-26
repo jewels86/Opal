@@ -21,8 +21,7 @@ public static class LossFunctions
             ArrayView1D<float, Stride1D.Dense> pred, ArrayView1D<float, Stride1D.Dense> target, 
             ArrayView1D<float, Stride1D.Dense> grad, float n) => grad[i] += -target[i] / pred[i] / n);
     
-    #region Vectors
-    public static Tensor<float> MeanSquaredError(Tensor<float[]> predicted, VectorValue actual)
+    public static Tensor<float> MeanSquaredError(Tensor<float[]> predicted, Value<float[]> actual)
     {
         if (predicted.Value.TotalSize != actual.TotalSize)
             throw new ArgumentException("Vectors must be of the same length.");
@@ -74,6 +73,5 @@ public static class LossFunctions
         
         return CrossEntropy(predicted, new VectorValue(actual, predicted.Value.AcceleratorIndex));
     }
-    #endregion
 }
 

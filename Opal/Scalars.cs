@@ -8,4 +8,6 @@ public partial class Operations
         new(new ScalarValue(scalar, aidx ?? DefaultAcceleratorIndex), new ScalarValue(gradient ?? 0, aidx ?? DefaultAcceleratorIndex), backwardAction, inputs);
     public static Tensor<float> New(Value<float> scalar, Value<float> gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) 
         => new(scalar, gradient, backwardAction, inputs);
+
+    public static Value<float> NewValue(float scalar) => new ScalarValue(scalar, DefaultAcceleratorIndex);
 }

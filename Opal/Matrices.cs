@@ -19,11 +19,11 @@ public static partial class Operations
             new MatrixValue(gradient ?? Fill(0, matrix.GetLength(0), matrix.GetLength(1)), aidx ?? DefaultAcceleratorIndex),
             backwardAction, inputs);
     
-    public static Tensor<float[]> Multiply(Tensor<float[,]> a, Tensor<float[]> b)
+    public static Tensor<float[,]> Multiply(Tensor<float[,]> a, Tensor<float[,]> b)
     {
         var aidx = a.AcceleratorIndex;
-        var result = new VectorValue(Compute.Get(aidx, a.Value.Shape[0] * b.Value.Shape[1]));
-        Compute.MatrixMultiply(a.Value, b.Value, result, a.Value.Shape[0], b.Value.Shape[1], b.Value.Shape[0]);
+        var result = new MatrixValue(Compute.Get(aidx, a.Value.Shape[0] * b.Value.Shape[1]), [a.Value.Shape[0], b.Value.Shape[1]]);
+        Compute.MatrixMultiply(a.Value, b.Value, result, a.Value.Shape[0], b.Value.Shape[0], b.Value.Shape[1]);
         return new(result, result.Zeros(), Backward, [a, b]);
 
         void Backward(ITensor tensor)
@@ -39,6 +39,30 @@ public static partial class Operations
             Compute.Call(aidx, Compute.ElementwiseAddKernels, b.Gradient.Data, gradB, b.Gradient.Data);
         
             Compute.Return(gradA, gradB);
+        }
+    }
+
+    public static Tensor<float[]> Multiply(Tensor<float[,]> matrix, Tensor<float[]> vector)
+    {
+        var aidx = matrix.AcceleratorIndex;
+        var m = matrix.Value.Shape[0];
+        var n = matrix.Value.Shape[1];
+    
+        var result = new VectorValue(Compute.Get(aidx, m));
+        Compute.MatrixVectorMultiply(matrix.Value, vector.Value, result, m, n);
+        return new(result, result.Zeros(), Backward, [matrix, vector]);
+
+        void Backward(ITensor tensor)
+        {
+            var gradMatrix = Compute.Get(aidx, m * n);
+            Compute.MatrixMultiply(tensor.Gradient.Data, vector.Value.Data, gradMatrix, m, 1, n);
+            Compute.Call(aidx, Compute.ElementwiseAddKernels, matrix.Gradient.Data, gradMatrix, matrix.Gradient.Data);
+
+            var gradVector = Compute.Get(aidx, n);
+            Compute.MatrixVectorMultiply(matrix.Value.Data, tensor.Gradient.Data, gradVector, n, m, transposeMatrix: true);
+            Compute.Call(aidx, Compute.ElementwiseAddKernels, vector.Gradient.Data, gradVector, vector.Gradient.Data);
+    
+            Compute.Return(gradMatrix, gradVector);
         }
     }
 }

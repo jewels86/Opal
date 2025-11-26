@@ -1,4 +1,5 @@
 ﻿using System.Runtime.InteropServices;
+using Jewels.Lazulite;
 using Opal;
 
 namespace Testing;
@@ -8,16 +9,18 @@ internal static class Program
     public static void Main()
     {
         //Operations.GpuAvailable = false;
-        Console.WriteLine($"GPU Available: {Operations.GpuAvailable}");
+        Console.WriteLine($"GPU Available: {Compute.GpuInUse}");
         //ScalarMultiplyDiagnosticTest.RunAll();
         //FfTests.OverfittingTest();
         //DiagnosticTest.RunAll();
         //GpuTest.TestGpuBufferZeroing();
         //CatalogTests.RunAll();
         //AutogradTests.RunAll();
-        //FfTests.RunAll();
+        //AutogradTests.RunAll();
+        FfTests.RunAll();
         //RecurrentTests.RunAll();
-        Operations.GpuAvailable = true;
-        LstmTests.RunAll();
+        //Operations.GpuAvailable = true;
+        //LstmTests.RunAll();
+        Operations.Dispose();
     }
 }
