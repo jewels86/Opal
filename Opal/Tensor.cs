@@ -10,22 +10,26 @@ public interface ITensor : IDisposable
     public Action<ITensor> BackwardAction { get; set; }
     public IValue Value { get; }
     public IValue Gradient { get; }
+
+    public ITensor Create(IValue value, IValue gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null);
 }
 
-public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backwardFunction = null, List<ITensor>? inputs = null) : ITensor
+public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) : ITensor
     where T : notnull
 {
     public Value<T> Value { get; set; } = value;
     public Value<T> Gradient { get; set; } = gradient;
-    public Action<ITensor> BackwardAction { get; set; } = backwardFunction ?? (_ => { });
+    public Action<ITensor> BackwardAction { get; set; } = backwardAction ?? (_ => { });
     public List<ITensor> Inputs { get; set; } = inputs ?? [];
     
     public int AcceleratorIndex => Value.AcceleratorIndex;
     
     IValue ITensor.Value => Value;
     IValue ITensor.Gradient => Gradient;
-    
-    private bool _isDisposed = false;
+    public ITensor Create(IValue value, IValue gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) => 
+        new Tensor<T>((Value<T>)value, (Value<T>)gradient, backwardAction, inputs);
+
+    private bool _isDisposed;
 
     #region Backward Pass
     // initialGradient should be of the same type as the tensor's value

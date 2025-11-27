@@ -19,7 +19,26 @@ public static partial class Operations
             new MatrixValue(gradient ?? Fill(0, matrix.GetLength(0), matrix.GetLength(1)), aidx ?? DefaultAcceleratorIndex),
             backwardAction, inputs);
     
-    public static Tensor<float[,]> Multiply(Tensor<float[,]> a, Tensor<float[,]> b)
+    #region Kernels
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>>
+        AddVectorToMatrixKernel { get; } = Compute.Load((Index1D i,
+            ArrayView1D<float, Stride1D.Dense> matrix,
+            ArrayView1D<float, Stride1D.Dense> vector,
+            ArrayView1D<float, Stride1D.Dense> result, int n) => result[i] = matrix[i] + vector[i % n]);
+
+    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int>> AddVectorToMatrixBackwardKernel { get; }
+        = Compute.Load((Index1D col,
+            ArrayView1D<float, Stride1D.Dense> grad,
+            ArrayView1D<float, Stride1D.Dense> vectorGrad, int cols, int rows) =>
+        {
+            float sum = 0;
+            for (int row = 0; row < rows; row++) sum += grad[row * cols + col];
+            vectorGrad[col] += sum;
+        });
+    #endregion
+    
+    #region Multiplication
+    public static Tensor<float[,]> MatrixMultiply(Tensor<float[,]> a, Tensor<float[,]> b, bool disposeA = true, bool disposeB = true)
     {
         var aidx = a.AcceleratorIndex;
         var result = new MatrixValue(Compute.Get(aidx, a.Value.Shape[0] * b.Value.Shape[1]), [a.Value.Shape[0], b.Value.Shape[1]]);
