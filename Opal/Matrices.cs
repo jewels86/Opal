@@ -1,4 +1,6 @@
-﻿using Jewels.Lazulite;
+﻿using ILGPU;
+using ILGPU.Runtime;
+using Jewels.Lazulite;
 
 namespace Opal;
 
@@ -85,4 +87,5 @@ public static partial class Operations
             if (disposeB) vector.Dispose();
         }
     }
+    #endregion
 }

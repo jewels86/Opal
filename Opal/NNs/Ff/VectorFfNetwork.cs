@@ -3,7 +3,7 @@ using Opal.Utilities;
 
 namespace Opal.NNs.Ff;
 
-public class VectorFfNetwork : FfNetwork<float[], float[], float[], float[,], float[,], float[,]>
+public class VectorFfNetwork : FfNetwork<float[], float[], float[,], float[,]>
 {
     public VectorFfNetwork(
         int inputSize,

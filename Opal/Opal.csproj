@@ -9,11 +9,12 @@
   <ItemGroup>
     <PackageReference Include="ILGPU" Version="1.5.3" />
     <PackageReference Include="ILGPU.Algorithms" Version="1.5.3" />
-    <PackageReference Include="Jewels.Lazulite" Version="1.0.14-alpha" />
+    <PackageReference Include="Jewels.Lazulite" Version="1.0.18-alpha" />
   </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="Modules\**" />
+    <Compile Remove="NNs\Ff\ScalarFfNetwork.cs" />
   </ItemGroup>
 
   <ItemGroup>
