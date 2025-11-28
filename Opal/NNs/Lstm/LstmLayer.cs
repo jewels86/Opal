@@ -48,7 +48,7 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
         Tensor<TOut> outputGate = Sigmoid(Operations.Add(outputWeighted, EncoderOutputBiases));
         
         Tensor<TOut> newState = Operations.LstmState(forgetGate, state, inputGate, cellGate);
-        Tensor<TOut> newHidden = Operations.LstmHidden(outputGate, Tanh(newState));
+        Tensor<TOut> newHidden = Operations.Multiply(outputGate, Tanh(newState));
         
         return (newHidden, newState);
     }
@@ -68,7 +68,7 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
         Tensor<TOut> outputGate = Sigmoid(Operations.Add(outputWeighted, DecoderOutputBiases));
         
         Tensor<TOut> newState = Operations.LstmState(forgetGate, state, inputGate, cellGate);
-        Tensor<TOut> newHidden = Operations.LstmHidden(outputGate, Tanh(newState));
+        Tensor<TOut> newHidden = Operations.Multiply(outputGate, Tanh(newState));
         
         return (newHidden, newState);
     }

@@ -1,9 +1,6 @@
 ﻿using ILGPU;
-using ILGPU.Algorithms;
 using ILGPU.Runtime;
-using ILGPU.Runtime.Cuda;
 using Jewels.Lazulite;
-using Opal.NNs;
 
 namespace Opal;
 
@@ -143,8 +140,8 @@ public static partial class Operations
 
     public static Tensor<T> Divide<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
     {
-        return new(Divide(a.Value, b.Value), a.Value.Zeros(), Backward, [a, b]);;
-        
+        return new(Divide(a.Value, b.Value), a.Value.Zeros(), Backward, [a, b]);
+
         void Backward(ITensor t)
         {
             DivAccumulate(t.Gradient, b.Value, a.Gradient);
@@ -157,7 +154,6 @@ public static partial class Operations
 
     public static Tensor<T> Concat<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
     {
-        int aidx = a.AcceleratorIndex;
         var result = Compute.Get(a.Value.AcceleratorIndex, a.Value.TotalSize + b.Value.TotalSize);
         Compute.Call(Compute.ConcatKernels, a.Value.Data, b.Value.Data, result);
         return new(a.Value.Create(result, a.Value.Shape), a.Value.Zeros(), Backward, [a, b]);
@@ -191,37 +187,15 @@ public static partial class Operations
         return new(state.Value.Create(result, state.Value.Shape), state.Value.Zeros(), Backward, [forget, state, input, cell]);
 
         void Backward(ITensor t)
-        { 
-            // these are REALLY wrong
-            int aidx = t.Value.AcceleratorIndex;
-            Compute.Call(ElementwiseTripleAddKernels, forget.Gradient.Data, state.Gradient.Data, t.Gradient.Data, forget.Gradient.Data);
-            Compute.Call(ElementwiseTripleAddKernels, state.Gradient.Data, forget.Gradient.Data, t.Gradient.Data, state.Gradient.Data);
-            Compute.Call(ElementwiseTripleAddKernels, input.Gradient.Data, cell.Gradient.Data, t.Gradient.Data, input.Gradient.Data);
-            Compute.Call(ElementwiseTripleAddKernels, cell.Gradient.Data, input.Gradient.Data, t.Gradient.Data, cell.Gradient.Data);
+        {
+            MulAccumulate(state.Value, t.Gradient, forget.Gradient);
+            MulAccumulate(forget.Value, t.Gradient, state.Gradient);
+            MulAccumulate(input.Value, t.Gradient, cell.Gradient);
+            MulAccumulate(cell.Value, t.Gradient, input.Gradient);
             if (disposeForget) forget.Dispose();
             if (disposeState) state.Dispose(); 
             if (disposeInput) input.Dispose();
             if (disposeCell) cell.Dispose();
-        }
-    }
-
-    public static Tensor<T> LstmHidden<T>(Tensor<T> output, Tensor<T> state, bool disposeOutput = true, bool disposeState = true) where T : notnull
-    {
-        var result = Compute.GetLike(output.Value);
-        Compute.Call(Compute.ElementwiseMultiplyKernels, output.Value, state.Value, result);
-        return new(state.Value.Create(result, state.Value.Shape), state.Value.Zeros(), Backward, [output, state]);
-        
-        void Backward(ITensor t)
-        {
-            // these are REALLY wrong
-            Compute.BinaryCallChain(t.Gradient.Data, output.Gradient.Data, 
-                (Compute.ElementwiseMultiplyKernels, state.Gradient.Data), 
-                (Compute.ElementwiseAddKernels, output.Gradient.Data));
-            Compute.BinaryCallChain(t.Gradient.Data, state.Gradient.Data, 
-                (Compute.ElementwiseMultiplyKernels, output.Gradient.Data), 
-                (Compute.ElementwiseAddKernels, state.Gradient.Data));
-            if (disposeOutput) output.Dispose();
-            if (disposeState) state.Dispose();
         }
     }
     #endregion
