@@ -7,14 +7,7 @@ namespace Opal;
 public static partial class Operations
 {
     internal static Compute Compute => Compute.Instance;
-    
-    public static int DefaultAcceleratorIndex { get; set; }
-
-    static Operations()
-    {
-        Compute.InitializeKernels();
-        DefaultAcceleratorIndex = Compute.RequestAccelerator();
-    }
+    public static int DefaultAcceleratorIndex { get; set; } = -1;
 
     public static void Dispose() => Compute.ClearAll();
 

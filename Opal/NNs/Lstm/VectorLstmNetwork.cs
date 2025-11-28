@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using Jewels.Lazulite;
+﻿using Jewels.Lazulite;
 using Opal.Utilities;
 
 namespace Opal.NNs.Lstm;

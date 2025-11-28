@@ -1,6 +1,4 @@
-﻿using Jewels.Lazulite;
-
-namespace Opal.Utilities;
+﻿namespace Opal.Utilities;
 
 public static class TensorGeneration
 {

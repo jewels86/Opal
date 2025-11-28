@@ -1,5 +1,4 @@
 ﻿using Jewels.Lazulite;
-using Opal.Utilities;
 
 namespace Opal.NNs.Recurrent;
 

@@ -1,7 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
-using ILGPU.IR.Values;
-using Jewels.Lazulite;
-using Opal.Utilities;
+﻿using Jewels.Lazulite;
 using static Opal.ActivationFunctions;
 
 namespace Opal.NNs.Lstm;
@@ -214,25 +211,25 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
 
     public void Read(BinaryReader reader)
     {
-        EncoderForgetWeights.Value = Catalog.ReadWeights(reader);
-        EncoderInputWeights.Value = Catalog.ReadWeights(reader);
-        EncoderCellWeights.Value = Catalog.ReadWeights(reader);
-        EncoderOutputWeights.Value = Catalog.ReadWeights(reader);
+        EncoderForgetWeights.Value.UpdateWith(Catalog.ReadWeights(reader));
+        EncoderInputWeights.Value.UpdateWith(Catalog.ReadWeights(reader));
+        EncoderCellWeights.Value.UpdateWith(Catalog.ReadWeights(reader));
+        EncoderOutputWeights.Value.UpdateWith(Catalog.ReadWeights(reader));
 
-        EncoderForgetBiases.Value = Catalog.ReadBias(reader);
-        EncoderInputBiases.Value = Catalog.ReadBias(reader);
-        EncoderCellBiases.Value = Catalog.ReadBias(reader);
-        EncoderOutputBiases.Value = Catalog.ReadBias(reader);
+        EncoderForgetBiases.Value.UpdateWith(Catalog.ReadBias(reader));
+        EncoderInputBiases.Value.UpdateWith(Catalog.ReadBias(reader));
+        EncoderCellBiases.Value.UpdateWith(Catalog.ReadBias(reader));
+        EncoderOutputBiases.Value.UpdateWith(Catalog.ReadBias(reader));
 
-        DecoderForgetWeights.Value = Catalog.ReadWeights(reader);
-        DecoderInputWeights.Value = Catalog.ReadWeights(reader);
-        DecoderCellWeights.Value = Catalog.ReadWeights(reader);
-        DecoderOutputWeights.Value = Catalog.ReadWeights(reader);
+        DecoderForgetWeights.Value.UpdateWith(Catalog.ReadWeights(reader));
+        DecoderInputWeights.Value.UpdateWith(Catalog.ReadWeights(reader));
+        DecoderCellWeights.Value.UpdateWith(Catalog.ReadWeights(reader));
+        DecoderOutputWeights.Value.UpdateWith(Catalog.ReadWeights(reader));
 
-        DecoderForgetBiases.Value = Catalog.ReadBias(reader);
-        DecoderInputBiases.Value = Catalog.ReadBias(reader);
-        DecoderCellBiases.Value = Catalog.ReadBias(reader);
-        DecoderOutputBiases.Value = Catalog.ReadBias(reader);  
+        DecoderForgetBiases.Value.UpdateWith(Catalog.ReadBias(reader));
+        DecoderInputBiases.Value.UpdateWith(Catalog.ReadBias(reader));
+        DecoderCellBiases.Value.UpdateWith(Catalog.ReadBias(reader));
+        DecoderOutputBiases.Value.UpdateWith(Catalog.ReadBias(reader));  
     }
     #endregion
 }

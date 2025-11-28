@@ -1,6 +1,4 @@
-﻿
-using ILGPU.Runtime;
-using Jewels.Lazulite;
+﻿using Jewels.Lazulite;
 
 namespace Opal.NNs;
 
@@ -31,18 +29,18 @@ public static class NetworkHelpers
         where TIn : notnull where TOut : notnull
     {
         int aidx = inputs[0].AcceleratorIndex;
-        var one = new ScalarValue(compute.Make(aidx, 1, 1));
+        var one = new ScalarValue(compute.Make(aidx, 1, 1)).NonDisposable(); 
         for (int epoch = 0; epoch < epochs; epoch++)
         {
             for (int i = 0; i < inputs.Length; i++)
             {
-                using var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros());
+                using var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()).NonDisposable(); 
                 using var outputTensor = forward(inputTensor);
                 using var lossTensor = loss(outputTensor, targets[i]);
                 lossTensor.Backward(one);
                 update();
             }
-            compute.Flush(aidx);
+            //compute.Flush(aidx);
         }
     }
 
@@ -78,7 +76,7 @@ public static class NetworkHelpers
         using var totalLoss = new ScalarValue(0, aidx);
         for (int i = 0; i < inputs.Length; i++)
         {
-            using var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros());
+            using var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()).NonDisposable();
             using var outputTensor = forward(inputTensor);
             using var lossTensor = loss(outputTensor, targets[i]);
             totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());

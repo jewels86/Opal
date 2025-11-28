@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Xml.Serialization;
 using Jewels.Lazulite;
 using Opal;
 using Opal.NNs.Ff;
@@ -22,18 +23,21 @@ public static class FfTests
         
         Value<float[]>[] inputStorage = inputs.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
         Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
-        
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
+        
+        OpalContext.GlobalContext.EnsureInitialization();
         Stopwatch sw = Stopwatch.StartNew();
         var initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         sw.Stop();
+        
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Training for 1000 epochs...");
         sw.Restart();
         network.Train(inputStorage, targetStorage, 1000, 0.01f);
         sw.Stop();
+        
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
-        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000:F2} ms per epoch)");
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000f:F2} ms per epoch)");
     }
     
     public static void OverfittingTestBatched()
@@ -52,18 +56,20 @@ public static class FfTests
     
         Value<float[,]>[] batchedInputs = [Operations.Stack(inputStorage)];
         Value<float[,]>[] batchedTargets = [Operations.Stack(targetStorage)];
-    
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
+        
+        OpalContext.GlobalContext.EnsureInitialization();
         Stopwatch sw = Stopwatch.StartNew();
         var initialLoss = network.EvaluateLossBatches(batchedInputs, batchedTargets);
         sw.Stop();
+        
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Training for 1000 epochs...");
         sw.Restart();
         network.TrainBatches(batchedInputs, batchedTargets, 1000, 0.01f);
         sw.Stop();
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
-        Console.WriteLine($"Evaluating the loss: {network.EvaluateLossBatches(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000:F2} ms per epoch)");
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLossBatches(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000f:F2} ms per epoch)");
     }
     
     public static void NonlinearFunctionTest()

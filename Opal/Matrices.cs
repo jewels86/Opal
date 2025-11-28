@@ -6,8 +6,6 @@ namespace Opal;
 
 public static partial class Operations
 {
-    
-    
     public static float[,] Fill(float value, int cols, int rows)
     {
         var matrix = new float[rows, cols];
@@ -44,23 +42,43 @@ public static partial class Operations
     #region Multiplication
     public static Tensor<float[,]> MatrixMultiply(Tensor<float[,]> a, Tensor<float[,]> b, bool disposeA = true, bool disposeB = true, bool transposeA = false, bool transposeB = false)
     {
-        var aidx = a.AcceleratorIndex;
-        var result = new MatrixValue(Compute.Get(aidx, a.Value.Shape[0] * b.Value.Shape[1]), [a.Value.Shape[0], b.Value.Shape[1]]);
-        Compute.MatrixMultiply(a.Value, b.Value, result, a.Value.Shape[0], a.Value.Shape[1], b.Value.Shape[1], transposeA: transposeA, transposeB: transposeB);
+        var (aidx, m, k, n) = (a.AcceleratorIndex, a.Value.Shape[0], a.Value.Shape[1], b.Value.Shape[1]);
+        
+        var result = new MatrixValue(Compute.Get(aidx, m * n), [m, n]);
+        Compute.MatrixMultiply(a.Value, b.Value, result, m, k, n, transposeA: transposeA, transposeB: transposeB);
         return new(result, result.Zeros(), Backward, [a, b]);
 
         void Backward(ITensor tensor)
         {
-            var gradA = Compute.Get(aidx, a.Value.TotalSize);
-            Compute.MatrixMultiply(tensor.Gradient.Data, b.Value.Data, gradA, 
-                a.Value.Shape[0], b.Value.Shape[1], b.Value.Shape[0], transposeB: true);
+            var (a0, a1) = (a.Value.Shape[0], a.Value.Shape[1]);
+            var (b0, b1) = (b.Value.Shape[0], b.Value.Shape[1]);
+    
+            var gradA = Compute.Get(aidx, a0 * a1);
+            Compute.MatrixMultiply(
+                transposeA ? b.Value.Data : tensor.Gradient.Data,
+                transposeA ? tensor.Gradient.Data : b.Value.Data,
+                gradA,
+                transposeA ? a1 : a0,
+                transposeB ? b0 : b1,
+                transposeA ? a0 : a1,
+                transposeA: transposeA && transposeB,
+                transposeB: transposeA || !transposeB
+            );
             Compute.Call(ElementwiseAccumulateKernels, gradA, a.Gradient);
 
-            var gradB = Compute.Get(aidx, b.Value.TotalSize);
-            Compute.MatrixMultiply(a.Value.Data, tensor.Gradient.Data, gradB,
-                a.Value.Shape[1], a.Value.Shape[0], b.Value.Shape[1], transposeA: true);
+            var gradB = Compute.Get(aidx, b0 * b1);
+            Compute.MatrixMultiply(
+                transposeB ? tensor.Gradient.Data : a.Value.Data,
+                transposeB ? a.Value.Data : tensor.Gradient.Data,
+                gradB,
+                transposeB ? b0 : b1,
+                transposeB ? a0 : transposeA ? a1 : a0,
+                transposeB ? b1 : b0,
+                transposeA: transposeB || !transposeA,
+                transposeB: transposeA && transposeB
+            );
             Compute.Call(ElementwiseAccumulateKernels, gradB, b.Gradient);
-        
+
             Compute.Return(gradA, gradB);
             if (disposeA) a.Dispose();
             if (disposeB) b.Dispose();
@@ -77,9 +95,9 @@ public static partial class Operations
         void Backward(ITensor tensor)
         {
             var gradMatrix = Compute.GetTemp(aidx, m * n);
-            Compute.MatrixMultiply(tensor.Gradient.Data, vector.Value.Data, gradMatrix, m, 1, n);
+            Compute.OuterProduct(tensor.Gradient.Data, vector.Value.Data, gradMatrix, m, n);
             Compute.Call(Compute.ElementwiseAddKernels, matrix.Gradient.Data, gradMatrix, matrix.Gradient.Data);
-
+            
             var gradVector = Compute.GetTemp(aidx, n);
             Compute.MatrixVectorMultiply(matrix.Value.Data, tensor.Gradient.Data, gradVector, m, n, transposeMatrix: true);
             Compute.Call(Compute.ElementwiseAddKernels, vector.Gradient.Data, gradVector, vector.Gradient.Data);
