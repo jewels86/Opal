@@ -38,4 +38,23 @@ public static partial class Operations
         }
     }
     #endregion
+    
+    #region Other things
+    public static Value<float[,]> Stack(Value<float[]>[] vectors)
+    {
+        var (n, features, aidx) = (vectors.Length, vectors[0].TotalSize, vectors[0].AcceleratorIndex);
+        var result = new MatrixValue(Compute.Get(aidx, n * features), [n, features]);
+    
+        for (int i = 0; i < n; i++)
+            Compute.Call(Compute.CopyKernels, vectors[i].Data, result.Data.View.SubView(i * features, features));
+
+        return result;
+    }
+
+    public static Tensor<float[,]> StackToTensor(Value<float[]>[] vectors)
+    {
+        var matrix = Stack(vectors);
+        return new(matrix, matrix.Zeros());
+    }
+    #endregion
 }

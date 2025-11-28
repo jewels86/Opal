@@ -7,11 +7,13 @@ using Opal.Utilities;
 
 namespace Opal;
 
-public class VectorCatalog : IFfCatalog<float[], float[], float[,]>, IRecurrentCatalog<float[], float[], float[,]>, ILstmCatalog<float[], float[], float[,]>
+public class VectorCatalog : IFfCatalog<float[], float[], float[,], float[,]>, IRecurrentCatalog<float[], float[], float[,]>, ILstmCatalog<float[], float[], float[,]>
 {
     public int AcceleratorIndex { get; set; } = Operations.DefaultAcceleratorIndex;
 
     public Tensor<float[]> Multiply(Tensor<float[,]> a, Tensor<float[]> b, bool disposeA = true, bool disposeB = true) => Operations.Multiply(a, b, disposeA, disposeB);
+    public Tensor<float[,]> Add(Tensor<float[]> a, Tensor<float[,]> b, bool disposeA = true, bool disposeB = true) => Operations.Add(b, a, disposeB, disposeA);
+
     public Tensor<float[]> Multiply(Tensor<float[,]> a, Tensor<float[]> b) => Operations.Multiply(a, b);
 
     public Tensor<float[]> ConcatHidden(Tensor<float[]> a, Tensor<float[]> b) => Operations.Concat(a, b);
@@ -23,4 +25,7 @@ public class VectorCatalog : IFfCatalog<float[], float[], float[,]>, IRecurrentC
     public void WriteWeights(BinaryWriter writer, Value<float[,]> weights) => BinaryWriting.WriteMatrix(writer, weights.ToHost());
     public Value<float[]> ReadState(BinaryReader reader) => new VectorValue(BinaryWriting.ReadVector(reader), AcceleratorIndex);
     public void WriteState(BinaryWriter writer, Value<float[]> state) => BinaryWriting.WriteVector(writer, state.ToHost());
+    
+    Tensor<float[,]> IFfCatalog<float[], float[], float[,], float[,]>.Multiply(Tensor<float[,]> a, Tensor<float[,]> b, bool disposeA, bool disposeB) => 
+        Operations.MatrixMultiply(a, b, disposeA, disposeB, transposeB: true);
 }

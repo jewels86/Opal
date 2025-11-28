@@ -5,7 +5,7 @@ using Opal.NNs.Ff;
 
 namespace Testing;
 
-public class FfTests
+public static class FfTests
 {
     private static int _aidx => Operations.DefaultAcceleratorIndex;
     
@@ -34,6 +34,36 @@ public class FfTests
         sw.Stop();
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
         Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000:F2} ms per epoch)");
+    }
+    
+    public static void OverfittingTestBatched()
+    {
+        Console.WriteLine($"Training a network to overfit a simple function (batched)...");
+        float[] inputs = [0.5f, -0.5f];
+        float[] targets = [1, -1];
+
+        VectorFfNetwork network = new(
+            1, 1, 1, 1,
+            ActivationFunctions.Identity, ActivationFunctions.Identity, 
+            LossFunctions.MeanSquaredError);
+    
+        Value<float[]>[] inputStorage = inputs.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
+        Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
+    
+        Value<float[,]>[] batchedInputs = [Operations.Stack(inputStorage)];
+        Value<float[,]>[] batchedTargets = [Operations.Stack(targetStorage)];
+    
+        Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
+        Stopwatch sw = Stopwatch.StartNew();
+        var initialLoss = network.EvaluateLossBatches(batchedInputs, batchedTargets);
+        sw.Stop();
+        Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"Training for 1000 epochs...");
+        sw.Restart();
+        network.TrainBatches(batchedInputs, batchedTargets, 1000, 0.01f);
+        sw.Stop();
+        Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLossBatches(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000:F2} ms per epoch)");
     }
     
     public static void NonlinearFunctionTest()
@@ -223,6 +253,7 @@ public class FfTests
     public static void RunAll()
     {
         OverfittingTest();
+        OverfittingTestBatched();
         NonlinearFunctionTest();
         XorTest();
         IrisClassificationTest();

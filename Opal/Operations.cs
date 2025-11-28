@@ -15,7 +15,7 @@ public static partial class Operations
 
     static Operations()
     {
-        Compute.InitializeExtraKernels();
+        Compute.InitializeKernels();
         DefaultAcceleratorIndex = Compute.RequestAccelerator();
     }
 

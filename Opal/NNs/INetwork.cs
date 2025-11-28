@@ -14,3 +14,30 @@ public interface INetwork<TIn, TOut>
     public void Save(string path);
     public void Load(string path);
 }
+
+public interface ISequentialNetwork<TIn, TOut> where TIn : notnull where TOut : notnull 
+{
+    public Tensor<TOut> ForwardSequence(Tensor<TIn>[] input);
+    public Value<TOut> ForwardSequence(Value<TIn>[] sequence);
+    
+    public void TrainSequences(Value<TIn>[][] sequences, Value<TOut>[] targets, int epochs, float lr);
+    public float EvaluateLossSequences(Value<TIn>[][] sequences, Value<TOut>[] targets);
+}
+
+public interface ITransformingNetwork<TIn, TOut> where TIn : notnull where TOut : notnull
+{
+    public Tensor<TOut>[] ForwardTransforming(Tensor<TIn>[] input);
+    public Value<TOut>[] ForwardTransforming(Value<TIn>[] sequence);
+    
+    public void TrainTransforming(Value<TIn>[][] sequences, Value<TOut>[][] targets, int epochs, double learningRate);
+    public double EvaluateLossTransforming(Value<TIn>[][] sequences, Value<TOut>[][] targets);
+}
+
+public interface IBatchingNetwork<TBatchIn, TBatchOut> where TBatchIn : notnull where TBatchOut : notnull
+{
+    public Tensor<TBatchOut> ForwardBatch(Tensor<TBatchIn> input);
+    public Value<TBatchOut> ForwardBatch(Value<TBatchIn> input);
+    
+    public void TrainBatches(Value<TBatchIn>[] inputs, Value<TBatchOut>[] targets, int epochs, float lr);
+    public float EvaluateLossBatches(Value<TBatchIn>[] inputs, Value<TBatchOut>[] targets);
+}

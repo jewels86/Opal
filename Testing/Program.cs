@@ -12,13 +12,14 @@ internal static class Program
         //Operations.GpuAvailable = false;
         Console.WriteLine($"GPU Available: {Compute.Instance.GpuInUse}");
         //ScalarMultiplyDiagnosticTest.RunAll();
-        //FfTests.OverfittingTest();
+        FfTests.OverfittingTest();
+        FfTests.OverfittingTestBatched();
         //DiagnosticTest.RunAll();
         //GpuTest.TestGpuBufferZeroing();
         //CatalogTests.RunAll();
         //AutogradTests.RunAll();
         //AutogradTests.RunAll();
-        FfTests.RunAll();
+        //FfTests.RunAll();
         //RecurrentTests.RunAll();
         //Operations.GpuAvailable = true;
         //LstmTests.RunAll();
