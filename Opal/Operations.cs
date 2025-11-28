@@ -9,6 +9,8 @@ namespace Opal;
 
 public static partial class Operations
 {
+    internal static Compute Compute => Compute.Instance;
+    
     public static int DefaultAcceleratorIndex { get; set; }
 
     static Operations()
@@ -22,70 +24,69 @@ public static partial class Operations
     public static void Sync() => Compute.Synchronize(DefaultAcceleratorIndex);
     
     #region Value Operations
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, float>> ElementwiseFloatMulAndSubKernels { get; }
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, float>[] ElementwiseFloatMulAndSubKernels { get; }
         = Compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> a, ArrayView1D<float, Stride1D.Dense> b, ArrayView1D<float, Stride1D.Dense> r, float alpha) =>
             r[i] = b[i] - a[i] * alpha);
 
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, 
-        ArrayView1D<float, Stride1D.Dense>>> ElementwiseTripleAddKernels { get; } 
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, 
+        ArrayView1D<float, Stride1D.Dense>>[] ElementwiseTripleAddKernels { get; } 
         = Compute.Load((i, a, b, c, r) => r[i] = a[i] + b[i] + c[i]);
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseLstmStateKernels { get; } 
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] ElementwiseLstmStateKernels { get; } 
         = Compute.Load((i, forget, state, input, cell, r) => 
             r[i] = forget[i] * state[i] + input[i] * cell[i]);
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseAccumulateKernels { get; } = Compute.Load((i, a, r) => r[i] += a[i]);
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseNegAccumulateKernels { get; } = Compute.Load((i, a, r) => r[i] -= a[i]);
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>>> ElementwiseMulAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += b[i] * a[i]);
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>>> ElementwiseMulScalarAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += b[0] * a[i]);
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>>> ElementwiseDivAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += a[i] / b[i]);
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>> ElementwiseDivBackwardKernels { get; } 
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] ElementwiseAccumulateKernels { get; } = Compute.Load((i, a, r) => r[i] += a[i]);
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] ElementwiseNegAccumulateKernels { get; } = Compute.Load((i, a, r) => r[i] -= a[i]);
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>>[] ElementwiseMulAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += b[i] * a[i]);
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>>[] ElementwiseMulScalarAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += b[0] * a[i]);
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>>[] ElementwiseDivAccumulateKernels { get; } = Compute.Load((i, a, b, r) => r[i] += a[i] / b[i]);
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] ElementwiseDivBackwardKernels { get; } 
         = Compute.Load((i, a, b, grad, r) => r[i] -= grad[i] * a[i] / (b[i] * b[i]));
     
     public static Value<T> Multiply<T>(Value<T> a, Value<T> b) where T : notnull => 
         a.Create(Compute.BinaryCall(Compute.ElementwiseMultiplyKernels, a.Data, b.Data), a.Shape);
     public static void Multiply(IValue a, IValue b, IValue result) => 
-        Compute.BinaryCall(Compute.ElementwiseMultiplyKernels, a.Data, b.Data, result.Data);
+        Compute.Call(Compute.ElementwiseMultiplyKernels, a.Data, b.Data, result.Data);
     
     public static Value<T> Add<T>(Value<T> a, Value<T> b) where T : notnull => 
         a.Create(Compute.BinaryCall(Compute.ElementwiseAddKernels, a.Data, b.Data), a.Shape);
     public static void Add(IValue a, IValue b, IValue result) => 
-        Compute.BinaryCall(Compute.ElementwiseAddKernels, a.Data, b.Data, result.Data);
+        Compute.Call(Compute.ElementwiseAddKernels, a.Data, b.Data, result.Data);
     
     public static Value<T> Subtract<T>(Value<T> a, Value<T> b) where T : notnull => 
         a.Create(Compute.BinaryCall(Compute.ElementwiseSubtractKernels, a.Data, b.Data), a.Shape);
     public static void Subtract(IValue a, IValue b, IValue result) => 
-        Compute.BinaryCall(Compute.ElementwiseSubtractKernels, a.Data, b.Data, result.Data);
+        Compute.Call(Compute.ElementwiseSubtractKernels, a.Data, b.Data, result.Data);
     
     public static Value<T> Divide<T>(Value<T> a, Value<T> b) where T : notnull => 
         a.Create(Compute.BinaryCall(Compute.ElementwiseDivideKernels, a.Data, b.Data), a.Shape);
     public static void Divide<T>(Value<T> a, Value<T> b, Value<T> result) where T : notnull => 
-        Compute.BinaryCall(Compute.ElementwiseDivideKernels, a.Data, b.Data, result.Data);
+        Compute.Call(Compute.ElementwiseDivideKernels, a.Data, b.Data, result.Data);
     
     public static void Accumulate(IValue a, IValue result) => 
-        Compute.UnaryCall(ElementwiseAccumulateKernels, a.Data, result.Data);
+        Compute.Call(ElementwiseAccumulateKernels, a.Data, result.Data);
     public static void NegAccumulate(IValue a, IValue result) => 
-        Compute.UnaryCall(ElementwiseNegAccumulateKernels, a.Data, result.Data);
+        Compute.Call(ElementwiseNegAccumulateKernels, a.Data, result.Data);
     public static void MulAccumulate(IValue a, IValue b, IValue result) => 
-        Compute.BinaryCall(ElementwiseMulAccumulateKernels, a.Data, b.Data, result.Data);
+        Compute.Call(ElementwiseMulAccumulateKernels, a.Data, b.Data, result.Data);
     public static void MulScalarAccumulate(IValue a, IValue b, IValue result) => 
-        Compute.BinaryCall(ElementwiseMulScalarAccumulateKernels, a.Data, b.Data, result.Data);
+        Compute.Call(ElementwiseMulScalarAccumulateKernels, a.Data, b.Data, result.Data);
     public static void DivAccumulate(IValue a, IValue b, IValue result) => 
-        Compute.BinaryCall(ElementwiseDivAccumulateKernels, a.Data, b.Data, result.Data);
+        Compute.Call(ElementwiseDivAccumulateKernels, a.Data, b.Data, result.Data);
     public static void DivBackward(IValue a, IValue b, IValue grad, IValue result) => 
-        Compute.Call(a.AcceleratorIndex, ElementwiseDivBackwardKernels, a.Data, b.Data, grad.Data, result.Data);
+        Compute.Call(ElementwiseDivBackwardKernels, a.Data, b.Data, grad.Data, result.Data);
     #endregion
-    
 
     #region Tensor Operations
     #region Add & Subtract
     public static Tensor<T> Add<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
     {
         var result = Compute.GetLike(a.Value);
-        Compute.Call(a.AcceleratorIndex, Compute.ElementwiseAddKernels, a.Value, b.Value, result);
+        Compute.Call(Compute.ElementwiseAddKernels, a.Value, b.Value, result);
         return new(a.Value.Create(result, a.Value.Shape), a.Value.Zeros(), Backward, [a, b]);
 
         void Backward(ITensor t)
@@ -100,14 +101,14 @@ public static partial class Operations
     public static Tensor<T> Add<T>(Tensor<T> a, Tensor<T> b, Tensor<T> c, bool disposeA = true, bool disposeB = true, bool disposeC = true) where T : notnull
     {
         var result = Compute.GetLike(a.Value);
-        Compute.Call(a.AcceleratorIndex, ElementwiseTripleAddKernels, a.Value, b.Value, c.Value, result);
+        Compute.Call(ElementwiseTripleAddKernels, a.Value, b.Value, c.Value, result);
         return new(a.Value.Create(result, a.Value.Shape), a.Value.Zeros(), Backward, [a, b, c]);
         
         void Backward(ITensor t)
         {
-            Compute.Call(a.AcceleratorIndex, Compute.ElementwiseAddKernels, t.Gradient.Data, a.Gradient.Data, a.Gradient.Data);
-            Compute.Call(b.AcceleratorIndex, Compute.ElementwiseAddKernels, t.Gradient.Data, b.Gradient.Data, b.Gradient.Data);
-            Compute.Call(c.AcceleratorIndex, Compute.ElementwiseAddKernels, t.Gradient.Data, c.Gradient.Data, c.Gradient.Data);
+            Compute.Call(Compute.ElementwiseAddKernels, t.Gradient.Data, a.Gradient.Data, a.Gradient.Data);
+            Compute.Call(Compute.ElementwiseAddKernels, t.Gradient.Data, b.Gradient.Data, b.Gradient.Data);
+            Compute.Call(Compute.ElementwiseAddKernels, t.Gradient.Data, c.Gradient.Data, c.Gradient.Data);
             if (disposeA) a.Dispose();
             if (disposeB) b.Dispose();
             if (disposeC) c.Dispose();
@@ -158,18 +159,18 @@ public static partial class Operations
     {
         int aidx = a.AcceleratorIndex;
         var result = Compute.Get(a.Value.AcceleratorIndex, a.Value.TotalSize + b.Value.TotalSize);
-        Compute.Call(aidx, Compute.ConcatKernels, a.Value.Data, b.Value.Data, result);
+        Compute.Call(Compute.ConcatKernels, a.Value.Data, b.Value.Data, result);
         return new(a.Value.Create(result, a.Value.Shape), a.Value.Zeros(), Backward, [a, b]);
 
         void Backward(ITensor t)
         {
             var slicedA = Compute.GetLike(a.Gradient);
             var slicedB = Compute.GetLike(b.Gradient);
-            Compute.Call(aidx, Compute.SliceKernels, t.Gradient.Data, slicedA, 0, a.Value.TotalSize);
-            Compute.Call(aidx, Compute.SliceKernels, t.Gradient.Data, slicedB, a.Value.TotalSize, b.Value.TotalSize);
+            Compute.Call(Compute.SliceKernels, t.Gradient.Data, slicedA, 0, a.Value.TotalSize);
+            Compute.Call(Compute.SliceKernels, t.Gradient.Data, slicedB, a.Value.TotalSize, b.Value.TotalSize);
             
-            Compute.Call(aidx, Compute.ElementwiseAddKernels, slicedA, a.Gradient, a.Gradient);
-            Compute.Call(aidx, Compute.ElementwiseAddKernels, slicedB, b.Gradient, b.Gradient);
+            Compute.Call(Compute.ElementwiseAddKernels, slicedA, a.Gradient, a.Gradient);
+            Compute.Call(Compute.ElementwiseAddKernels, slicedB, b.Gradient, b.Gradient);
             
             if (disposeA) a.Dispose();
             if (disposeB) b.Dispose();
@@ -193,10 +194,10 @@ public static partial class Operations
         { 
             // these are REALLY wrong
             int aidx = t.Value.AcceleratorIndex;
-            Compute.Call(aidx, ElementwiseTripleAddKernels, forget.Gradient.Data, state.Gradient.Data, t.Gradient.Data, forget.Gradient.Data);
-            Compute.Call(aidx, ElementwiseTripleAddKernels, state.Gradient.Data, forget.Gradient.Data, t.Gradient.Data, state.Gradient.Data);
-            Compute.Call(aidx, ElementwiseTripleAddKernels, input.Gradient.Data, cell.Gradient.Data, t.Gradient.Data, input.Gradient.Data);
-            Compute.Call(aidx, ElementwiseTripleAddKernels, cell.Gradient.Data, input.Gradient.Data, t.Gradient.Data, cell.Gradient.Data);
+            Compute.Call(ElementwiseTripleAddKernels, forget.Gradient.Data, state.Gradient.Data, t.Gradient.Data, forget.Gradient.Data);
+            Compute.Call(ElementwiseTripleAddKernels, state.Gradient.Data, forget.Gradient.Data, t.Gradient.Data, state.Gradient.Data);
+            Compute.Call(ElementwiseTripleAddKernels, input.Gradient.Data, cell.Gradient.Data, t.Gradient.Data, input.Gradient.Data);
+            Compute.Call(ElementwiseTripleAddKernels, cell.Gradient.Data, input.Gradient.Data, t.Gradient.Data, cell.Gradient.Data);
             if (disposeForget) forget.Dispose();
             if (disposeState) state.Dispose(); 
             if (disposeInput) input.Dispose();
@@ -207,7 +208,7 @@ public static partial class Operations
     public static Tensor<T> LstmHidden<T>(Tensor<T> output, Tensor<T> state, bool disposeOutput = true, bool disposeState = true) where T : notnull
     {
         var result = Compute.GetLike(output.Value);
-        Compute.Call(output.AcceleratorIndex, Compute.ElementwiseMultiplyKernels, output.Value, state.Value, result);
+        Compute.Call(Compute.ElementwiseMultiplyKernels, output.Value, state.Value, result);
         return new(state.Value.Create(result, state.Value.Shape), state.Value.Zeros(), Backward, [output, state]);
         
         void Backward(ITensor t)

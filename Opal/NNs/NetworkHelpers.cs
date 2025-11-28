@@ -6,6 +6,8 @@ namespace Opal.NNs;
 
 public static class NetworkHelpers
 {
+    private static Compute compute => Compute.Instance;
+    
     #region Forward
     public static Tensor<TOut> ForwardSequence<TIn, TOut>(
         Action resetState, Func<Tensor<TIn>, Tensor<TOut>> forward,
@@ -29,7 +31,7 @@ public static class NetworkHelpers
         where TIn : notnull where TOut : notnull
     {
         int aidx = inputs[0].AcceleratorIndex;
-        var one = new ScalarValue(Compute.Make(aidx, 1, 1));
+        var one = new ScalarValue(compute.Make(aidx, 1, 1));
         for (int epoch = 0; epoch < epochs; epoch++)
         {
             for (int i = 0; i < inputs.Length; i++)
@@ -40,7 +42,7 @@ public static class NetworkHelpers
                 lossTensor.Backward(one);
                 update();
             }
-            Compute.Flush(aidx);
+            compute.Flush(aidx);
         }
     }
 
@@ -50,7 +52,7 @@ public static class NetworkHelpers
         where TIn : notnull where TOut : notnull
     {
         int aidx = inputs[0][0].AcceleratorIndex;
-        var one = new ScalarValue(Compute.Make(aidx, 1, 1));
+        var one = new ScalarValue(compute.Make(aidx, 1, 1));
         for (int epoch = 0; epoch < epochs; epoch++)
         {
             for (int i = 0; i < inputs.Length; i++)
@@ -61,7 +63,7 @@ public static class NetworkHelpers
                 lossTensor.Backward(one);
                 update();
             }
-            Compute.Flush(aidx);
+            compute.Flush(aidx);
         }
     }
     #endregion
@@ -80,7 +82,7 @@ public static class NetworkHelpers
             using var outputTensor = forward(inputTensor);
             using var lossTensor = loss(outputTensor, targets[i]);
             totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
-            Compute.Flush(aidx);
+            compute.Flush(aidx);
         }
         return totalLoss.ToHost() / inputs.Length;
     }
@@ -97,7 +99,7 @@ public static class NetworkHelpers
             using var outputTensor = forward(inputs[i].Select(t => new Tensor<TIn>(t, t.Zeros())).ToArray());
             using var lossTensor = loss(outputTensor, targets[i]);
             totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
-            Compute.Flush(aidx);
+            compute.Flush(aidx);
         }
         return totalLoss.ToHost() / inputs.Length;
     }

@@ -34,8 +34,8 @@ public class FfLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>, IDisposable
     
     public void UpdateParameters(float lr)
     {
-        Compute.Call(Weights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Weights.Gradient, Weights.Value, Weights.Value, lr);
-        Compute.Call(Biases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Biases.Gradient, Biases.Value, Biases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Weights.Gradient, Weights.Value, Weights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Biases.Gradient, Biases.Value, Biases.Value, lr);
         ZeroGradients();
     }
     

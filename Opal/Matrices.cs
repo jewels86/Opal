@@ -6,6 +6,8 @@ namespace Opal;
 
 public static partial class Operations
 {
+    
+    
     public static float[,] Fill(float value, int cols, int rows)
     {
         var matrix = new float[rows, cols];
@@ -22,13 +24,13 @@ public static partial class Operations
             backwardAction, inputs);
     
     #region Kernels
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>>
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>[]
         AddVectorToMatrixKernel { get; } = Compute.Load((Index1D i,
             ArrayView1D<float, Stride1D.Dense> matrix,
             ArrayView1D<float, Stride1D.Dense> vector,
             ArrayView1D<float, Stride1D.Dense> result, int n) => result[i] = matrix[i] + vector[i % n]);
 
-    public static List<Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int>> AddVectorToMatrixBackwardKernel { get; }
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int>[] AddVectorToMatrixBackwardKernel { get; }
         = Compute.Load((Index1D col,
             ArrayView1D<float, Stride1D.Dense> grad,
             ArrayView1D<float, Stride1D.Dense> vectorGrad, int cols, int rows) =>
@@ -52,12 +54,12 @@ public static partial class Operations
             var gradA = Compute.Get(aidx, a.Value.TotalSize);
             Compute.MatrixMultiply(tensor.Gradient.Data, b.Value.Data, gradA, 
                 a.Value.Shape[0], b.Value.Shape[0], b.Value.Shape[1], transposeB: true);
-            Compute.Call(aidx, Compute.ElementwiseAddKernels, a.Gradient.Data, gradA, a.Gradient.Data);
+            Compute.Call(Compute.ElementwiseAddKernels, a.Gradient.Data, gradA, a.Gradient.Data);
 
             var gradB = Compute.Get(aidx, b.Value.TotalSize);
             Compute.MatrixMultiply(a.Value.Data, tensor.Gradient.Data, gradB,
                 a.Value.Shape[1], b.Value.Shape[1], a.Value.Shape[0], transposeA: true);
-            Compute.Call(aidx, Compute.ElementwiseAddKernels, b.Gradient.Data, gradB, b.Gradient.Data);
+            Compute.Call(Compute.ElementwiseAddKernels, b.Gradient.Data, gradB, b.Gradient.Data);
         
             Compute.Return(gradA, gradB);
         }
@@ -77,11 +79,11 @@ public static partial class Operations
         {
             var gradMatrix = Compute.GetTemp(aidx, m * n);
             Compute.MatrixMultiply(tensor.Gradient.Data, vector.Value.Data, gradMatrix, m, 1, n);
-            Compute.Call(aidx, Compute.ElementwiseAddKernels, matrix.Gradient.Data, gradMatrix, matrix.Gradient.Data);
+            Compute.Call(Compute.ElementwiseAddKernels, matrix.Gradient.Data, gradMatrix, matrix.Gradient.Data);
 
             var gradVector = Compute.GetTemp(aidx, n);
             Compute.MatrixVectorMultiply(matrix.Value.Data, tensor.Gradient.Data, gradVector, m, n, transposeMatrix: true);
-            Compute.Call(aidx, Compute.ElementwiseAddKernels, vector.Gradient.Data, gradVector, vector.Gradient.Data);
+            Compute.Call(Compute.ElementwiseAddKernels, vector.Gradient.Data, gradVector, vector.Gradient.Data);
             
             if (disposeA) matrix.Dispose();
             if (disposeB) vector.Dispose();

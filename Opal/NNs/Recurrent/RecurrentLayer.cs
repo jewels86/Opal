@@ -38,9 +38,9 @@ public class RecurrentLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
 
     public void UpdateParameters(float lr)
     {
-        Compute.Call(InputWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, InputWeights.Value, InputWeights.Value, InputWeights.Value, lr);
-        Compute.Call(RecurrentWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, RecurrentWeights.Value, RecurrentWeights.Value, RecurrentWeights.Value, lr);
-        Compute.Call(Biases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, Biases.Value, Biases.Value, Biases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, InputWeights.Value, InputWeights.Value, InputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, RecurrentWeights.Value, RecurrentWeights.Value, RecurrentWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Biases.Value, Biases.Value, Biases.Value, lr);
         ZeroGradients();
     }
 

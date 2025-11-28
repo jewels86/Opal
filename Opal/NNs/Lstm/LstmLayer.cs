@@ -144,25 +144,25 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
 
     public virtual void UpdateParameters(float lr)
     {
-        Compute.Call(EncoderForgetWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetWeights.Value, EncoderForgetWeights.Value, EncoderForgetWeights.Value, lr);
-        Compute.Call(EncoderInputWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, EncoderInputWeights.Value, EncoderInputWeights.Value, EncoderInputWeights.Value, lr);
-        Compute.Call(EncoderCellWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, EncoderCellWeights.Value, EncoderCellWeights.Value, EncoderCellWeights.Value, lr);
-        Compute.Call(EncoderOutputWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputWeights.Value, EncoderOutputWeights.Value, EncoderOutputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetWeights.Value, EncoderForgetWeights.Value, EncoderForgetWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderInputWeights.Value, EncoderInputWeights.Value, EncoderInputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderCellWeights.Value, EncoderCellWeights.Value, EncoderCellWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputWeights.Value, EncoderOutputWeights.Value, EncoderOutputWeights.Value, lr);
         
-        Compute.Call(EncoderForgetBiases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetBiases.Value, EncoderForgetBiases.Value, EncoderForgetBiases.Value, lr);
-        Compute.Call(EncoderInputBiases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, EncoderInputBiases.Value, EncoderInputBiases.Value, EncoderInputBiases.Value, lr);
-        Compute.Call(EncoderCellBiases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, EncoderCellBiases.Value, EncoderCellBiases.Value, EncoderCellBiases.Value, lr);
-        Compute.Call(EncoderOutputBiases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputBiases.Value, EncoderOutputBiases.Value, EncoderOutputBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetBiases.Value, EncoderForgetBiases.Value, EncoderForgetBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderInputBiases.Value, EncoderInputBiases.Value, EncoderInputBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderCellBiases.Value, EncoderCellBiases.Value, EncoderCellBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputBiases.Value, EncoderOutputBiases.Value, EncoderOutputBiases.Value, lr);
         
-        Compute.Call(DecoderForgetWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetWeights.Value, DecoderForgetWeights.Value, DecoderForgetWeights.Value, lr);
-        Compute.Call(DecoderInputWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, DecoderInputWeights.Value, DecoderInputWeights.Value, DecoderInputWeights.Value, lr);
-        Compute.Call(DecoderCellWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, DecoderCellWeights.Value, DecoderCellWeights.Value, DecoderCellWeights.Value, lr);
-        Compute.Call(DecoderOutputWeights.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputWeights.Value, DecoderOutputWeights.Value, DecoderOutputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetWeights.Value, DecoderForgetWeights.Value, DecoderForgetWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderInputWeights.Value, DecoderInputWeights.Value, DecoderInputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderCellWeights.Value, DecoderCellWeights.Value, DecoderCellWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputWeights.Value, DecoderOutputWeights.Value, DecoderOutputWeights.Value, lr);
         
-        Compute.Call(DecoderForgetBiases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetBiases.Value, DecoderForgetBiases.Value, DecoderForgetBiases.Value, lr);
-        Compute.Call(DecoderInputBiases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, DecoderInputBiases.Value, DecoderInputBiases.Value, DecoderInputBiases.Value, lr);
-        Compute.Call(DecoderCellBiases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, DecoderCellBiases.Value, DecoderCellBiases.Value, DecoderCellBiases.Value, lr);
-        Compute.Call(DecoderOutputBiases.AcceleratorIndex, Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputBiases.Value, DecoderOutputBiases.Value, DecoderOutputBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetBiases.Value, DecoderForgetBiases.Value, DecoderForgetBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderInputBiases.Value, DecoderInputBiases.Value, DecoderInputBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderCellBiases.Value, DecoderCellBiases.Value, DecoderCellBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputBiases.Value, DecoderOutputBiases.Value, DecoderOutputBiases.Value, lr);
     }
 
     public virtual void ZeroGradients()

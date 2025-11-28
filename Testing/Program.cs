@@ -10,7 +10,7 @@ internal static class Program
     {
         //Operations.DefaultAcceleratorIndex = Compute.RequestAccelerator(false);
         //Operations.GpuAvailable = false;
-        Console.WriteLine($"GPU Available: {Compute.GpuInUse}");
+        Console.WriteLine($"GPU Available: {Compute.Instance.GpuInUse}");
         //ScalarMultiplyDiagnosticTest.RunAll();
         //FfTests.OverfittingTest();
         //DiagnosticTest.RunAll();
