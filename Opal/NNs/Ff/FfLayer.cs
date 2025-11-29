@@ -68,8 +68,6 @@ public class FfLayer<TIn, TOut, TWeights, TBatchOut>(Tensor<TWeights> weights,
         Weights.Dispose();
         Biases.Dispose();
     }
-    
-    ~FfLayer() => Dispose();
 }
 
 public interface IFfCatalog<TIn, TOut, TWeights, TBatchOut>

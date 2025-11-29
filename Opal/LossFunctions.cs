@@ -33,12 +33,13 @@ public static class LossFunctions
         
         var aidx = predicted.Value.AcceleratorIndex;
         var result = compute.Get(aidx, 1);
-        var (temp1, temp2) = (compute.GetTemp(aidx, predicted.Value.TotalSize), compute.GetTemp(aidx, 1));
+        var (temp1, temp2) = (compute.Get(aidx, predicted.Value.TotalSize), compute.Get(aidx, 1));
         
         compute.Call(MeanSquaredErrorKernels, predicted.Value.Data, actual.Data, temp1);
         compute.Sum(temp1, temp2);
         compute.Call(compute.ElementwiseFloatMultiplyKernels, temp2, result, 1 / (float)actual.TotalSize);
         var val = new ScalarValue(result);
+        compute.Return(temp1, temp2);
         
         return Operations.New(val, val.Zeros(), Backward, [predicted]);
         

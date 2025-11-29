@@ -92,13 +92,15 @@ public static partial class Operations
 
         void Backward(ITensor tensor)
         {
-            var gradMatrix = Compute.GetTemp(aidx, m * n);
+            var gradMatrix = Compute.Get(aidx, m * n);
             Compute.OuterProduct(tensor.Gradient.Data, vector.Value.Data, gradMatrix, m, n);
             Compute.Call(Compute.ElementwiseAddKernels, matrix.Gradient.Data, gradMatrix, matrix.Gradient.Data);
             
-            var gradVector = Compute.GetTemp(aidx, n);
+            var gradVector = Compute.Get(aidx, n);
             Compute.MatrixVectorMultiply(matrix.Value.Data, tensor.Gradient.Data, gradVector, m, n, transposeMatrix: true);
             Compute.Call(Compute.ElementwiseAddKernels, vector.Gradient.Data, gradVector, vector.Gradient.Data);
+            
+            Compute.Return(gradMatrix, gradVector);
         }
     }
     #endregion

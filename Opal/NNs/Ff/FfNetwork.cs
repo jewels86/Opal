@@ -31,14 +31,14 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut>(
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
         var hidden = InputLayer.Forward(input).Defer();
-        hidden = HiddenLayers.Aggregate(hidden, (current, layer) => layer.Forward(current).Defer());
+        foreach (var layer in HiddenLayers) hidden = layer.Forward(hidden).Defer();
         return OutputLayer.Forward(hidden);
     }
 
     public Tensor<TWeightsOut> ForwardBatch(Tensor<TWeightsIn> batch)
     {
         var hidden = InputLayer.ForwardBatch(batch).Defer();
-        hidden = HiddenLayers.Aggregate(hidden, (current, layer) => layer.ForwardBatch(current).Defer());
+        foreach (var layer in HiddenLayers) hidden = layer.ForwardBatch(hidden).Defer();
         return OutputLayer.ForwardBatch(hidden);
     }
     

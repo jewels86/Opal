@@ -19,7 +19,7 @@ public static class FfTests
         VectorFfNetwork network = new(
             1, 1, 1, 1,
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
-            LossFunctions.CrossEntropy);
+            LossFunctions.MeanSquaredError);
         
         Value<float[]>[] inputStorage = inputs.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
         Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();

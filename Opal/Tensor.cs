@@ -75,8 +75,6 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
         _isDisposed = true;
     }
     
-    ~Tensor() => Dispose();
-    
     public static implicit operator Value<T>(Tensor<T> tensor) => tensor.Value;
 }
 

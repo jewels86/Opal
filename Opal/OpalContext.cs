@@ -30,6 +30,4 @@ public sealed class OpalContext : IDisposable
     public int GetAcceleratorIndex() => Operations.DefaultAcceleratorIndex;
     
     public void Dispose() => Operations.Dispose();
-
-    ~OpalContext() => Dispose();
 }

@@ -53,7 +53,6 @@ public static class NetworkHelpers
                 lossTensor.Backward(one); // this takes 6 buffers (8 -> 2)
                 update(); // this zeroed it out- (2 -> 0)
             }
-            compute.Flush(aidx);
         }
     }
 
@@ -74,7 +73,6 @@ public static class NetworkHelpers
                 lossTensor.Backward(one);
                 update();
             }
-            compute.Flush(aidx);
         }
     }
     #endregion
@@ -93,7 +91,6 @@ public static class NetworkHelpers
             using var outputTensor = forward(inputTensor);
             using var lossTensor = loss(outputTensor, targets[i]);
             totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
-            compute.Flush(aidx);
         }
         return totalLoss.ToHost() / inputs.Length;
     }
@@ -110,7 +107,6 @@ public static class NetworkHelpers
             using var outputTensor = forward(inputs[i].Select(t => new Tensor<TIn>(t, t.Zeros())).ToArray());
             using var lossTensor = loss(outputTensor, targets[i]);
             totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
-            compute.Flush(aidx);
         }
         return totalLoss.ToHost() / inputs.Length;
     }
