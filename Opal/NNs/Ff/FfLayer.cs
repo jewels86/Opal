@@ -22,15 +22,15 @@ public class FfLayer<TIn, TOut, TWeights, TBatchOut>(Tensor<TWeights> weights,
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        var multiplied = Catalog.Multiply(Weights, input, disposeA: false);
-        var sum = Operations.Add(Biases, multiplied, disposeA: false);
+        using var multiplied = Catalog.Multiply(Weights, input);
+        using var sum = Operations.Add(Biases, multiplied);
         return Activation(sum);
     }
 
     public Tensor<TBatchOut> ForwardBatch(Tensor<TWeights> batch)
     {
-        var multiplied = Catalog.Multiply(batch, Weights, disposeB: false);
-        var sum = Catalog.Add(Biases, multiplied, disposeA: false);
+        var multiplied = Catalog.Multiply(batch, Weights);
+        var sum = Catalog.Add(Biases, multiplied);
         return BatchActivation(sum);
     }
     
@@ -75,9 +75,9 @@ public class FfLayer<TIn, TOut, TWeights, TBatchOut>(Tensor<TWeights> weights,
 public interface IFfCatalog<TIn, TOut, TWeights, TBatchOut>
     where TIn : notnull where TOut : notnull where TWeights : notnull where TBatchOut : notnull
 {
-    public Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TIn> b, bool disposeA = true, bool disposeB = true);
-    public Tensor<TBatchOut> Multiply(Tensor<TWeights> a, Tensor<TWeights> b, bool disposeA = true, bool disposeB = true);
-    public Tensor<TBatchOut> Add(Tensor<TOut> a, Tensor<TBatchOut> b, bool disposeA = true, bool disposeB = true);
+    public Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TIn> b);
+    public Tensor<TBatchOut> Multiply(Tensor<TWeights> a, Tensor<TWeights> b);
+    public Tensor<TBatchOut> Add(Tensor<TOut> a, Tensor<TBatchOut> b);
     
     public void WriteWeights(BinaryWriter writer, Value<TWeights> weight);
     public Value<TWeights> ReadWeights(BinaryReader reader);

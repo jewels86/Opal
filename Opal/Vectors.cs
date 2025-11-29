@@ -25,7 +25,7 @@ public static partial class Operations
     #endregion
     
     #region Vector Operations
-    public static Tensor<float> Dot(Tensor<float[]> a, Tensor<float[]> b, bool disposeA = true, bool disposeB = true)
+    public static Tensor<float> Dot(Tensor<float[]> a, Tensor<float[]> b)
     {
         return new(Dot(a.Value, b.Value), new ScalarValue(0, a.AcceleratorIndex), Backward, [a, b]);
         
@@ -33,8 +33,6 @@ public static partial class Operations
         {
             MulScalarAccumulate(b.Value, t.Gradient, a.Gradient);
             MulScalarAccumulate(a.Value, t.Gradient, b.Gradient);
-            if (disposeA) a.Dispose();
-            if (disposeB) b.Dispose();
         }
     }
     #endregion

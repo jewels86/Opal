@@ -40,7 +40,7 @@ public static partial class Operations
     #endregion
     
     #region Multiplication
-    public static Tensor<float[,]> MatrixMultiply(Tensor<float[,]> a, Tensor<float[,]> b, bool disposeA = true, bool disposeB = true, bool transposeA = false, bool transposeB = false)
+    public static Tensor<float[,]> MatrixMultiply(Tensor<float[,]> a, Tensor<float[,]> b, bool transposeA = false, bool transposeB = false)
     {
         var (aidx, m, k, n) = (a.AcceleratorIndex, a.Value.Shape[0], a.Value.Shape[1], b.Value.Shape[1]);
         
@@ -80,12 +80,10 @@ public static partial class Operations
             Compute.Call(ElementwiseAccumulateKernels, gradB, b.Gradient);
 
             Compute.Return(gradA, gradB);
-            if (disposeA) a.Dispose();
-            if (disposeB) b.Dispose();
         }
     }
 
-    public static Tensor<float[]> Multiply(Tensor<float[,]> matrix, Tensor<float[]> vector, bool disposeA = true, bool disposeB = true)
+    public static Tensor<float[]> Multiply(Tensor<float[,]> matrix, Tensor<float[]> vector)
     {
         var (aidx, m, n) = (matrix.AcceleratorIndex, matrix.Value.Shape[0], matrix.Value.Shape[1]);
         var result = new VectorValue(Compute.Get(aidx, m));
@@ -101,15 +99,11 @@ public static partial class Operations
             var gradVector = Compute.GetTemp(aidx, n);
             Compute.MatrixVectorMultiply(matrix.Value.Data, tensor.Gradient.Data, gradVector, m, n, transposeMatrix: true);
             Compute.Call(Compute.ElementwiseAddKernels, vector.Gradient.Data, gradVector, vector.Gradient.Data);
-            
-            if (disposeA) matrix.Dispose();
-            if (disposeB) vector.Dispose();
         }
     }
     #endregion
     
-    public static Tensor<float[,]> Add(Tensor<float[,]> matrix, Tensor<float[]> vector, 
-        bool disposeA = true, bool disposeB = true)
+    public static Tensor<float[,]> Add(Tensor<float[,]> matrix, Tensor<float[]> vector)
     {
         var (aidx, rows, cols) = (matrix.AcceleratorIndex, matrix.Value.Shape[0], matrix.Value.Shape[1]);
         var result = new MatrixValue(Compute.Get(aidx, rows * cols), [rows, cols]);
@@ -121,9 +115,6 @@ public static partial class Operations
         {
             Compute.Call(Compute.ElementwiseAddKernels, matrix.Gradient.Data, tensor.Gradient.Data, matrix.Gradient.Data);
             Compute.Call(AddVectorToMatrixBackwardKernel, tensor.Gradient.Data, vector.Gradient.Data, cols, rows);
-        
-            if (disposeA) matrix.Dispose();
-            if (disposeB) vector.Dispose();
         }
     }
 }

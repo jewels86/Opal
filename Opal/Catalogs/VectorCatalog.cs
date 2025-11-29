@@ -10,10 +10,9 @@ public class VectorCatalog : IFfCatalog<float[], float[], float[,], float[,]>, I
 {
     public int AcceleratorIndex { get; set; } = Operations.DefaultAcceleratorIndex;
 
-    public Tensor<float[]> Multiply(Tensor<float[,]> a, Tensor<float[]> b, bool disposeA = true, bool disposeB = true) => Operations.Multiply(a, b, disposeA, disposeB);
-    public Tensor<float[,]> Add(Tensor<float[]> a, Tensor<float[,]> b, bool disposeA = true, bool disposeB = true) => Operations.Add(b, a, disposeB, disposeA);
-
     public Tensor<float[]> Multiply(Tensor<float[,]> a, Tensor<float[]> b) => Operations.Multiply(a, b);
+    public Tensor<float[,]> Add(Tensor<float[]> a, Tensor<float[,]> b) => Operations.Add(b, a);
+
 
     public Tensor<float[]> ConcatHidden(Tensor<float[]> a, Tensor<float[]> b) => Operations.Concat(a, b);
     public Tensor<float[]> ConcatInputHidden(Tensor<float[]> a, Tensor<float[]> b) => Operations.Concat(a, b);
@@ -25,6 +24,6 @@ public class VectorCatalog : IFfCatalog<float[], float[], float[,], float[,]>, I
     public Value<float[]> ReadState(BinaryReader reader) => new VectorValue(BinaryWriting.ReadVector(reader), AcceleratorIndex);
     public void WriteState(BinaryWriter writer, Value<float[]> state) => BinaryWriting.WriteVector(writer, state.ToHost());
     
-    Tensor<float[,]> IFfCatalog<float[], float[], float[,], float[,]>.Multiply(Tensor<float[,]> a, Tensor<float[,]> b, bool disposeA, bool disposeB) => 
-        Operations.MatrixMultiply(a, b, disposeA, disposeB, transposeB: true);
+    Tensor<float[,]> IFfCatalog<float[], float[], float[,], float[,]>.Multiply(Tensor<float[,]> a, Tensor<float[,]> b) => 
+        Operations.MatrixMultiply(a, b, transposeB: true);
 }

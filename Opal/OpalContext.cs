@@ -19,7 +19,7 @@ public sealed class OpalContext : IDisposable
     
     public void BeginInitialization() => Operations.Compute.InitializeKernelsAsync();
     public void EnsureInitialization() => Operations.Compute.WaitForInitializationAsync();
-    public void Initialize() => Operations.Compute.InitializeKernels();
+    public void Initialize() => Operations.Compute.InitializeKernels(warmup: false);
 
     public void UseGpu(bool useGpu = true)
     {

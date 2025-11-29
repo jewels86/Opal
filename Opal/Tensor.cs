@@ -27,7 +27,7 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
 
     public bool Disposable
     {
-        get => Value.Disposable && Gradient.Disposable;
+        get => !Value.Disposable && !Gradient.Disposable;
         set
         {
             Value.Disposable = value;
@@ -71,6 +71,7 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
         if (_isDisposed) return;
         Value.Dispose();
         Gradient.Dispose();
+        foreach (var input in Inputs) input.Dispose();
         _isDisposed = true;
     }
     

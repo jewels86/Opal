@@ -62,8 +62,8 @@ public class VectorFfNetwork : FfNetwork<float[], float[], float[,], float[,]>
     {
         var catalog = new VectorCatalog();
     
-        var weights = TensorGeneration.XavierMatrix(outputSize, inputSize);
-        var biases = TensorGeneration.HeVector(outputSize, inputSize);
+        var weights = TensorGeneration.XavierMatrix(outputSize, inputSize).NonDisposable();
+        var biases = TensorGeneration.HeVector(outputSize, inputSize).NonDisposable();
     
         return new(weights, biases, activation, activationBatched, catalog);
     }

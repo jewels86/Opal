@@ -73,22 +73,20 @@ public static partial class Operations
 
     #region Tensor Operations
     #region Add & Subtract
-    public static Tensor<T> Add<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
+    public static Tensor<T> Add<T>(Tensor<T> a, Tensor<T> b) where T : notnull
     {
         var result = Compute.GetLike(a.Value);
         Compute.Call(Compute.ElementwiseAddKernels, a.Value, b.Value, result);
-        return new(a.Value.Create(result, a.Value.Shape), a.Value.Zeros(), Backward, [a, b]);
+        return new(a.Value.CreateAlike(result), a.Value.Zeros(), Backward, [a, b]);
 
         void Backward(ITensor t)
         {
             Accumulate(t.Gradient, a.Gradient);
             Accumulate(t.Gradient, b.Gradient);
-            if (disposeA) a.Dispose();
-            if (disposeB) b.Dispose();
         }
     }
 
-    public static Tensor<T> Add<T>(Tensor<T> a, Tensor<T> b, Tensor<T> c, bool disposeA = true, bool disposeB = true, bool disposeC = true) where T : notnull
+    public static Tensor<T> Add<T>(Tensor<T> a, Tensor<T> b, Tensor<T> c) where T : notnull
     {
         var result = Compute.GetLike(a.Value);
         Compute.Call(ElementwiseTripleAddKernels, a.Value, b.Value, c.Value, result);
@@ -99,12 +97,9 @@ public static partial class Operations
             Compute.Call(Compute.ElementwiseAddKernels, t.Gradient.Data, a.Gradient.Data, a.Gradient.Data);
             Compute.Call(Compute.ElementwiseAddKernels, t.Gradient.Data, b.Gradient.Data, b.Gradient.Data);
             Compute.Call(Compute.ElementwiseAddKernels, t.Gradient.Data, c.Gradient.Data, c.Gradient.Data);
-            if (disposeA) a.Dispose();
-            if (disposeB) b.Dispose();
-            if (disposeC) c.Dispose();
         }
     }
-    public static Tensor<T> Subtract<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
+    public static Tensor<T> Subtract<T>(Tensor<T> a, Tensor<T> b) where T : notnull
     {
         return new(Subtract(a.Value, b.Value), a.Value.Zeros(), Backward, [a, b]);
 
@@ -112,13 +107,11 @@ public static partial class Operations
         {
             Accumulate(t.Gradient, a.Gradient);
             NegAccumulate(t.Gradient, b.Gradient);
-            if (disposeA) a.Dispose();
-            if (disposeB) b.Dispose();
         }
     }
     #endregion
     #region Multiply & Divide
-    public static Tensor<T> Multiply<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
+    public static Tensor<T> Multiply<T>(Tensor<T> a, Tensor<T> b) where T : notnull
     {
         return new(Multiply(a.Value, b.Value), a.Value.Zeros(), Backward, [a, b]);
 
@@ -126,12 +119,10 @@ public static partial class Operations
         {
             MulAccumulate(t.Gradient, b.Value, a.Gradient);
             MulAccumulate(t.Gradient, a.Value, b.Gradient);
-            if (disposeA) a.Dispose();
-            if (disposeB) b.Dispose();
         }
     }
 
-    public static Tensor<T> Divide<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
+    public static Tensor<T> Divide<T>(Tensor<T> a, Tensor<T> b) where T : notnull
     {
         return new(Divide(a.Value, b.Value), a.Value.Zeros(), Backward, [a, b]);
 
@@ -139,13 +130,11 @@ public static partial class Operations
         {
             DivAccumulate(t.Gradient, b.Value, a.Gradient);
             DivBackward(a.Value, b.Value, t.Gradient, b.Gradient);
-            if (disposeA) a.Dispose();
-            if (disposeB) b.Dispose();
         }
     }
     #endregion
 
-    public static Tensor<T> Concat<T>(Tensor<T> a, Tensor<T> b, bool disposeA = true, bool disposeB = true) where T : notnull
+    public static Tensor<T> Concat<T>(Tensor<T> a, Tensor<T> b) where T : notnull
     {
         var result = Compute.Get(a.Value.AcceleratorIndex, a.Value.TotalSize + b.Value.TotalSize);
         Compute.Call(Compute.ConcatKernels, a.Value.Data, b.Value.Data, result);
@@ -160,15 +149,11 @@ public static partial class Operations
             
             Compute.Call(Compute.ElementwiseAddKernels, slicedA, a.Gradient, a.Gradient);
             Compute.Call(Compute.ElementwiseAddKernels, slicedB, b.Gradient, b.Gradient);
-            
-            if (disposeA) a.Dispose();
-            if (disposeB) b.Dispose();
         }
     }
     
     #region LSTM
-    public static Tensor<T> LstmState<T>(Tensor<T> forget, Tensor<T> state, Tensor<T> input, Tensor<T> cell,
-        bool disposeForget = true, bool disposeState = true, bool disposeInput = true, bool disposeCell = true) where T : notnull
+    public static Tensor<T> LstmState<T>(Tensor<T> forget, Tensor<T> state, Tensor<T> input, Tensor<T> cell) where T : notnull
     {
         var result = Compute.GetLike(state.Value);
         Compute.Call(
@@ -185,10 +170,6 @@ public static partial class Operations
             MulAccumulate(forget.Value, t.Gradient, state.Gradient);
             MulAccumulate(input.Value, t.Gradient, cell.Gradient);
             MulAccumulate(cell.Value, t.Gradient, input.Gradient);
-            if (disposeForget) forget.Dispose();
-            if (disposeState) state.Dispose(); 
-            if (disposeInput) input.Dispose();
-            if (disposeCell) cell.Dispose();
         }
     }
     #endregion

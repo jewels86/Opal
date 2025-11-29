@@ -28,19 +28,32 @@ public static class NetworkHelpers
         Value<TIn>[] inputs, Value<TOut>[] targets, int epochs)
         where TIn : notnull where TOut : notnull
     {
+        foreach (var input in inputs) input.NonDisposable();
+        foreach (var target in targets) target.NonDisposable();
+        
         int aidx = inputs[0].AcceleratorIndex;
-        var one = new ScalarValue(compute.Make(aidx, 1, 1)).NonDisposable(); 
+        var one = new ScalarValue(compute.Make(aidx, 1, 1)).NonDisposable();
+        
         for (int epoch = 0; epoch < epochs; epoch++)
-        {
+        { 
+            // at this point on epoch 1, compute._pool[2][0] has 69 total buffers
+            // however when .Distinct is called it drops to 65
+            // Compute.Instance._pool[2][1].Count()
+            // Compute.Instance._pool[2][1].Distinct().Count()
+            
+            // doing this with laz 1.3.10 its now 57 and 57
             for (int i = 0; i < inputs.Length; i++)
             {
-                using var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()).NonDisposable(); 
-                using var outputTensor = forward(inputTensor);
-                using var lossTensor = loss(outputTensor, targets[i]);
-                lossTensor.Backward(one);
-                update();
+                using var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()); 
+                using var outputTensor = forward(inputTensor); // this takes 18 buffers (28 -> 10)
+                // doing this with laz 1.3.10 i got a System.InvalidOperationException: Unknown parent accelerator
+                // at ILGPU.Runtime.ArrayViewExtensions.GetAccelerator[TView](TView view)
+                // when we call accelerator index on one of them- i dont get it
+                using var lossTensor = loss(outputTensor, targets[i]); // this takes 2 buffers (10 -> 8)
+                lossTensor.Backward(one); // this takes 6 buffers (8 -> 2)
+                update(); // this zeroed it out- (2 -> 0)
             }
-            //compute.Flush(aidx);
+            compute.Flush(aidx);
         }
     }
 
@@ -76,7 +89,7 @@ public static class NetworkHelpers
         using var totalLoss = new ScalarValue(0, aidx);
         for (int i = 0; i < inputs.Length; i++)
         {
-            using var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()).NonDisposable();
+            using var inputTensor = new Tensor<TIn>(inputs[i].NonDisposable(), inputs[i].Zeros());
             using var outputTensor = forward(inputTensor);
             using var lossTensor = loss(outputTensor, targets[i]);
             totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
