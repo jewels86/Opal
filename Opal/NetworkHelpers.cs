@@ -1,10 +1,10 @@
 ﻿using Jewels.Lazulite;
+using Opal.NNs;
 
-namespace Opal.NNs;
+namespace Opal;
 
-public static class NetworkHelpers
+public static partial class Operations
 {
-    private static Compute compute => Compute.Instance;
     
     #region Forward
     public static Tensor<TOut> ForwardSequence<TIn, TOut>(
@@ -32,7 +32,7 @@ public static class NetworkHelpers
         foreach (var target in targets) target.NonDisposable();
         
         int aidx = inputs[0].AcceleratorIndex;
-        var one = new ScalarValue(compute.Make(aidx, 1, 1)).NonDisposable();
+        var one = new ScalarValue(Compute.Make(aidx, 1, 1)).NonDisposable();
         
         for (int epoch = 0; epoch < maxEpochs; epoch++)
         { 
@@ -47,7 +47,8 @@ public static class NetworkHelpers
                 totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
                 update();
             }
-            
+            if (epoch <= 2 || epoch % 10 == 0)
+                Console.WriteLine($"Epoch {epoch}: Loss = {totalLoss.ToHost()}");
             if (epoch % checkInterval != 0) continue;
             if (totalLoss.ToHost() < epsilon)
                 return;
@@ -60,7 +61,7 @@ public static class NetworkHelpers
         where TIn : notnull where TOut : notnull
     {
         int aidx = inputs[0][0].AcceleratorIndex;
-        var one = new ScalarValue(compute.Make(aidx, 1, 1));
+        var one = new ScalarValue(Compute.Make(aidx, 1, 1));
         for (int epoch = 0; epoch < epochs; epoch++)
         {
             for (int i = 0; i < inputs.Length; i++)
@@ -74,7 +75,6 @@ public static class NetworkHelpers
         }
     }
     #endregion
-
     #region Evaluation
     public static float EvaluateLoss<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss,
@@ -109,7 +109,6 @@ public static class NetworkHelpers
         return totalLoss.ToHost() / inputs.Length;
     }
     #endregion
-
     #region Serialization
     public static void Save<TIn, THidden, TOut>(
         ILayer<TIn, THidden> inputLayer, List<ILayer<THidden, THidden>> hiddenLayers, ILayer<THidden, TOut> outputLayer, 

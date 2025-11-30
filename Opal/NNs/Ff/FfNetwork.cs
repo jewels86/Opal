@@ -47,13 +47,13 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, T
     }
 
     public void Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) => 
-        NetworkHelpers.Train(Forward, LossFunction, () => UpdateParameters(lr, DefaultGradClipNorm), inputs, targets, epochs, epsilon: DefaultTrainingEpsilon ?? 0.0001f);
+        Operations.Train(Forward, LossFunction, () => UpdateParameters(lr, DefaultGradClipNorm), inputs, targets, epochs, epsilon: DefaultTrainingEpsilon ?? 0.0001f);
     
     public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
-        NetworkHelpers.EvaluateLoss(Forward, LossFunction, inputs, targets);
+        Operations.EvaluateLoss(Forward, LossFunction, inputs, targets);
 
-    public void Save(string path) => NetworkHelpers.Save(InputLayer, HiddenLayers.Cast<ILayer<TOut, TOut>>().ToList(), OutputLayer, path);
-    public void Load(string path) => NetworkHelpers.Load(InputLayer, HiddenLayers.Cast<ILayer<TOut,TOut>>().ToList(), OutputLayer, CreateHiddenLayer, path);
+    public void Save(string path) => Operations.Save(InputLayer, HiddenLayers.Cast<ILayer<TOut, TOut>>().ToList(), OutputLayer, path);
+    public void Load(string path) => Operations.Load(InputLayer, HiddenLayers.Cast<ILayer<TOut,TOut>>().ToList(), OutputLayer, CreateHiddenLayer, path);
     protected abstract FfLayer<TOut, TOut, TWeightsOut, TBiasesOut> CreateHiddenLayer();
     
     public void Dispose()

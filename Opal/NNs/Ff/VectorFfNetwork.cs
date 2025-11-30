@@ -3,7 +3,8 @@ using Opal.Utilities;
 
 namespace Opal.NNs;
 
-public class VectorFfNetwork(int inputSize,
+public class VectorFfNetwork(
+    int inputSize,
     int hiddenSize,
     int outputSize,
     int numHiddenLayers,

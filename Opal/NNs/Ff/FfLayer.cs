@@ -30,7 +30,12 @@ public class FfLayer<TIn, TOut, TWeights, TBiases>(
     
     public void UpdateParameters(float lr, float? gradClipNorm = null)
     {
-        if (gradClipNorm.HasValue) Operations.ClipGradientsByNorm(gradClipNorm.Value, Weights, Biases);
+        if (gradClipNorm.HasValue)
+        {
+            Operations.ClipGradientsByNorm(gradClipNorm.Value, Weights, Biases);
+            var weightGrad = Weights.Gradient.ToProxy();
+            //Console.WriteLine($"Max weight grad after clip: {weightGrad.FlatData.Max(Math.Abs)}");
+        }
         Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Weights.Gradient, Weights.Value, Weights.Value, lr);
         Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Biases.Gradient, Biases.Value, Biases.Value, lr);
         ZeroGradients();

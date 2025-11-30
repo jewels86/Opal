@@ -90,7 +90,7 @@ public static class FfTests
 
         using BatchedVectorFfNetwork network = new(
             1, 8, 1, 8,  
-            ActivationFunctions.Tanh, ActivationFunctions.Identity, 
+            ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
         network.DefaultGradClipNorm = 0.1f;
         

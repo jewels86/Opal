@@ -43,7 +43,7 @@ public static partial class Operations
         = Compute.Load((Index1D i, 
             ArrayView1D<float, Stride1D.Dense> grad, 
             ArrayView1D<float, Stride1D.Dense> tn,
-            float maxNorm) => grad[i] = tn[0] > maxNorm ? grad[i] * maxNorm / tn[0] : grad[i]);
+            float maxNorm) => grad[i] = (tn[0] > maxNorm && tn[0] > 0) ? grad[i] * maxNorm / tn[0] : grad[i]);
 
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, float, float>[] ElementwiseClampKernels { get; } 
         = Compute.Load((Index1D i, 

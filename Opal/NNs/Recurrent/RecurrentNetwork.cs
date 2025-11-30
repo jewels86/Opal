@@ -44,7 +44,7 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsH
         return OutputLayer.Forward(hidden);
     }
 
-    public Tensor<TOut> ForwardSequence(Tensor<TIn>[] sequence) => NetworkHelpers.ForwardSequence(ResetState, Forward, sequence);
+    public Tensor<TOut> ForwardSequence(Tensor<TIn>[] sequence) => Operations.ForwardSequence(ResetState, Forward, sequence);
     public Value<TOut> ForwardSequence(Value<TIn>[] sequence) => 
         ForwardSequence(sequence.Select(x => new Tensor<TIn>(x, x.Zeros())).ToArray()).Value;
 
@@ -64,18 +64,18 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsH
     }
 
     public void Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) =>
-        NetworkHelpers.Train(Forward, LossFunction, () => UpdateParameters(lr), inputs, targets, epochs);
+        Operations.Train(Forward, LossFunction, () => UpdateParameters(lr), inputs, targets, epochs);
 
     public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
-        NetworkHelpers.EvaluateLoss(Forward, LossFunction, inputs, targets);
+        Operations.EvaluateLoss(Forward, LossFunction, inputs, targets);
 
     public void TrainSequences(Value<TIn>[][] sequences, Value<TOut>[] targets, int epochs, float lr) =>
-        NetworkHelpers.TrainSequences(ForwardSequence, LossFunction, ResetState, () => UpdateParameters(lr), sequences, targets, epochs);
+        Operations.TrainSequences(ForwardSequence, LossFunction, ResetState, () => UpdateParameters(lr), sequences, targets, epochs);
     
     public float EvaluateLossSequences(Value<TIn>[][] sequences, Value<TOut>[] targets) =>
-        NetworkHelpers.EvaluateLossSequences(ForwardSequence, LossFunction, sequences, targets);
+        Operations.EvaluateLossSequences(ForwardSequence, LossFunction, sequences, targets);
     
-    public void Save(string path) => NetworkHelpers.Save(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, path);
-    public void Load(string path) => NetworkHelpers.Load(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, CreateHiddenLayer, path);
+    public void Save(string path) => Operations.Save(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, path);
+    public void Load(string path) => Operations.Load(InputLayer, HiddenLayers.Cast<ILayer<THidden,THidden>>().ToList(), OutputLayer, CreateHiddenLayer, path);
     protected abstract RecurrentLayer<THidden, THidden, TWeightsHidden> CreateHiddenLayer();
 }
