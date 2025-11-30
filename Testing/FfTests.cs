@@ -64,7 +64,7 @@ public static class FfTests
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Training for 1000 epochs...");
         sw.Restart();
-        network.Train(batchedInputs, batchedTargets, 2000, 0.01f);
+        network.Train(batchedInputs, batchedTargets, 1000, 0.01f);
         sw.Stop();
         Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms)");
         
@@ -78,31 +78,30 @@ public static class FfTests
         Console.WriteLine("\nTraining network on nonlinear function: f(x) = x^2...");
         
         // Generate training data for f(x) = x^2
-        var random = new Random(42);
-        float[] inputs = new float[20];
-        float[] targets = new float[20];
+        var (random, n, min, max) = (new Random(42), 20, -2, 2);
+        float[] inputs = new float[n];
+        float[] targets = new float[n];
         
-        for (int i = 0; i < 20; i++)
+        for (int i = 0; i < n; i++)
         {
-            inputs[i] = (float)random.NextDouble() * 4 - 2; // Range [-2, 2]
+            inputs[i] = (float)random.NextDouble() * (max - min) + min;
             targets[i] = inputs[i] * inputs[i];
         }
 
-        using BatchedVectorFfNetwork network = new(
-            1, 8, 1, 8,  
-            ActivationFunctions.Identity, ActivationFunctions.Identity, 
+        using VectorFfNetwork network = new(
+            1, 8, 1, 2,  
+            ActivationFunctions.Tanh, ActivationFunctions.Identity,
             LossFunctions.MeanSquaredError);
-        network.DefaultGradClipNorm = 0.1f;
         
-        var inputStorage = Operations.Stack(inputs.Select(x => Operations.NewValue([x])).ToArray());
-        var targetStorage = Operations.Stack(targets.Select(x => Operations.NewValue([x])).ToArray());
+        var inputStorage = inputs.Select(x => Operations.NewValue([x])).ToArray();
+        var targetStorage = targets.Select(x => Operations.NewValue([x])).ToArray();
         
-        float initialLoss = network.EvaluateLoss([inputStorage], [targetStorage]);
+        float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        network.Train([inputStorage], [targetStorage], 2000, 0.001f);
+        network.Train(inputStorage, targetStorage, 1000, 0.01f);
         
-        float finalLoss = network.EvaluateLoss([inputStorage], [targetStorage]);
+        float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Final loss: {finalLoss}");
         Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}%");
         
@@ -110,7 +109,7 @@ public static class FfTests
         float[] testInputs = [0.0f, 1.0f, -1.5f, 2.0f];
         foreach (var x in testInputs)
         {
-            float prediction = network.Forward(Operations.Stack([[x]])).ToHost()[0, 0];
+            float prediction = network.Forward(Operations.NewValue([x])).ToHost()[0];
             float expected = x * x;
             Console.WriteLine($"  f({x}) = {prediction:F4} (expected {expected:F4})");
         }

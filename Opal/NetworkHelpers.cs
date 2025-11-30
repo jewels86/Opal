@@ -47,11 +47,10 @@ public static partial class Operations
                 totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
                 update();
             }
-            if (epoch <= 2 || epoch % 10 == 0)
-                Console.WriteLine($"Epoch {epoch}: Loss = {totalLoss.ToHost()}");
             if (epoch % checkInterval != 0) continue;
-            if (totalLoss.ToHost() < epsilon)
-                return;
+            var hostLoss = totalLoss.ToHost() / inputs.Length;
+            if (float.IsNaN(hostLoss)) throw new Exception($"Loss is NaN at epoch {epoch}!");
+            if (hostLoss < epsilon) break;
         }
     }
 

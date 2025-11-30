@@ -33,8 +33,8 @@ public static partial class Operations
 
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int>[] AddVectorToMatrixBackwardKernel { get; }
         = Compute.Load((Index1D col,
-            ArrayView1D<float, Stride1D.Dense> grad,
-            ArrayView1D<float, Stride1D.Dense> vectorGrad, int cols, int rows) =>
+            ArrayView1D<float, Stride1D.Dense> vectorGrad,
+            ArrayView1D<float, Stride1D.Dense> grad, int cols, int rows) =>
         {
             float sum = 0;
             for (int row = 0; row < rows; row++) sum += grad[row * cols + col];
@@ -50,7 +50,7 @@ public static partial class Operations
         var realN = transposeB ? b.Value.Shape[0] : b.Value.Shape[1];
         
         var result = new MatrixValue(Compute.Get(aidx, realM * realN), [realM, realN]);
-        Compute.MatrixMultiply(a.Value, b.Value, result, m, k, n, transposeA: transposeA, transposeB: transposeB);
+        Compute.MatrixMultiply(a.Value, b.Value, result, m, k, n, transposeA: transposeA, transposeB: transposeB, noCuBlas: true);
         return new(result, result.Zeros(), Backward, [a, b]);
 
         void Backward(ITensor tensor)
@@ -67,13 +67,13 @@ public static partial class Operations
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, b.Value.Data, gradA,
                         m, n, k,
-                        transposeA: false, transposeB: true
+                        transposeA: false, transposeB: true, noCuBlas: true
                     );
                     
                     Compute.MatrixMultiply(
                         a.Value.Data, tensor.Gradient.Data, gradB,
                         k, m, n,
-                        transposeA: true, transposeB: false
+                        transposeA: true, transposeB: false, noCuBlas: true
                     );
                     break;
 
@@ -81,27 +81,27 @@ public static partial class Operations
                     Compute.MatrixMultiply(
                         b.Value.Data, tensor.Gradient.Data, gradA,
                         a1, n, m,
-                        transposeA: false, transposeB: true
+                        transposeA: false, transposeB: true, noCuBlas: true
                     );
                     
                     Compute.MatrixMultiply(
                         a.Value.Data, tensor.Gradient.Data, gradB,
                         k, m, n,
-                        transposeA: false, transposeB: false
+                        transposeA: false, transposeB: false, noCuBlas: true
                     );
                     break;
 
                 case (false, true):
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, b.Value.Data, gradA,
-                        m, n, k,
-                        transposeA: false, transposeB: false
+                        a0, b0, a1,
+                        transposeA: false, transposeB: false, noCuBlas: true
                     );
-                    
+    
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, a.Value.Data, gradB,
-                        b1, m, k,
-                        transposeA: true, transposeB: false
+                        b0, a0, a1,
+                        transposeA: true, transposeB: false, noCuBlas: true
                     );
                     break;
 
@@ -115,7 +115,7 @@ public static partial class Operations
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, a.Value.Data, gradB,
                         b1, m, a1,
-                        transposeA: true, transposeB: true
+                        transposeA: true, transposeB: true, noCuBlas: true
                     );
                     break;
             }
@@ -159,7 +159,7 @@ public static partial class Operations
         void Backward(ITensor tensor)
         {
             Compute.Call(Compute.ElementwiseAddKernels, matrix.Gradient.Data, tensor.Gradient.Data, matrix.Gradient.Data);
-            Compute.Call(AddVectorToMatrixBackwardKernel, tensor.Gradient.Data, vector.Gradient.Data, cols, rows);
+            Compute.Call(AddVectorToMatrixBackwardKernel, vector.Gradient.Data, tensor.Gradient.Data, cols, rows);
         }
     }
 }
