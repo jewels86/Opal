@@ -1,24 +1,20 @@
 ﻿using Jewels.Lazulite;
 using Opal.Utilities;
 
-namespace Opal.NNs.Lstm;
+namespace Opal.NNs;
 
-public class VectorLstmNetwork : LstmNetwork<float[], float[], float[], float[,], float[,], float[,]>
+public class VectorLstmNetwork(int inputSize,
+    int hiddenSize,
+    int outputSize,
+    int numHiddenLayers,
+    Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction)
+    : LstmNetwork<float[], float[], float[], float[,], float[,], float[,]>(
+        CreateLayer(inputSize, hiddenSize),
+        CreateHiddenLayers(numHiddenLayers, hiddenSize),
+        CreateLayer(hiddenSize, outputSize),
+        lossFunction, hiddenSize)
 {
-    public VectorLstmNetwork(
-        int inputSize,
-        int hiddenSize,
-        int outputSize,
-        int numHiddenLayers,
-        Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction)
-        : base(
-            CreateLayer(inputSize, hiddenSize),
-            CreateHiddenLayers(numHiddenLayers, hiddenSize),
-            CreateLayer(hiddenSize, outputSize),
-            lossFunction, hiddenSize)
-    {
-    }
-    
+
     protected override LstmLayer<float[], float[], float[,]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize);
 
     private static Tensor<float[,]> CreateWeightArray(int outputSize, int weightSize) => TensorGeneration.XavierMatrix(outputSize, weightSize);

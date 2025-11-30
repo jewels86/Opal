@@ -21,9 +21,9 @@
     <Compile Remove="DiagnosticTest.cs" />
     <Compile Remove="GpuTest.cs" />
     <Compile Remove="LstmTests.cs" />
-    <Compile Remove="RecurrentTests.cs" />
     <Compile Remove="ScalarMultiplyDiagnosticTest.cs" />
     <Compile Remove="CatalogTests.cs" />
+    <Compile Remove="RecurrentTests.cs" />
   </ItemGroup>
 
 </Project>

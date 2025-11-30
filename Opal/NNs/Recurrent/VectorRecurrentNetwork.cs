@@ -1,29 +1,24 @@
 ﻿using Jewels.Lazulite;
-
 using Opal.Utilities;
 
-namespace Opal.NNs.Recurrent;
+namespace Opal.NNs;
 
-public class VectorRecurrentNetwork : RecurrentNetwork<float[], float[], float[], float[,], float[,], float[,]>
+public class VectorRecurrentNetwork(int inputSize,
+    int hiddenSize,
+    int outputSize,
+    int numHiddenLayers,
+    Func<Tensor<float[]>, Tensor<float[]>> hiddenActivation,
+    Func<Tensor<float[]>, Tensor<float[]>> outputActivation,
+    Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction)
+    : RecurrentNetwork<float[], float[], float[], float[,], float[,], float[,]>(
+        hiddenSize,
+        CreateLayer(inputSize, hiddenSize, hiddenActivation),
+        CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
+        CreateLayer(hiddenSize, outputSize, outputActivation),
+        lossFunction,
+        outputActivation,
+        hiddenActivation)
 {
-    public VectorRecurrentNetwork(
-        int inputSize,
-        int hiddenSize,
-        int outputSize,
-        int numHiddenLayers,
-        Func<Tensor<float[]>, Tensor<float[]>> hiddenActivation,
-        Func<Tensor<float[]>, Tensor<float[]>> outputActivation,
-        Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction)
-        : base(
-            hiddenSize,
-            CreateLayer(inputSize, hiddenSize, hiddenActivation),
-            CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
-            CreateLayer(hiddenSize, outputSize, outputActivation),
-            lossFunction,
-            outputActivation,
-            hiddenActivation)
-    {
-    }
 
     protected override RecurrentLayer<float[], float[], float[,]> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, HiddenActivation);

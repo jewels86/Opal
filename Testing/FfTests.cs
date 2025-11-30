@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using Jewels.Lazulite;
 using Opal;
-using Opal.NNs.Ff;
+using Opal.NNs;
 
 namespace Testing;
 

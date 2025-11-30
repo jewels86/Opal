@@ -1,5 +1,4 @@
 ﻿using Opal;
-using Opal.Mathematics;
 using Opal.NNs.Recurrent;
 
 namespace Testing;
@@ -9,30 +8,32 @@ public class RecurrentTests
     public static void SequenceMemoryTest()
     {
         Console.WriteLine("Testing RNN sequence memory (remembering first input)...");
-        Operations.GpuAvailable = false;
         // Task: output the first value seen in the sequence
         // Sequences: [0.5, 0.1, 0.2] → 0.5, [-0.3, 0.4, 0.1] → -0.3
         var sequences = new[]
         {
-            new[] { new[] { 0.5 }, new[] { 0.1 }, new[] { 0.2 } },
-            new[] { new[] { -0.3 }, new[] { 0.4 }, new[] { 0.1 } },
-            new[] { new[] { 0.8 }, new[] { -0.2 }, new[] { 0.3 } },
-            new[] { new[] { -0.6 }, new[] { 0.2 }, new[] { -0.1 } }
+            new[] { new[] { 0.5f }, new[] { 0.1f }, new[] { 0.2f } },
+            new[] { new[] { -0.3f }, new[] { 0.4f }, new[] { 0.1f } },
+            new[] { new[] { 0.8f }, new[] { -0.2f }, new[] { 0.3f } },
+            new[] { new[] { -0.6f }, new[] { 0.2f }, new[] { -0.1f } }
         };
             
         var targets = new[]
         {
-            new[] { 0.5 }, 
-            new[] { -0.3 }, 
-            new[] { 0.8 }, 
-            new[] { -0.6 }
+            new[] { 0.5f }, 
+            new[] { -0.3f }, 
+            new[] { 0.8f }, 
+            new[] { -0.6f }
         };
+        
+        var sequenceBatches = sequences.Select(Operations.Stack);
+        var targetBatches = Operations.Stack(targets);
 
         var network = new VectorRecurrentNetwork(
             1, 8, 1, 1,
-            ActivationFunctions.TanhVector,
-            ActivationFunctions.IdentityVector,
-            LossFunctions.MeanSquaredErrorVector);
+            ActivationFunctions.Tanh,
+            ActivationFunctions.Identity,
+            LossFunctions.MeanSquaredError);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -82,9 +83,9 @@ public class RecurrentTests
 
         var network = new VectorRecurrentNetwork(
             1, 16, 1, 1,
-            ActivationFunctions.TanhVector,
-            ActivationFunctions.IdentityVector,
-            LossFunctions.MeanSquaredErrorVector);
+            ActivationFunctions.Tanh,
+            ActivationFunctions.Identity,
+            LossFunctions.MeanSquaredError);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -121,9 +122,9 @@ public class RecurrentTests
 
         var network = new VectorRecurrentNetwork(
             1, 8, 1, 1,
-            ActivationFunctions.TanhVector,
-            ActivationFunctions.IdentityVector,
-            LossFunctions.MeanSquaredErrorVector);
+            ActivationFunctions.Tanh,
+            ActivationFunctions.Identity,
+            LossFunctions.MeanSquaredError);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -168,8 +169,8 @@ public class RecurrentTests
 
         var network = new VectorRecurrentNetwork(
             1, 8, 2, 1,
-            ActivationFunctions.TanhVector,
-            ActivationFunctions.SoftmaxVector,
+            ActivationFunctions.Tanh,
+            ActivationFunctions.Softmax,
             LossFunctions.CrossEntropy);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
@@ -205,13 +206,13 @@ public class RecurrentTests
             new[] { new[] { 0.2 }, new[] { 0.6 }, new[] { 0.3 } }    // should output 0.6
         };
         
-        var targets = sequences.Select(seq => new[] { seq[seq.Length - 2][0] }).ToArray();
+        var targets = sequences.Select(seq => new[] { seq[^2][0] }).ToArray();
 
         var network = new VectorRecurrentNetwork(
             1, 12, 1, 1,
-            ActivationFunctions.TanhVector,
-            ActivationFunctions.IdentityVector,
-            LossFunctions.MeanSquaredErrorVector);
+            ActivationFunctions.Tanh,
+            ActivationFunctions.Identity,
+            LossFunctions.MeanSquaredError);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");

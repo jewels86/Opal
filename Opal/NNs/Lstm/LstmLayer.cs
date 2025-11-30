@@ -1,13 +1,13 @@
 ﻿using Jewels.Lazulite;
 using static Opal.ActivationFunctions;
 
-namespace Opal.NNs.Lstm;
+namespace Opal.NNs;
 
 public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
     where TIn : notnull where TOut : notnull where TWeights : notnull
 {
     public required Tensor<TWeights> EncoderForgetWeights { get; set; } 
-    public required Tensor<TWeights> EncoderInputWeights { get; set; } 
+    public required Tensor<TWeights> EncoderInputWeights { get; init; } 
     public required Tensor<TWeights> EncoderCellWeights { get; set; } 
     public required Tensor<TWeights> EncoderOutputWeights { get; set; }
     public required Tensor<TOut> EncoderForgetBiases { get; set; }

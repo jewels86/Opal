@@ -1,7 +1,7 @@
 ﻿using Jewels.Lazulite;
 using Opal.Utilities;
 
-namespace Opal.NNs.Ff;
+namespace Opal.NNs;
 
 public class BatchedVectorFfNetwork(int inputSize,
     int hiddenSize,

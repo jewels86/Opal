@@ -1,8 +1,15 @@
 ﻿using Jewels.Lazulite;
 
-namespace Opal.NNs.Recurrent;
+namespace Opal.NNs;
 
-public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden, TWeightsOut>
+public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden, TWeightsOut>(
+    int hiddenSize, 
+    RecurrentLayer<TIn, THidden, TWeightsIn> inputLayer,
+    List<RecurrentLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
+    RecurrentLayer<THidden, TOut, TWeightsOut> outputLayer, 
+    Func<Tensor<TOut>, Value<TOut>, Tensor<float>> lossFunction, 
+    Func<Tensor<TOut>, Tensor<TOut>> outputActivation,
+    Func<Tensor<THidden>, Tensor<THidden>> hiddenActivation)
     : INetwork<TIn, TOut>, ISequentialNetwork<TIn, TOut>
     where TIn : notnull
     where TOut : notnull
@@ -11,30 +18,18 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsH
     where TWeightsHidden : notnull
     where TWeightsOut : notnull
 {
-    protected RecurrentNetwork(int hiddenSize, RecurrentLayer<TIn, THidden, TWeightsIn> inputLayer, List<RecurrentLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
-        RecurrentLayer<THidden, TOut, TWeightsOut> outputLayer, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> lossFunction, Func<Tensor<TOut>, Tensor<TOut>> outputActivation, 
-        Func<Tensor<THidden>, Tensor<THidden>> hiddenActivation)
-    {
-        InputLayer = inputLayer;
-        HiddenLayers = hiddenLayers;
-        OutputLayer = outputLayer;
-        LossFunction = lossFunction;
-        OutputActivation = outputActivation;
-        HiddenActivation = hiddenActivation;
-        HiddenSize = hiddenSize;
-    }
-    
-    
-    protected int HiddenSize { get; }
 
-    public RecurrentLayer<TIn, THidden, TWeightsIn> InputLayer { get; }
-    public List<RecurrentLayer<THidden, THidden, TWeightsHidden>> HiddenLayers { get; }
-    public RecurrentLayer<THidden, TOut, TWeightsOut> OutputLayer { get; }
-    
-    public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; }
-    public Func<Tensor<TOut>, Tensor<TOut>> OutputActivation { get; }
-    public Func<Tensor<THidden>, Tensor<THidden>> HiddenActivation { get; }
-    
+
+    protected int HiddenSize { get; } = hiddenSize;
+
+    public RecurrentLayer<TIn, THidden, TWeightsIn> InputLayer { get; } = inputLayer;
+    public List<RecurrentLayer<THidden, THidden, TWeightsHidden>> HiddenLayers { get; } = hiddenLayers;
+    public RecurrentLayer<THidden, TOut, TWeightsOut> OutputLayer { get; } = outputLayer;
+
+    public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; } = lossFunction;
+    public Func<Tensor<TOut>, Tensor<TOut>> OutputActivation { get; } = outputActivation;
+    public Func<Tensor<THidden>, Tensor<THidden>> HiddenActivation { get; } = hiddenActivation;
+
     public Value<TOut> Forward(Value<TIn> input)
     {
         var hidden = InputLayer.Forward(input);

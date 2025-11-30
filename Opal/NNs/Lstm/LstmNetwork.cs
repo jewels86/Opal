@@ -1,8 +1,14 @@
 ﻿using Jewels.Lazulite;
 
-namespace Opal.NNs.Lstm;
+namespace Opal.NNs;
 
-public abstract class LstmNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden, TWeightsOut> : ISequentialNetwork<TIn, TOut>
+public abstract class LstmNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden, TWeightsOut>(
+    LstmLayer<TIn, THidden, TWeightsIn> inputLayer,
+    List<LstmLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
+    LstmLayer<THidden, TOut, TWeightsOut> outputLayer,
+    Func<Tensor<TOut>, Value<TOut>, Tensor<float>> lossFunction,
+    int hiddenSize)
+    : ISequentialNetwork<TIn, TOut>
     where TIn : notnull
     where THidden : notnull
     where TOut : notnull
@@ -10,27 +16,13 @@ public abstract class LstmNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsHidden
     where TWeightsHidden : notnull
     where TWeightsOut : notnull
 {
-    public LstmLayer<TIn, THidden, TWeightsIn> InputLayer { get; set; }
-    public List<LstmLayer<THidden, THidden, TWeightsHidden>> HiddenLayers { get; set; }
-    public LstmLayer<THidden, TOut, TWeightsOut> OutputLayer { get; set; }
-    public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; }
-    
-    protected int HiddenSize { get; }
-    
-    protected LstmNetwork(
-        LstmLayer<TIn, THidden, TWeightsIn> inputLayer,
-        List<LstmLayer<THidden, THidden, TWeightsHidden>> hiddenLayers,
-        LstmLayer<THidden, TOut, TWeightsOut> outputLayer,
-        Func<Tensor<TOut>, Value<TOut>, Tensor<float>> lossFunction,
-        int hiddenSize)
-    {
-        InputLayer = inputLayer;
-        HiddenLayers = hiddenLayers;
-        OutputLayer = outputLayer;
-        LossFunction = lossFunction;
-        HiddenSize = hiddenSize;
-    }
-    
+    public LstmLayer<TIn, THidden, TWeightsIn> InputLayer { get; set; } = inputLayer;
+    public List<LstmLayer<THidden, THidden, TWeightsHidden>> HiddenLayers { get; set; } = hiddenLayers;
+    public LstmLayer<THidden, TOut, TWeightsOut> OutputLayer { get; set; } = outputLayer;
+    public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; } = lossFunction;
+
+    protected int HiddenSize { get; } = hiddenSize;
+
     public Value<TOut> Forward(Value<TIn> input)
     {
         var hidden = InputLayer.Forward(input);

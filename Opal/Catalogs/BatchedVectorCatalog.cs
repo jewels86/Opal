@@ -1,6 +1,6 @@
 ﻿using System.IO.Pipelines;
 using Jewels.Lazulite;
-using Opal.NNs.Ff;
+using Opal.NNs;
 using Opal.Utilities;
 
 namespace Opal;

@@ -1,6 +1,6 @@
 ﻿using Jewels.Lazulite;
 
-namespace Opal.NNs.Ff;
+namespace Opal.NNs;
 
 public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, TBiasesOut>(
     FfLayer<TIn, TOut, TWeightsIn, TBiasesIn> inputLayer,

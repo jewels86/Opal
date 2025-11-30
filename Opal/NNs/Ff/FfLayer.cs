@@ -1,6 +1,6 @@
 ﻿using Jewels.Lazulite;
 
-namespace Opal.NNs.Ff;
+namespace Opal.NNs;
 
 public class FfLayer<TIn, TOut, TWeights, TBiases>(
     Tensor<TWeights> weights,

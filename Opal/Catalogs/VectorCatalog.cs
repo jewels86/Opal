@@ -1,7 +1,5 @@
 ﻿using Jewels.Lazulite;
-using Opal.NNs.Ff;
-using Opal.NNs.Lstm;
-using Opal.NNs.Recurrent;
+using Opal.NNs;
 using Opal.Utilities;
 
 namespace Opal;

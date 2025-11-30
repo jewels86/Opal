@@ -1,29 +1,26 @@
 ﻿using Jewels.Lazulite;
 
-namespace Opal.NNs.Recurrent;
+namespace Opal.NNs;
 
-public class RecurrentLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
-    where TIn : notnull where TOut : notnull where TWeights : notnull
+public class RecurrentLayer<TIn, TOut, TWeights>(
+    Tensor<TWeights> inputWeights, 
+    Tensor<TWeights> recurrentWeights,
+    Tensor<TOut> biases, 
+    Tensor<TOut> state,
+    Func<Tensor<TOut>, Tensor<TOut>> activation, 
+    IRecurrentCatalog<TIn, TOut, TWeights> catalog)
+    : ILayer<TIn, TOut>
+    where TIn : notnull
+    where TOut : notnull
+    where TWeights : notnull
 {
-    public RecurrentLayer(
-        Tensor<TWeights> inputWeights, Tensor<TWeights> recurrentWeights, 
-        Tensor<TOut> biases, Tensor<TOut> state, 
-        Func<Tensor<TOut>, Tensor<TOut>> activation, IRecurrentCatalog<TIn, TOut, TWeights> catalog)
-    {
-        InputWeights = inputWeights;
-        RecurrentWeights = recurrentWeights;
-        Biases = biases;
-        State = state;
-        Activation = activation;
-        Catalog = catalog;
-    }
 
-    public Tensor<TWeights> InputWeights { get; set; } 
-    public Tensor<TWeights> RecurrentWeights { get; set; }
-    public Tensor<TOut> Biases { get; set; }
-    public Tensor<TOut> State { get; set; }
-    public Func<Tensor<TOut>, Tensor<TOut>> Activation { get; set; }
-    public IRecurrentCatalog<TIn, TOut, TWeights> Catalog { get; set; }
+    public Tensor<TWeights> InputWeights { get; set; } = inputWeights;
+    public Tensor<TWeights> RecurrentWeights { get; set; } = recurrentWeights;
+    public Tensor<TOut> Biases { get; set; } = biases;
+    public Tensor<TOut> State { get; set; } = state;
+    public Func<Tensor<TOut>, Tensor<TOut>> Activation { get; set; } = activation;
+    public IRecurrentCatalog<TIn, TOut, TWeights> Catalog { get; set; } = catalog;
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
