@@ -46,7 +46,7 @@ public static class FfTests
         float[] targets = [1, -1];
 
         using BatchedVectorFfNetwork network = new(
-            1, 1, 1, 1,
+            1, 2, 1, 1,
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
     
@@ -55,7 +55,6 @@ public static class FfTests
     
         Value<float[,]>[] batchedInputs = [Operations.Stack(inputStorage)];
         Value<float[,]>[] batchedTargets = [Operations.Stack(targetStorage)];
-        Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
         
         OpalContext.GlobalContext.EnsureInitialization();
         Stopwatch sw = Stopwatch.StartNew();
@@ -65,10 +64,9 @@ public static class FfTests
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Training for 1000 epochs...");
         sw.Restart();
-        network.Train(batchedInputs, batchedTargets, 1000, 0.0001f);
+        network.Train(batchedInputs, batchedTargets, 2000, 0.01f);
         sw.Stop();
-        Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
-        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000f:F2} ms per epoch)");
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms)");
         
         var output = network.Forward(batchedInputs[0]).ToHost();
         Console.WriteLine($"Output[0,0] = {output[0, 0]} (target: 1)");

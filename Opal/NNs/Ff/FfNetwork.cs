@@ -28,8 +28,8 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, T
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        var hidden = InputLayer.Forward(input).Defer();
-        foreach (var layer in HiddenLayers) hidden = layer.Forward(hidden).Defer();
+        var hidden = InputLayer.Forward(input);
+        foreach (var layer in HiddenLayers) hidden = layer.Forward(hidden);
         return OutputLayer.Forward(hidden);
     }
     

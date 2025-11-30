@@ -40,7 +40,7 @@ public static class TensorGeneration
         return GenerateMatrix((_, _) => Random.NextGaussian() * scale, rows, columns);
     }
     #endregion
-    #region
+    #region Vectors
 
     public static Tensor<float[]> GenerateVector(Func<int, float> generator, int size)
     {

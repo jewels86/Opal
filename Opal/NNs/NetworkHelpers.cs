@@ -25,7 +25,7 @@ public static class NetworkHelpers
     #region Training
     public static void Train<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action update,
-        Value<TIn>[] inputs, Value<TOut>[] targets, int epochs)
+        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 100)
         where TIn : notnull where TOut : notnull
     {
         foreach (var input in inputs) input.NonDisposable();
@@ -34,19 +34,22 @@ public static class NetworkHelpers
         int aidx = inputs[0].AcceleratorIndex;
         var one = new ScalarValue(compute.Make(aidx, 1, 1)).NonDisposable();
         
-        for (int epoch = 0; epoch < epochs; epoch++)
+        for (int epoch = 0; epoch < maxEpochs; epoch++)
         { 
+            var totalLoss = new ScalarValue(0, aidx);
             for (int i = 0; i < inputs.Length; i++)
             {
-                using var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()); 
-                using var outputTensor = forward(inputTensor);
+                var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()); 
+                var outputTensor = forward(inputTensor);
                 using var lossTensor = loss(outputTensor, targets[i]);
                 
-                if (epoch % 100 == 0) Console.WriteLine($"Epoch {epoch}: Loss at flat index 0 = {lossTensor.Value.ToProxy().FlatData[0]}");
-                
                 lossTensor.Backward(one);
+                totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
                 update();
             }
+            if (epoch % checkInterval != 0) continue;
+            if (totalLoss.ToHost() < epsilon)
+                return;
         }
     }
 

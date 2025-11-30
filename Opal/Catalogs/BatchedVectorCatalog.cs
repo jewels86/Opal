@@ -9,7 +9,7 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
 {
     public int AcceleratorIndex { get; set; } = Operations.DefaultAcceleratorIndex;
     
-    public Tensor<float[,]> Multiply(Tensor<float[,]> a, Tensor<float[,]> b) => Operations.MatrixMultiply(b, a);
+    public Tensor<float[,]> Multiply(Tensor<float[,]> a, Tensor<float[,]> b) => Operations.MatrixMultiply(b, a, transposeB: true);
     public Tensor<float[,]> Add(Tensor<float[]> a, Tensor<float[,]> b) => Operations.Add(b, a);
 
     public Value<float[]> ReadBias(BinaryReader reader) => Operations.New(BinaryWriting.ReadVector(reader), aidx: AcceleratorIndex);

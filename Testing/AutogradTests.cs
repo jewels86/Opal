@@ -236,6 +236,56 @@ public static class AutogradTests
         Console.WriteLine("✓ MSE backward test passed!\n");
     }
     
+    public static void TestMatrixVectorAddBackward()
+    {
+        Console.WriteLine("Testing Matrix-Vector Add Backward...");
+        Stopwatch sw = Stopwatch.StartNew();
+        
+        // Matrix: [[1, 2], [3, 4]]
+        // Vector: [10, 20]
+        // Result: [[11, 22], [13, 24]]
+        // Gradient flows back:
+        // - matrix grad = upstream grad (elementwise)
+        // - vector grad = sum of upstream grad across rows
+        
+        using var matrix = Operations.New(new float[,] { { 1, 2 }, { 3, 4 } });
+        using var vector = Operations.New([10, 20]);
+        
+        using var result = Operations.Add(matrix, vector);
+        Operations.Sync();
+        sw.Stop();
+        
+        var resultValue = result.Value.ToHost();
+        Console.WriteLine($"Forward pass: [[{resultValue[0,0]}, {resultValue[0,1]}], [{resultValue[1,0]}, {resultValue[1,1]}]]");
+        Console.WriteLine($"Expected: [[11, 22], [13, 24]] - {sw.ElapsedMilliseconds}ms");
+        Assert(Math.Abs(resultValue[0,0] - 11) < 1e-5, "result[0,0] failed");
+        Assert(Math.Abs(resultValue[0,1] - 22) < 1e-5, "result[0,1] failed");
+        Assert(Math.Abs(resultValue[1,0] - 13) < 1e-5, "result[1,0] failed");
+        Assert(Math.Abs(resultValue[1,1] - 24) < 1e-5, "result[1,1] failed");
+        
+        sw.Restart();
+        var upstreamGrad = new float[,] { { 1, 1 }, { 1, 1 } };
+        Operations.Sync();
+        result.Backward(Operations.NewValue(upstreamGrad));
+        Operations.Sync();
+        sw.Stop();
+        
+        var matrixGrad = matrix.Gradient.ToProxy().FlatData;
+        var vectorGrad = vector.Gradient.ToHost();
+        
+        Console.WriteLine($"grad_matrix: [[{matrixGrad[0]}, {matrixGrad[1]}], [{matrixGrad[2]}, {matrixGrad[3]}]]");
+        Console.WriteLine($"Expected: [[1, 1], [1, 1]]");
+        Console.WriteLine($"grad_vector: [{vectorGrad[0]}, {vectorGrad[1]}]");
+        Console.WriteLine($"Expected: [2, 2] (sum across rows) - {sw.ElapsedMilliseconds}ms");
+        
+        Assert(Math.Abs(matrixGrad[0] - 1) < 1e-5, "grad_matrix[0,0] failed");
+        Assert(Math.Abs(matrixGrad[1] - 1) < 1e-5, "grad_matrix[0,1] failed");
+        Assert(Math.Abs(vectorGrad[0] - 2) < 1e-5, "grad_vector[0] failed");
+        Assert(Math.Abs(vectorGrad[1] - 2) < 1e-5, "grad_vector[1] failed");
+        
+        Console.WriteLine("✓ Matrix-vector add backward test passed!\n");
+    }
+    
     private static void Assert(bool condition, string message)
     {
         if (!condition)
@@ -249,6 +299,7 @@ public static class AutogradTests
         TestComplexGraph();
         TestMatrixMultiplyBackward();
         TestMSEBackward();
+        TestMatrixVectorAddBackward();
         Console.WriteLine("All tests passed! ✓");
     }
 }

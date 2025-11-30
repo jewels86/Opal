@@ -48,11 +48,5 @@ public static partial class Operations
 
         return result;
     }
-
-    public static Tensor<float[,]> StackToTensor(Value<float[]>[] vectors)
-    {
-        var matrix = Stack(vectors);
-        return new(matrix, matrix.Zeros());
-    }
     #endregion
 }

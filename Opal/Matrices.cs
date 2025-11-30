@@ -46,8 +46,10 @@ public static partial class Operations
     public static Tensor<float[,]> MatrixMultiply(Tensor<float[,]> a, Tensor<float[,]> b, bool transposeA = false, bool transposeB = false)
     {
         var (aidx, m, k, n) = (a.AcceleratorIndex, a.Value.Shape[0], a.Value.Shape[1], b.Value.Shape[1]);
+        var realM = transposeA ? a.Value.Shape[1] : a.Value.Shape[0];
+        var realN = transposeB ? b.Value.Shape[0] : b.Value.Shape[1];
         
-        var result = new MatrixValue(Compute.Get(aidx, m * n), [m, n]);
+        var result = new MatrixValue(Compute.Get(aidx, realM * realN), [realM, realN]);
         Compute.MatrixMultiply(a.Value, b.Value, result, m, k, n, transposeA: transposeA, transposeB: transposeB);
         return new(result, result.Zeros(), Backward, [a, b]);
 
