@@ -55,33 +55,71 @@ public static partial class Operations
         {
             var (a0, a1) = (a.Value.Shape[0], a.Value.Shape[1]);
             var (b0, b1) = (b.Value.Shape[0], b.Value.Shape[1]);
-    
+
             var gradA = Compute.Get(aidx, a0 * a1);
-            Compute.MatrixMultiply(
-                transposeA ? b.Value.Data : tensor.Gradient.Data,
-                transposeA ? tensor.Gradient.Data : b.Value.Data,
-                gradA,
-                transposeA ? a1 : a0,
-                transposeB ? b0 : b1,
-                transposeA ? a0 : a1,
-                transposeA: transposeA && transposeB,
-                transposeB: transposeA || !transposeB
-            );
-            Compute.Call(ElementwiseAccumulateKernels, gradA, a.Gradient);
-
             var gradB = Compute.Get(aidx, b0 * b1);
-            Compute.MatrixMultiply(
-                transposeB ? tensor.Gradient.Data : a.Value.Data,
-                transposeB ? a.Value.Data : tensor.Gradient.Data,
-                gradB,
-                b0,
-                transposeB ? a0 : transposeA ? a1 : a0,
-                transposeB ? b1 : b0,
-                transposeA: transposeB || !transposeA,
-                transposeB: transposeA && transposeB
-            );
-            Compute.Call(ElementwiseAccumulateKernels, gradB, b.Gradient);
 
+            switch (transposeA, transposeB)
+            {
+                case (false, false):
+                    Compute.MatrixMultiply(
+                        tensor.Gradient.Data, b.Value.Data, gradA,
+                        m, n, k,
+                        transposeA: false, transposeB: true
+                    );
+                    
+                    Compute.MatrixMultiply(
+                        a.Value.Data, tensor.Gradient.Data, gradB,
+                        k, m, n,
+                        transposeA: true, transposeB: false
+                    );
+                    break;
+
+                case (true, false):
+                    Compute.MatrixMultiply(
+                        b.Value.Data, tensor.Gradient.Data, gradA,
+                        a1, n, m,
+                        transposeA: false, transposeB: true
+                    );
+                    
+                    Compute.MatrixMultiply(
+                        a.Value.Data, tensor.Gradient.Data, gradB,
+                        k, m, n,
+                        transposeA: false, transposeB: false
+                    );
+                    break;
+
+                case (false, true):
+                    Compute.MatrixMultiply(
+                        tensor.Gradient.Data, b.Value.Data, gradA,
+                        m, n, k,
+                        transposeA: false, transposeB: false
+                    );
+                    
+                    Compute.MatrixMultiply(
+                        tensor.Gradient.Data, a.Value.Data, gradB,
+                        b1, m, k,
+                        transposeA: true, transposeB: false
+                    );
+                    break;
+
+                case (true, true):
+                    Compute.MatrixMultiply(
+                        b.Value.Data, tensor.Gradient.Data, gradA,
+                        a1, n, m,
+                        transposeA: true, transposeB: true
+                    );
+                    
+                    Compute.MatrixMultiply(
+                        tensor.Gradient.Data, a.Value.Data, gradB,
+                        b1, m, a1,
+                        transposeA: true, transposeB: true
+                    );
+                    break;
+            }
+
+            Compute.Call(ElementwiseAccumulateKernels, gradA, a.Gradient);
+            Compute.Call(ElementwiseAccumulateKernels, gradB, b.Gradient);
             Compute.Return(gradA, gradB);
         }
     }

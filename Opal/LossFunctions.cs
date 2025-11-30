@@ -16,7 +16,7 @@ public static class LossFunctions
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, 
         ArrayView1D<float, Stride1D.Dense>, float>[] MeanSquaredErrorBackwardKernels { get; } 
         = compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> x, ArrayView1D<float, Stride1D.Dense> t, ArrayView1D<float, Stride1D.Dense> grad, ArrayView1D<float, Stride1D.Dense> r, float n) => 
-            r[i] += grad[i] * 2 * (x[i] - t[i]) / n);
+            r[i] += grad[0] * 2 * (x[i] - t[i]) / n);
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] CrossEntropyKernels { get; } 
         = compute.Load((i, pred, target, r) => r[i] = -target[i] * XMath.Log(pred[i]));
 
@@ -45,8 +45,7 @@ public static class LossFunctions
         
         void Backward(ITensor t) =>
             compute.Call(
-                aidx, MeanSquaredErrorBackwardKernels,
-                t.Gradient.Data.IntExtent,
+                MeanSquaredErrorBackwardKernels,
                 predicted.Value.Data, actual.Data,
                 t.Gradient.Data, predicted.Gradient.Data,
                 actual.TotalSize);

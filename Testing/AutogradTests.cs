@@ -209,8 +209,8 @@ public static class AutogradTests
         // MSE = ((2-1)^2 + (4-3)^2 + (6-5)^2) / 3 = (1 + 1 + 1) / 3 = 1.0
         // grad = 2 * (pred - target) / n = 2 * [1, 1, 1] / 3 = [0.6667, 0.6667, 0.6667]
         
-        using var pred = Operations.New(new float[] {2, 4, 6});
-        var target = Operations.NewValue(new float[] {1, 3, 5});
+        using var pred = Operations.New([2, 4, 6]);
+        using var target = Operations.NewValue([1, 3, 5]);
         
         using var loss = LossFunctions.MeanSquaredError(pred, target);
         Operations.Sync();
@@ -221,7 +221,7 @@ public static class AutogradTests
         Assert(Math.Abs(lossValue - 1.0) < 1e-5, "MSE forward failed");
         
         sw.Restart();
-        loss.Backward(new ScalarValue(1, pred.AcceleratorIndex));
+        loss.Backward(Operations.NewValue(1));
         Operations.Sync();
         sw.Stop();
         

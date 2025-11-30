@@ -8,8 +8,8 @@ internal static class Program
     {
         using var context = new OpalContext(initializeInBackground: false, useGpu: true);
         
-        AutogradTests.RunAll();
+        //AutogradTests.RunAll();
         //FfTests.OverfittingTest();
-        //FfTests.OverfittingTestBatched();
+        FfTests.OverfittingTestBatched();
     }
 }
