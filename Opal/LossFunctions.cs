@@ -29,7 +29,7 @@ public static class LossFunctions
     public static Tensor<float> MeanSquaredError(ITensor predicted, IValue actual)
     {
         if (predicted.Value.TotalSize != actual.TotalSize)
-            throw new ArgumentException("Vectors must be of the same length.");
+            throw new ArgumentException("Values must be of the same length.");
         
         var aidx = predicted.Value.AcceleratorIndex;
         var result = compute.Get(aidx, 1);

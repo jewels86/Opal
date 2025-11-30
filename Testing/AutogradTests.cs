@@ -130,6 +130,112 @@ public static class AutogradTests
         Console.WriteLine("✓ Complex graph test passed!\n");
     }
     
+    public static void TestMatrixMultiplyBackward()
+{
+    Console.WriteLine("Testing Matrix Multiply Backward...");
+    Stopwatch sw = Stopwatch.StartNew();
+    
+    // C = A * B where A is [2,3], B is [3,2]
+    // Result C will be [2,2]
+    // A = [[1, 2, 3],
+    //      [4, 5, 6]]
+    // B = [[1, 2],
+    //      [3, 4],
+    //      [5, 6]]
+    // C = [[22, 28],
+    //      [49, 64]]
+    //
+    // If grad_C = [[1, 1],
+    //              [1, 1]]
+    // grad_A = grad_C * B^T = [[1,1],[1,1]] * [[1,3,5],[2,4,6]] = [[3,7,11],[3,7,11]]
+    // grad_B = A^T * grad_C = [[1,4],[2,5],[3,6]] * [[1,1],[1,1]] = [[5,5],[7,7],[9,9]]
+    
+    using var a = Operations.New(new float[,] {{1, 2, 3}, {4, 5, 6}});
+    using var b = Operations.New(new float[,] {{1, 2}, {3, 4}, {5, 6}});
+    
+    using var c = Operations.MatrixMultiply(a, b);
+    Operations.Sync();
+    sw.Stop();
+    
+    var cValue = c.Value.ToHost();
+    Console.WriteLine($"Forward pass: [{cValue[0,0]}, {cValue[0,1]}, {cValue[1,0]}, {cValue[1,1]}]");
+    Console.WriteLine($"Expected: [22, 28, 49, 64] - {sw.ElapsedMilliseconds}ms");
+    
+    Assert(Math.Abs(cValue[0,0] - 22) < 1e-5, "Forward [0,0] failed");
+    Assert(Math.Abs(cValue[0,1] - 28) < 1e-5, "Forward [0,1] failed");
+    Assert(Math.Abs(cValue[1,0] - 49) < 1e-5, "Forward [1,0] failed");
+    Assert(Math.Abs(cValue[1,1] - 64) < 1e-5, "Forward [1,1] failed");
+    
+    sw.Restart();
+    c.Backward(Operations.NewValue(new float[,] {{1, 1}, {1, 1}}));
+    Operations.Sync();
+    sw.Stop();
+    
+    var aGrad = a.Gradient.ToHost();
+    var bGrad = b.Gradient.ToHost();
+    
+    Console.WriteLine($"grad_A shape: [{aGrad.GetLength(0)}, {aGrad.GetLength(1)}] (expected [2, 3])");
+    Console.WriteLine($"grad_B shape: [{bGrad.GetLength(0)}, {bGrad.GetLength(1)}] (expected [3, 2])");
+    
+    Console.WriteLine($"grad_A: [{aGrad[0,0]}, {aGrad[0,1]}, {aGrad[0,2]}, {aGrad[1,0]}, {aGrad[1,1]}, {aGrad[1,2]}]");
+    Console.WriteLine($"Expected: [3, 7, 11, 3, 7, 11] - {sw.ElapsedMilliseconds}ms");
+    Console.WriteLine($"grad_B: [{bGrad[0,0]}, {bGrad[0,1]}, {bGrad[1,0]}, {bGrad[1,1]}, {bGrad[2,0]}, {bGrad[2,1]}]");
+    Console.WriteLine($"Expected: [5, 5, 7, 7, 9, 9]");
+    
+    Assert(Math.Abs(aGrad[0,0] - 3) < 1e-5, "grad_A[0,0] failed");
+    Assert(Math.Abs(aGrad[0,1] - 7) < 1e-5, "grad_A[0,1] failed");
+    Assert(Math.Abs(aGrad[0,2] - 11) < 1e-5, "grad_A[0,2] failed");
+    Assert(Math.Abs(aGrad[1,0] - 3) < 1e-5, "grad_A[1,0] failed");
+    Assert(Math.Abs(aGrad[1,1] - 7) < 1e-5, "grad_A[1,1] failed");
+    Assert(Math.Abs(aGrad[1,2] - 11) < 1e-5, "grad_A[1,2] failed");
+    
+    Assert(Math.Abs(bGrad[0,0] - 5) < 1e-5, "grad_B[0,0] failed");
+    Assert(Math.Abs(bGrad[0,1] - 5) < 1e-5, "grad_B[0,1] failed");
+    Assert(Math.Abs(bGrad[1,0] - 7) < 1e-5, "grad_B[1,0] failed");
+    Assert(Math.Abs(bGrad[1,1] - 7) < 1e-5, "grad_B[1,1] failed");
+    Assert(Math.Abs(bGrad[2,0] - 9) < 1e-5, "grad_B[2,0] failed");
+    Assert(Math.Abs(bGrad[2,1] - 9) < 1e-5, "grad_B[2,1] failed");
+    
+    Console.WriteLine("✓ Matrix multiply backward test passed!\n");
+}
+
+public static void TestMSEBackward()
+{
+    Console.WriteLine("Testing MSE Backward...");
+    Stopwatch sw = Stopwatch.StartNew();
+    
+    // predictions = [2, 4, 6]
+    // targets = [1, 3, 5]
+    // MSE = ((2-1)^2 + (4-3)^2 + (6-5)^2) / 3 = (1 + 1 + 1) / 3 = 1.0
+    // grad = 2 * (pred - target) / n = 2 * [1, 1, 1] / 3 = [0.6667, 0.6667, 0.6667]
+    
+    using var pred = Operations.New(new float[] {2, 4, 6});
+    var target = Operations.NewValue(new float[] {1, 3, 5});
+    
+    using var loss = LossFunctions.MeanSquaredError(pred, target);
+    Operations.Sync();
+    sw.Stop();
+    
+    var lossValue = loss.Value.ToHost();
+    Console.WriteLine($"Forward pass: {lossValue} (expected 1.0 - {sw.ElapsedMilliseconds}ms)");
+    Assert(Math.Abs(lossValue - 1.0) < 1e-5, "MSE forward failed");
+    
+    sw.Restart();
+    loss.Backward(new ScalarValue(1, pred.AcceleratorIndex));
+    Operations.Sync();
+    sw.Stop();
+    
+    var predGrad = pred.Gradient.ToHost();
+    Console.WriteLine($"grad_pred: [{predGrad[0]}, {predGrad[1]}, {predGrad[2]}]");
+    Console.WriteLine($"Expected: [0.6667, 0.6667, 0.6667] - {sw.ElapsedMilliseconds}ms");
+    
+    Assert(Math.Abs(predGrad[0] - 0.6667) < 1e-3, "grad_pred[0] failed");
+    Assert(Math.Abs(predGrad[1] - 0.6667) < 1e-3, "grad_pred[1] failed");
+    Assert(Math.Abs(predGrad[2] - 0.6667) < 1e-3, "grad_pred[2] failed");
+    
+    Console.WriteLine("✓ MSE backward test passed!\n");
+}
+    
     private static void Assert(bool condition, string message)
     {
         if (!condition)
@@ -141,6 +247,8 @@ public static class AutogradTests
         TestScalarGradients();
         TestVectorGradients();
         TestComplexGraph();
+        TestMatrixMultiplyBackward();
+        TestMSEBackward();
         Console.WriteLine("All tests passed! ✓");
     }
 }

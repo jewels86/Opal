@@ -2,31 +2,29 @@
 
 namespace Opal.NNs.Ff;
 
-public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut>(
-    FfLayer<TIn, TOut, TWeightsIn, TWeightsOut> inputLayer,
-    List<FfLayer<TOut, TOut, TWeightsOut, TWeightsOut>> hiddenLayers,
-    FfLayer<TOut, TOut, TWeightsOut, TWeightsOut> outputLayer,
+public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, TBiasesOut>(
+    FfLayer<TIn, TOut, TWeightsIn, TBiasesIn> inputLayer,
+    List<FfLayer<TOut, TOut, TWeightsOut, TBiasesOut>> hiddenLayers,
+    FfLayer<TOut, TOut, TWeightsOut, TBiasesOut> outputLayer,
     Func<Tensor<TOut>, Value<TOut>, Tensor<float>> lossFunction,
-    Func<Tensor<TWeightsOut>, Value<TWeightsOut>, Tensor<float>> lossFunctionBatched,
     int hiddenSize,
-    Func<Tensor<TOut>, Tensor<TOut>> hiddenActivation,
-    Func<Tensor<TWeightsOut>, Tensor<TWeightsOut>> hiddenActivationBatched)
-    : INetwork<TIn, TOut>, IBatchingNetwork<TWeightsIn, TWeightsOut>
+    Func<Tensor<TOut>, Tensor<TOut>> hiddenActivation)
+    : INetwork<TIn, TOut>, IDisposable
     where TIn : notnull
     where TOut : notnull
     where TWeightsIn : notnull
     where TWeightsOut : notnull
+    where TBiasesIn : notnull
+    where TBiasesOut : notnull
 {
-    public FfLayer<TIn, TOut, TWeightsIn, TWeightsOut> InputLayer { get; } = inputLayer;
-    public List<FfLayer<TOut, TOut, TWeightsOut, TWeightsOut>> HiddenLayers { get; } = hiddenLayers;
-    public FfLayer<TOut, TOut, TWeightsOut, TWeightsOut> OutputLayer { get; } = outputLayer;
+    public FfLayer<TIn, TOut, TWeightsIn, TBiasesIn> InputLayer { get; } = inputLayer;
+    public List<FfLayer<TOut, TOut, TWeightsOut, TBiasesOut>> HiddenLayers { get; } = hiddenLayers;
+    public FfLayer<TOut, TOut, TWeightsOut, TBiasesOut> OutputLayer { get; } = outputLayer;
 
     public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; } = lossFunction;
-    public Func<Tensor<TWeightsOut>, Value<TWeightsOut>, Tensor<float>> LossFunctionBatched { get; } = lossFunctionBatched;
 
     protected int HiddenSize { get; } = hiddenSize;
     protected Func<Tensor<TOut>, Tensor<TOut>> HiddenActivation { get; } = hiddenActivation;
-    protected Func<Tensor<TWeightsOut>, Tensor<TWeightsOut>> HiddenActivationBatched { get; } = hiddenActivationBatched;
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
@@ -34,16 +32,8 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut>(
         foreach (var layer in HiddenLayers) hidden = layer.Forward(hidden).Defer();
         return OutputLayer.Forward(hidden);
     }
-
-    public Tensor<TWeightsOut> ForwardBatch(Tensor<TWeightsIn> batch)
-    {
-        var hidden = InputLayer.ForwardBatch(batch).Defer();
-        foreach (var layer in HiddenLayers) hidden = layer.ForwardBatch(hidden).Defer();
-        return OutputLayer.ForwardBatch(hidden);
-    }
     
     public Value<TOut> Forward(Value<TIn> input) => Forward(new Tensor<TIn>(input, input.Zeros())).Value;
-    public Value<TWeightsOut> ForwardBatch(Value<TWeightsIn> batch) => ForwardBatch(new Tensor<TWeightsIn>(batch, batch.Zeros())).Value;
 
     public void UpdateParameters(float lr)
     {
@@ -55,16 +45,18 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut>(
 
     public void Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) => 
         NetworkHelpers.Train(Forward, LossFunction, () => UpdateParameters(lr), inputs, targets, epochs);
-
-    public void TrainBatches(Value<TWeightsIn>[] inputs, Value<TWeightsOut>[] targets, int epochs, float lr) => 
-        NetworkHelpers.Train(ForwardBatch, LossFunctionBatched, () => UpdateParameters(lr), inputs, targets, epochs);
     
     public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
         NetworkHelpers.EvaluateLoss(Forward, LossFunction, inputs, targets);
-    public float EvaluateLossBatches(Value<TWeightsIn>[] inputs, Value<TWeightsOut>[] targets) =>
-        NetworkHelpers.EvaluateLoss(ForwardBatch, LossFunctionBatched, inputs, targets);
 
     public void Save(string path) => NetworkHelpers.Save(InputLayer, HiddenLayers.Cast<ILayer<TOut, TOut>>().ToList(), OutputLayer, path);
     public void Load(string path) => NetworkHelpers.Load(InputLayer, HiddenLayers.Cast<ILayer<TOut,TOut>>().ToList(), OutputLayer, CreateHiddenLayer, path);
-    protected abstract FfLayer<TOut, TOut, TWeightsOut, TWeightsOut> CreateHiddenLayer();
+    protected abstract FfLayer<TOut, TOut, TWeightsOut, TBiasesOut> CreateHiddenLayer();
+    
+    public void Dispose()
+    {
+        InputLayer.Dispose();
+        foreach (var layer in HiddenLayers) layer.Dispose();
+        OutputLayer.Dispose();
+    }
 }

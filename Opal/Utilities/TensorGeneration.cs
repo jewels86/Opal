@@ -10,7 +10,7 @@ public static class TensorGeneration
         for (int i = 0; i < rows; i++)
         for (int j = 0; j < columns; j++)
                 matrix[i, j] = generator(i, j);
-        return Operations.NewMatrix(matrix, Operations.Fill(0, rows, columns));
+        return Operations.New(matrix, Operations.Fill(0, rows, columns));
     }
 
     public static Tensor<float[,]> GenerateMatrixParallel(Func<int, int, float> generator, int rows, int columns)
@@ -21,7 +21,7 @@ public static class TensorGeneration
             for (int j = 0; j < columns; j++)
                 matrix[i, j] = generator(i, j);
         });
-        return Operations.NewMatrix(matrix, Operations.Fill(0, rows, columns));
+        return Operations.New(matrix, Operations.Fill(0, rows, columns));
     }
 
     public static Tensor<float[,]> RandomMatrix(float min, float max, int rows, int cols) => 

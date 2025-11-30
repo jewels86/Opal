@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Xml.Serialization;
 using Jewels.Lazulite;
 using Opal;
 using Opal.NNs.Ff;
@@ -16,7 +15,7 @@ public static class FfTests
         float[] inputs = [0.5f, -0.5f];
         float[] targets = [1, -1];
 
-        VectorFfNetwork network = new(
+        using VectorFfNetwork network = new(
             1, 1, 1, 1,
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
@@ -46,7 +45,7 @@ public static class FfTests
         float[] inputs = [0.5f, -0.5f];
         float[] targets = [1, -1];
 
-        VectorFfNetwork network = new(
+        using BatchedVectorFfNetwork network = new(
             1, 1, 1, 1,
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
@@ -60,16 +59,20 @@ public static class FfTests
         
         OpalContext.GlobalContext.EnsureInitialization();
         Stopwatch sw = Stopwatch.StartNew();
-        var initialLoss = network.EvaluateLossBatches(batchedInputs, batchedTargets);
+        var initialLoss = network.EvaluateLoss(batchedInputs, batchedTargets);
         sw.Stop();
         
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Training for 1000 epochs...");
         sw.Restart();
-        network.TrainBatches(batchedInputs, batchedTargets, 1000, 0.01f);
+        network.Train(batchedInputs, batchedTargets, 1000, 0.0001f);
         sw.Stop();
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
-        Console.WriteLine($"Evaluating the loss: {network.EvaluateLossBatches(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000f:F2} ms per epoch)");
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000f:F2} ms per epoch)");
+        
+        var output = network.Forward(batchedInputs[0]).ToHost();
+        Console.WriteLine($"Output[0,0] = {output[0, 0]} (target: 1)");
+        Console.WriteLine($"Output[1,0] = {output[1, 0]} (target: -1)");
     }
     
     public static void NonlinearFunctionTest()

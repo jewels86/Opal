@@ -2,36 +2,28 @@
 
 namespace Opal.NNs.Ff;
 
-public class FfLayer<TIn, TOut, TWeights, TBatchOut>(Tensor<TWeights> weights,
-    Tensor<TOut> biases,
+public class FfLayer<TIn, TOut, TWeights, TBiases>(
+    Tensor<TWeights> weights,
+    Tensor<TBiases> biases,
     Func<Tensor<TOut>, Tensor<TOut>> activation,
-    Func<Tensor<TBatchOut>, Tensor<TBatchOut>> batchActivation,
-    IFfCatalog<TIn, TOut, TWeights, TBatchOut> catalog)
+    IFfCatalog<TIn, TOut, TWeights, TBiases> catalog)
     : ILayer<TIn, TOut>, IDisposable
     where TIn : notnull
     where TOut : notnull
     where TWeights : notnull
-    where TBatchOut : notnull
+    where TBiases : notnull
 {
 
     public Tensor<TWeights> Weights { get; private set; } = weights;
-    public Tensor<TOut> Biases { get; private set; } = biases;
+    public Tensor<TBiases> Biases { get; private set; } = biases;
     public Func<Tensor<TOut>, Tensor<TOut>> Activation { get; set; } = activation;
-    public Func<Tensor<TBatchOut>, Tensor<TBatchOut>> BatchActivation { get; set; } = batchActivation;
-    public IFfCatalog<TIn, TOut, TWeights, TBatchOut> Catalog { get; set; } = catalog;
+    public IFfCatalog<TIn, TOut, TWeights, TBiases> Catalog { get; set; } = catalog;
 
     public Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        using var multiplied = Catalog.Multiply(Weights, input);
-        using var sum = Operations.Add(Biases, multiplied);
-        return Activation(sum);
-    }
-
-    public Tensor<TBatchOut> ForwardBatch(Tensor<TWeights> batch)
-    {
-        var multiplied = Catalog.Multiply(batch, Weights);
+        var multiplied = Catalog.Multiply(Weights, input);
         var sum = Catalog.Add(Biases, multiplied);
-        return BatchActivation(sum);
+        return Activation(sum);
     }
     
     public Value<TOut> Forward(Value<TIn> input) => Forward(new Tensor<TIn>(input, input.Zeros())).Value;
@@ -70,15 +62,14 @@ public class FfLayer<TIn, TOut, TWeights, TBatchOut>(Tensor<TWeights> weights,
     }
 }
 
-public interface IFfCatalog<TIn, TOut, TWeights, TBatchOut>
-    where TIn : notnull where TOut : notnull where TWeights : notnull where TBatchOut : notnull
+public interface IFfCatalog<TIn, TOut, TWeights, TBiases>
+    where TIn : notnull where TOut : notnull where TWeights : notnull where TBiases : notnull
 {
     public Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TIn> b);
-    public Tensor<TBatchOut> Multiply(Tensor<TWeights> a, Tensor<TWeights> b);
-    public Tensor<TBatchOut> Add(Tensor<TOut> a, Tensor<TBatchOut> b);
+    public Tensor<TOut> Add(Tensor<TBiases> a, Tensor<TOut> b);
     
     public void WriteWeights(BinaryWriter writer, Value<TWeights> weight);
     public Value<TWeights> ReadWeights(BinaryReader reader);
-    public void WriteBias(BinaryWriter writer, Value<TOut> bias);
-    public Value<TOut> ReadBias(BinaryReader reader);
+    public void WriteBias(BinaryWriter writer, Value<TBiases> bias);
+    public Value<TBiases> ReadBias(BinaryReader reader);
 }

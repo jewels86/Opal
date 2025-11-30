@@ -15,11 +15,14 @@ public static partial class Operations
         return matrix;
     }
 
-    public static Tensor<float[,]> NewMatrix(float[,] matrix, float[,]? gradient = null, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null,
-        int? aidx = null) =>
-        new(new MatrixValue(matrix, aidx ?? DefaultAcceleratorIndex),
+    public static Tensor<float[,]> New(float[,] matrix, float[,]? gradient = null, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null, int? aidx = null) => new(
+            new MatrixValue(matrix, aidx ?? DefaultAcceleratorIndex),
             new MatrixValue(gradient ?? Fill(0, matrix.GetLength(0), matrix.GetLength(1)), aidx ?? DefaultAcceleratorIndex),
             backwardAction, inputs);
+    public static Tensor<float[,]> New(Value<float[,]> matrix, Value<float[,]> gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) => 
+        new(matrix, gradient, backwardAction, inputs);
+
+    public static Value<float[,]> NewValue(float[,] matrix) => new MatrixValue(matrix, DefaultAcceleratorIndex);
     
     #region Kernels
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>[]
@@ -83,7 +86,7 @@ public static partial class Operations
         }
     }
 
-    public static Tensor<float[]> Multiply(Tensor<float[,]> matrix, Tensor<float[]> vector)
+    public static Tensor<float[]> MatrixVectorMultiply(Tensor<float[,]> matrix, Tensor<float[]> vector)
     {
         var (aidx, m, n) = (matrix.AcceleratorIndex, matrix.Value.Shape[0], matrix.Value.Shape[1]);
         var result = new VectorValue(Compute.Get(aidx, m));

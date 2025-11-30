@@ -32,12 +32,3 @@ public interface ITransformingNetwork<TIn, TOut> where TIn : notnull where TOut 
     public void TrainTransforming(Value<TIn>[][] sequences, Value<TOut>[][] targets, int epochs, double learningRate);
     public double EvaluateLossTransforming(Value<TIn>[][] sequences, Value<TOut>[][] targets);
 }
-
-public interface IBatchingNetwork<TBatchIn, TBatchOut> where TBatchIn : notnull where TBatchOut : notnull
-{
-    public Tensor<TBatchOut> ForwardBatch(Tensor<TBatchIn> input);
-    public Value<TBatchOut> ForwardBatch(Value<TBatchIn> input);
-    
-    public void TrainBatches(Value<TBatchIn>[] inputs, Value<TBatchOut>[] targets, int epochs, float lr);
-    public float EvaluateLossBatches(Value<TBatchIn>[] inputs, Value<TBatchOut>[] targets);
-}
