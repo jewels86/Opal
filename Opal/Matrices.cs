@@ -6,7 +6,7 @@ namespace Opal;
 
 public static partial class Operations
 {
-    public static float[,] Fill(float value, int cols, int rows)
+    public static float[,] Fill(float value, int rows, int cols)
     {
         var matrix = new float[rows, cols];
         for (var i = 0; i < rows; i++)
@@ -74,7 +74,7 @@ public static partial class Operations
                 transposeB ? tensor.Gradient.Data : a.Value.Data,
                 transposeB ? a.Value.Data : tensor.Gradient.Data,
                 gradB,
-                transposeB ? b0 : b1,
+                b0,
                 transposeB ? a0 : transposeA ? a1 : a0,
                 transposeB ? b1 : b0,
                 transposeA: transposeB || !transposeA,
