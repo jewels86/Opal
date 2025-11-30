@@ -22,6 +22,9 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, T
     public FfLayer<TOut, TOut, TWeightsOut, TBiasesOut> OutputLayer { get; } = outputLayer;
 
     public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; } = lossFunction;
+    
+    public float? DefaultGradClipNorm { get; set; } = null;
+    public float? DefaultTrainingEpsilon { get; set; } = null;
 
     protected int HiddenSize { get; } = hiddenSize;
     protected Func<Tensor<TOut>, Tensor<TOut>> HiddenActivation { get; } = hiddenActivation;
@@ -35,16 +38,16 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, T
     
     public Value<TOut> Forward(Value<TIn> input) => Forward(new Tensor<TIn>(input, input.Zeros())).Value;
 
-    public void UpdateParameters(float lr)
+    public void UpdateParameters(float lr, float? gradClipNorm = null)
     {
-        InputLayer.UpdateParameters(lr);
+        InputLayer.UpdateParameters(lr, gradClipNorm);
         foreach (var layer in HiddenLayers)
-            layer.UpdateParameters(lr);
-        OutputLayer.UpdateParameters(lr);
+            layer.UpdateParameters(lr, gradClipNorm);
+        OutputLayer.UpdateParameters(lr, gradClipNorm);
     }
 
     public void Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) => 
-        NetworkHelpers.Train(Forward, LossFunction, () => UpdateParameters(lr), inputs, targets, epochs);
+        NetworkHelpers.Train(Forward, LossFunction, () => UpdateParameters(lr, DefaultGradClipNorm), inputs, targets, epochs, epsilon: DefaultTrainingEpsilon ?? 0.0001f);
     
     public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
         NetworkHelpers.EvaluateLoss(Forward, LossFunction, inputs, targets);

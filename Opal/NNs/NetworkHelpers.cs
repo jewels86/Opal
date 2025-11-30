@@ -47,6 +47,7 @@ public static class NetworkHelpers
                 totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
                 update();
             }
+            
             if (epoch % checkInterval != 0) continue;
             if (totalLoss.ToHost() < epsilon)
                 return;

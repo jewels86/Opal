@@ -48,5 +48,6 @@ public static partial class Operations
 
         return result;
     }
+    public static Value<float[,]> Stack(float[][] vectors) => Stack(vectors.Select(NewValue).ToArray());
     #endregion
 }

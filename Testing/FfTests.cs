@@ -41,7 +41,7 @@ public static class FfTests
     
     public static void OverfittingTestBatched()
     {
-        Console.WriteLine($"Training a network to overfit a simple function (batched)...");
+        Console.WriteLine($"\nTraining a network to overfit a simple function (batched)...");
         float[] inputs = [0.5f, -0.5f];
         float[] targets = [1, -1];
 
@@ -88,24 +88,21 @@ public static class FfTests
             targets[i] = inputs[i] * inputs[i];
         }
 
-        VectorFfNetwork network = new(
+        using BatchedVectorFfNetwork network = new(
             1, 8, 1, 8,  
             ActivationFunctions.Tanh, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
+        network.DefaultGradClipNorm = 0.1f;
         
-        Console.WriteLine($"Initial weights: {string.Join(", ", network.InputLayer.Weights.Value.ToHost())}");
+        var inputStorage = Operations.Stack(inputs.Select(x => Operations.NewValue([x])).ToArray());
+        var targetStorage = Operations.Stack(targets.Select(x => Operations.NewValue([x])).ToArray());
         
-        var inputStorage = inputs.Select(x => Operations.NewValue([x])).ToArray();
-        var targetStorage = targets.Select(x => Operations.NewValue([x])).ToArray();
-        
-        float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
+        float initialLoss = network.EvaluateLoss([inputStorage], [targetStorage]);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        network.Train(inputStorage, targetStorage, 2000, 0.01f);
+        network.Train([inputStorage], [targetStorage], 2000, 0.001f);
         
-        Console.WriteLine($"Final weights: {string.Join(", ", network.InputLayer.Weights.Value.ToHost())}");
-        
-        float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
+        float finalLoss = network.EvaluateLoss([inputStorage], [targetStorage]);
         Console.WriteLine($"Final loss: {finalLoss}");
         Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}%");
         
@@ -113,7 +110,7 @@ public static class FfTests
         float[] testInputs = [0.0f, 1.0f, -1.5f, 2.0f];
         foreach (var x in testInputs)
         {
-            float prediction = network.Forward(Operations.NewValue([x])).ToHost()[0];
+            float prediction = network.Forward(Operations.Stack([[x]])).ToHost()[0, 0];
             float expected = x * x;
             Console.WriteLine($"  f({x}) = {prediction:F4} (expected {expected:F4})");
         }

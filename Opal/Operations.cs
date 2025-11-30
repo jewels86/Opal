@@ -1,4 +1,5 @@
 ﻿using ILGPU;
+using ILGPU.Algorithms;
 using ILGPU.Runtime;
 using Jewels.Lazulite;
 
@@ -36,6 +37,18 @@ public static partial class Operations
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] ElementwiseDivBackwardKernels { get; } 
         = Compute.Load((i, a, b, grad, r) => r[i] -= grad[i] * a[i] / (b[i] * b[i]));
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] ElementwiseClipGradByNormKernels1 { get; } 
+        = Compute.Load((i, grad, tn2) => Atomic.Add(ref tn2[0], grad[i] * grad[i]));
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, float>[] ElementwiseClipGradByNormKernels2 { get; } 
+        = Compute.Load((Index1D i, 
+            ArrayView1D<float, Stride1D.Dense> grad, 
+            ArrayView1D<float, Stride1D.Dense> tn,
+            float maxNorm) => grad[i] = tn[0] > maxNorm ? grad[i] * maxNorm / tn[0] : grad[i]);
+
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, float, float>[] ElementwiseClampKernels { get; } 
+        = Compute.Load((Index1D i, 
+            ArrayView1D<float, Stride1D.Dense> grad, 
+            float min, float max) => grad[i] = XMath.Max(min, XMath.Min(max, grad[i])));
     
     public static Value<T> Multiply<T>(Value<T> a, Value<T> b) where T : notnull => 
         a.Create(Compute.BinaryCall(Compute.ElementwiseMultiplyKernels, a.Data, b.Data), a.Shape);
@@ -173,5 +186,25 @@ public static partial class Operations
         }
     }
     #endregion
+    #endregion
+    
+    #region Other stuff
+    public static void ClipGradientsByNorm(float maxNorm, params ITensor[] tensors)
+    {
+        var (totalNorm2, totalNorm) = (NewValue(0), NewValue(0));
+
+        foreach (var grad in tensors.Select(t => t.Gradient)) 
+            Compute.Call(ElementwiseClipGradByNormKernels1, grad.Data, totalNorm2);
+        
+        Compute.Call(Compute.ElementwiseSqrtKernels, totalNorm2, totalNorm);
+        foreach (var grad in tensors.Select(t => t.Gradient)) 
+            Compute.Call(ElementwiseClipGradByNormKernels2, grad.Data, totalNorm, maxNorm);
+    }
+
+    public static void ClipGradientsByValue(float min, float max, params ITensor[] tensors)
+    {
+        foreach (var grad in tensors.Select(t => t.Gradient)) 
+            Compute.Call(ElementwiseClampKernels, grad.Data, min, max);
+    }
     #endregion
 }
