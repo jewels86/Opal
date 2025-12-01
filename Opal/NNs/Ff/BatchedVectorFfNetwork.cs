@@ -1,23 +1,29 @@
 ﻿using Jewels.Lazulite;
-using Opal.Utilities;
 
 namespace Opal.NNs;
 
-public class BatchedVectorFfNetwork(int inputSize,
-    int hiddenSize,
-    int outputSize,
-    int numHiddenLayers,
-    Func<Tensor<float[,]>, Tensor<float[,]>> hiddenActivation,
-    Func<Tensor<float[,]>, Tensor<float[,]>> outputActivation,
-    Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction)
-    : FfNetwork<float[,], float[,], float[,], float[,], float[], float[]>(
-        CreateLayer(inputSize, hiddenSize, hiddenActivation),
-        CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
-        CreateLayer(hiddenSize, outputSize, outputActivation),
+public class BatchedVectorFfNetwork : FfNetwork<float[,], float[,], float[,], float[,], float[], float[]>
+{
+    public BatchedVectorFfNetwork(int inputSize,
+        int hiddenSize,
+        int outputSize,
+        int numHiddenLayers,
+        int batchSize,
+        Func<Tensor<float[,]>, Tensor<float[,]>> hiddenActivation,
+        Func<Tensor<float[,]>, Tensor<float[,]>> outputActivation,
+        Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction,
+        Initialization weightsInitialization = Initialization.Zeros,
+        Initialization biasesInitialization = Initialization.Zeros) : base(
+        CreateLayer(inputSize, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
+        CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
+        CreateLayer(hiddenSize, outputSize, outputActivation, weightsInitialization, biasesInitialization),
         lossFunction,
         hiddenSize,
         hiddenActivation)
-{
+    {
+        DefaultInitialGradient = 1 / (float)batchSize;
+    }
+
 
     protected override FfLayer<float[,], float[,], float[,], float[]> CreateHiddenLayer() =>
         CreateLayer(HiddenSize, HiddenSize, HiddenActivation);
@@ -25,12 +31,14 @@ public class BatchedVectorFfNetwork(int inputSize,
     private static FfLayer<float[,], float[,], float[,], float[]> CreateLayer(
         int inputSize,
         int outputSize,
-        Func<Tensor<float[,]>, Tensor<float[,]>> activation)
+        Func<Tensor<float[,]>, Tensor<float[,]>> activation,
+        Initialization weightsInitialization = Initialization.Zeros,
+        Initialization biasesInitialization = Initialization.Zeros)
     {
         var catalog = new BatchedVectorCatalog();
     
-        var weights = TensorGeneration.XavierMatrix(outputSize, inputSize).NonDisposable();
-        var biases = TensorGeneration.HeVector(outputSize, inputSize).NonDisposable();
+        var weights = Operations.GenerateMatrix(weightsInitialization, outputSize, inputSize).NonDisposable();
+        var biases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
     
         return new(weights, biases, activation, catalog);
     }
@@ -38,11 +46,13 @@ public class BatchedVectorFfNetwork(int inputSize,
     private static List<FfLayer<float[,], float[,], float[,], float[]>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
-        Func<Tensor<float[,]>, Tensor<float[,]>> activation)
+        Func<Tensor<float[,]>, Tensor<float[,]>> activation,
+        Initialization weightsInitialization = Initialization.Zeros,
+        Initialization biasesInitialization = Initialization.Zeros)
     {
         List<FfLayer<float[,], float[,], float[,], float[]>> layers = [];
         for (int i = 0; i < numLayers; i++)
-            layers.Add(CreateLayer(hiddenSize, hiddenSize, activation));
+            layers.Add(CreateLayer(hiddenSize, hiddenSize, activation, weightsInitialization, biasesInitialization));
         return layers;
     }
 }

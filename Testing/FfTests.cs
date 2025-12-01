@@ -46,7 +46,7 @@ public static class FfTests
         float[] targets = [1, -1];
 
         using BatchedVectorFfNetwork network = new(
-            1, 2, 1, 1,
+            1, 2, 1, 1, 2,
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
     
@@ -134,7 +134,7 @@ public static class FfTests
         }
 
         using BatchedVectorFfNetwork network = new(
-            1, 8, 1, 3,  
+            1, 8, 1, 3, n,
             ActivationFunctions.Tanh, ActivationFunctions.Identity,
             LossFunctions.MeanSquaredError);
         
@@ -147,7 +147,7 @@ public static class FfTests
         Console.WriteLine($"Initial prediction: {network.Forward(inputStorage[0]).ToHost()[0, 0]:F4} (expected {inputs[0] * inputs[0]:F4})");
         
         Stopwatch sw = Stopwatch.StartNew();
-        var losses = network.Train(inputStorage, targetStorage, 3000, 0.02f);
+        var losses = network.Train(inputStorage, targetStorage, 1000, 0.02f);
         
         sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
@@ -184,7 +184,7 @@ public static class FfTests
             [0.0f]
         ];
 
-        VectorFfNetwork network = new(
+        using VectorFfNetwork network = new(
             2, 4, 1, 1, 
             ActivationFunctions.Tanh, 
             ActivationFunctions.Sigmoid, 
@@ -207,6 +207,53 @@ public static class FfTests
         foreach (var input in inputs)
         {
             float[] output = network.Forward(Operations.NewValue(input)).ToHost();
+            Console.WriteLine($"  [{input[0]}, {input[1]}] → {output[0]:F4}");
+        }
+    }
+    
+    public static void XorTestBatched()
+    {
+        Console.WriteLine("\nTraining network on XOR problem... (batched)");
+        
+        float[][] inputs = 
+        [
+            [0.0f, 0.0f],
+            [0.0f, 1.0f],
+            [1.0f, 0.0f],
+            [1.0f, 1.0f]
+        ];
+        
+        float[][] targets = 
+        [
+            [0.0f],
+            [1.0f],
+            [1.0f],
+            [0.0f]
+        ];
+
+        using BatchedVectorFfNetwork network = new(
+            2, 4, 1, 1, 4,
+            ActivationFunctions.Tanh, 
+            ActivationFunctions.Sigmoid, 
+            LossFunctions.MeanSquaredError);
+        
+        Value<float[,]>[] inputStorage = [Operations.Stack(inputs.Select(Operations.NewValue).ToArray())];
+        Value<float[,]>[] targetStorage = [Operations.Stack(targets.Select(Operations.NewValue).ToArray())];
+        
+        float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
+        Console.WriteLine($"Initial loss: {initialLoss}");
+        Stopwatch sw = Stopwatch.StartNew();
+        
+        var losses = network.Train(inputStorage, targetStorage, 5000, 0.5f);
+        
+        sw.Stop();
+        float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
+        Console.WriteLine($"Final loss: {finalLoss} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
+        
+        Console.WriteLine("\nXOR predictions:");
+        foreach (var input in inputs)
+        {
+            float[] output = network.Forward(Operations.Stack([Operations.NewValue(input)])).ToProxy().FlatData;
             Console.WriteLine($"  [{input[0]}, {input[1]}] → {output[0]:F4}");
         }
     }

@@ -24,7 +24,9 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, T
     public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; } = lossFunction;
     
     public float? DefaultGradClipNorm { get; set; } = null;
-    public float? DefaultTrainingEpsilon { get; set; } = null;
+    public float DefaultTrainingEpsilon { get; set; } = 1e-4f;
+    public float DefaultInitialGradient { get; set; } = 1;
+    public int DefaultCheckInterval { get; set; } = 100;
 
     protected int HiddenSize { get; } = hiddenSize;
     protected Func<Tensor<TOut>, Tensor<TOut>> HiddenActivation { get; } = hiddenActivation;
@@ -47,7 +49,12 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, T
     }
 
     public List<float> Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) => 
-        Operations.Train(Forward, LossFunction, () => UpdateParameters(lr, DefaultGradClipNorm), inputs, targets, epochs, epsilon: DefaultTrainingEpsilon ?? 0.0001f);
+        Operations.Train(
+            Forward, 
+            LossFunction, 
+            () => UpdateParameters(lr, DefaultGradClipNorm), 
+            inputs, targets, epochs, 
+            DefaultTrainingEpsilon, DefaultCheckInterval, DefaultInitialGradient);
     
     public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
         Operations.EvaluateLoss(Forward, LossFunction, inputs, targets);

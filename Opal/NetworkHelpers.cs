@@ -13,27 +13,30 @@ public static partial class Operations
         where TIn : notnull where TOut : notnull
     {
         resetState();
-        Tensor<TOut> output = null!;
-        foreach (var input in sequence)
-        {
-            output.Dispose();
-            output = forward(input);
-        }
+        Tensor<TOut> output = forward(sequence[0]);
+        for (int i = 1; i < sequence.Length; i++) output = forward(sequence[i]);
         return output;
     }
     #endregion
     #region Training
     public static List<float> Train<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action update,
-        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 100)
+        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 100, float initialGrad = 1)
         where TIn : notnull where TOut : notnull
     {
         foreach (var input in inputs) input.NonDisposable();
         foreach (var target in targets) target.NonDisposable();
         
         int aidx = inputs[0].AcceleratorIndex;
-        var one = new ScalarValue(Compute.Make(aidx, 1, 1)).NonDisposable(); // THIS IS A PROBLEM!!!
-        // for batches you need 1/ batch size >>>:(
+        var scale = new ScalarValue(Compute.Make(aidx, 1, initialGrad)).NonDisposable(); // me: THIS IS A PROBLEM!!!
+        // copilot: it is not a problem
+        // me: is it a problem?
+        // me: but what if you have different batch sizes?
+        // copilot: nixon said: "it's not a problem, it's just a different way of thinking"
+        // copilot: so it's not a problem, it's just a different way of thinking
+        // someone remind me to remove all of that later 
+        // i just think its weird that copilot quoted nixon???
+
         List<float> losses = [];
         
         for (int epoch = 0; epoch < maxEpochs; epoch++)
@@ -45,7 +48,7 @@ public static partial class Operations
                 var outputTensor = forward(inputTensor);
                 using var lossTensor = loss(outputTensor, targets[i]);
                 
-                lossTensor.Backward(one);
+                lossTensor.Backward(scale);
                 totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
                 update();
             }

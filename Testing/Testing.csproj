@@ -23,7 +23,6 @@
     <Compile Remove="LstmTests.cs" />
     <Compile Remove="ScalarMultiplyDiagnosticTest.cs" />
     <Compile Remove="CatalogTests.cs" />
-    <Compile Remove="RecurrentTests.cs" />
   </ItemGroup>
 
 </Project>

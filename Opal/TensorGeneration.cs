@@ -1,6 +1,6 @@
-﻿namespace Opal.Utilities;
+﻿namespace Opal;
 
-public static class TensorGeneration
+public static partial class Operations
 {
     public static readonly Random Random = new();
     #region Matrices
@@ -9,8 +9,8 @@ public static class TensorGeneration
         var matrix = new float[rows, columns];
         for (int i = 0; i < rows; i++)
         for (int j = 0; j < columns; j++)
-                matrix[i, j] = generator(i, j);
-        return Operations.New(matrix, Operations.Fill(0, rows, columns));
+            matrix[i, j] = generator(i, j);
+        return New(matrix, Fill(0, rows, columns));
     }
 
     public static Tensor<float[,]> GenerateMatrixParallel(Func<int, int, float> generator, int rows, int columns)
@@ -21,58 +21,91 @@ public static class TensorGeneration
             for (int j = 0; j < columns; j++)
                 matrix[i, j] = generator(i, j);
         });
-        return Operations.New(matrix, Operations.Fill(0, rows, columns));
+        return New(matrix, Fill(0, rows, columns));
     }
 
-    public static Tensor<float[,]> RandomMatrix(float min, float max, int rows, int cols) => 
+    public static Tensor<float[,]> RandomMatrix(float min, float max, int rows, int cols) =>
         GenerateMatrix((_, _) => (float)Random.NextDouble() * (max - min) + min, rows, cols);
-    public static Tensor<float[,]> RandomMatrixParallel(float min, float max, int rows, int cols) => 
+
+    public static Tensor<float[,]> RandomMatrixParallel(float min, float max, int rows, int cols) =>
         GenerateMatrixParallel((_, _) => (float)Random.NextDouble() * (max - min) + min, rows, cols);
-    
+
     public static Tensor<float[,]> XavierMatrix(int rows, int columns)
     {
         var scale = MathF.Sqrt(2.0f / (rows + columns));
         return GenerateMatrix((_, _) => ((float)Random.NextDouble() * 2 - 1) * scale, rows, columns);
     }
+
     public static Tensor<float[,]> HeMatrix(int rows, int columns)
     {
         var scale = MathF.Sqrt(2.0f / rows);
         return GenerateMatrix((_, _) => Random.NextGaussian() * scale, rows, columns);
     }
+
+    public static Tensor<float[,]> GenerateMatrix(Initialization init, int rows, int columns)
+    {
+        return init switch
+        {
+            Initialization.Random => RandomMatrix(1, -1, rows, columns),
+            Initialization.Zeros => GenerateMatrix((_, _) => 0, rows, columns),
+            Initialization.Xavier => XavierMatrix(rows, columns),
+            Initialization.He => HeMatrix(rows, columns),
+            _ => throw new ArgumentOutOfRangeException(nameof(init), init, null)
+        };
+    }
     #endregion
     #region Vectors
-
     public static Tensor<float[]> GenerateVector(Func<int, float> generator, int size)
     {
         var vector = new float[size];
         for (int i = 0; i < size; i++) vector[i] = generator(i);
-        return Operations.New(vector, Operations.Fill(0, size));
+        return New(vector, Fill(0, size));
     }
-    
+
     public static Tensor<float[]> RandomVector(float max, float min, int size)
     {
         var weights = new float[size];
         for (int i = 0; i < size; i++) weights[i] = (float)Random.NextDouble() * (max - min) + min;
-        return Operations.New(weights, Operations.Fill(0, size));
+        return New(weights, Fill(0, size));
     }
-    
+
     public static Tensor<float[]> XavierVector(int size, int fanIn)
     {
         var scale = MathF.Sqrt(2.0f / (fanIn + size));
         return GenerateVector(_ => ((float)Random.NextDouble() * 2 - 1) * scale, size);
     }
-    
+
     public static Tensor<float[]> HeVector(int size, int fanIn)
     {
         var scale = MathF.Sqrt(2.0f / fanIn);
         return GenerateVector(_ => Random.NextGaussian() * scale, size);
     }
+
+    public static Tensor<float[]> GenerateVector(Initialization init, int size, int? fanIn = null, int? max = null, int? min = null)
+    {
+        return init switch
+        {
+            Initialization.Random => RandomVector(max ?? 1, min ?? -1, size),
+            Initialization.Zeros => GenerateVector(_ => 0, size),
+            Initialization.Xavier => XavierVector(size, fanIn ?? size),
+            Initialization.He => HeVector(size, fanIn ?? size),
+            _ => throw new ArgumentOutOfRangeException(nameof(init), init, null)
+        };
+    }
     #endregion
-    
-    private static float NextGaussian(this Random random)
+
+    public static float NextGaussian(this Random random)
     {
         float u1 = 1.0f - (float)random.NextDouble();
         float u2 = 1.0f - (float)random.NextDouble();
         return MathF.Sqrt(-2.0f * MathF.Log(u1)) * MathF.Sin(2.0f * MathF.PI * u2);
     }
+}
+
+public enum Initialization
+{
+    Random,
+    Zeros,
+    Xavier,
+    He
 }

@@ -1,5 +1,4 @@
 ﻿using Jewels.Lazulite;
-using Opal.Utilities;
 
 namespace Opal.NNs;
 
@@ -30,10 +29,10 @@ public class VectorRecurrentNetwork(int inputSize,
     {
         var catalog = new VectorCatalog();
     
-        Tensor<float[,]> inputWeights = TensorGeneration.RandomMatrix(1, -1, outputSize, inputSize);
-        Tensor<float[,]> recurrentWeights = TensorGeneration.RandomMatrix(1, -1, outputSize, outputSize);
-        Tensor<float[]> biases = TensorGeneration.GenerateVector(_ => 0, outputSize);
-        Tensor<float[]> state = TensorGeneration.GenerateVector(_ => 0, outputSize);
+        Tensor<float[,]> inputWeights = Operations.RandomMatrix(1, -1, outputSize, inputSize);
+        Tensor<float[,]> recurrentWeights = Operations.RandomMatrix(1, -1, outputSize, outputSize);
+        Tensor<float[]> biases = Operations.GenerateVector(_ => 0, outputSize);
+        Tensor<float[]> state = Operations.GenerateVector(_ => 0, outputSize);
     
         return new(inputWeights, recurrentWeights, biases, state, activation, catalog);
     }

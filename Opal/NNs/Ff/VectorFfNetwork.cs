@@ -10,11 +10,13 @@ public class VectorFfNetwork(
     int numHiddenLayers,
     Func<Tensor<float[]>, Tensor<float[]>> hiddenActivation,
     Func<Tensor<float[]>, Tensor<float[]>> outputActivation,
-    Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction)
+    Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction,
+    Initialization weightsInitialization = Initialization.Zeros,
+    Initialization biasesInitialization = Initialization.Zeros)
     : FfNetwork<float[], float[], float[,], float[,], float[], float[]>(
-        CreateLayer(inputSize, hiddenSize, hiddenActivation),
-        CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation),
-        CreateLayer(hiddenSize, outputSize, outputActivation),
+        CreateLayer(inputSize, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
+        CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
+        CreateLayer(hiddenSize, outputSize, outputActivation, weightsInitialization, biasesInitialization),
         lossFunction,
         hiddenSize,
         hiddenActivation)
@@ -27,12 +29,14 @@ public class VectorFfNetwork(
     private static FfLayer<float[], float[], float[,], float[]> CreateLayer(
         int inputSize,
         int outputSize,
-        Func<Tensor<float[]>, Tensor<float[]>> activation)
+        Func<Tensor<float[]>, Tensor<float[]>> activation,
+        Initialization weightsInitialization = Initialization.Zeros,
+        Initialization biasesInitialization = Initialization.Zeros)
     {
         var catalog = new VectorCatalog();
     
-        var weights = TensorGeneration.XavierMatrix(outputSize, inputSize).NonDisposable();
-        var biases = TensorGeneration.HeVector(outputSize, inputSize).NonDisposable();
+        var weights = Operations.GenerateMatrix(weightsInitialization, outputSize, inputSize).NonDisposable();
+        var biases = Operations.GenerateVector(biasesInitialization, outputSize, inputSize).NonDisposable();
     
         return new(weights, biases, activation, catalog);
     }
@@ -40,11 +44,13 @@ public class VectorFfNetwork(
     private static List<FfLayer<float[], float[], float[,], float[]>> CreateHiddenLayers(
         int numLayers,
         int hiddenSize,
-        Func<Tensor<float[]>, Tensor<float[]>> activation)
+        Func<Tensor<float[]>, Tensor<float[]>> activation,
+        Initialization weightsInitialization = Initialization.Zeros,
+        Initialization biasesInitialization = Initialization.Zeros)
     {
         List<FfLayer<float[], float[], float[,], float[]>> layers = [];
         for (int i = 0; i < numLayers; i++)
-            layers.Add(CreateLayer(hiddenSize, hiddenSize, activation));
+            layers.Add(CreateLayer(hiddenSize, hiddenSize, activation, weightsInitialization, biasesInitialization));
         return layers;
     }
 }

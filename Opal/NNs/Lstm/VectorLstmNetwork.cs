@@ -1,6 +1,4 @@
 ﻿using Jewels.Lazulite;
-using Opal.Utilities;
-
 namespace Opal.NNs;
 
 public class VectorLstmNetwork(int inputSize,
@@ -17,9 +15,9 @@ public class VectorLstmNetwork(int inputSize,
 
     protected override LstmLayer<float[], float[], float[,]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize);
 
-    private static Tensor<float[,]> CreateWeightArray(int outputSize, int weightSize) => TensorGeneration.XavierMatrix(outputSize, weightSize);
+    private static Tensor<float[,]> CreateWeightArray(int outputSize, int weightSize) => Operations.XavierMatrix(outputSize, weightSize);
 
-    private static Tensor<float[]> CreateBiasTensor(int size) =>  TensorGeneration.HeVector(size, size);
+    private static Tensor<float[]> CreateBiasTensor(int size) =>  Operations.HeVector(size, size);
 
 
     private static LstmLayer<float[], float[], float[,]> CreateLayer(
@@ -40,12 +38,12 @@ public class VectorLstmNetwork(int inputSize,
         var decoderCellWeights = CreateWeightArray(outputSize, decoderConcatSize);
         var decoderOutputWeights = CreateWeightArray(outputSize, decoderConcatSize);
         
-        var encoderForgetBiases = TensorGeneration.GenerateVector(_ => 0, outputSize);
+        var encoderForgetBiases = Operations.GenerateVector(_ => 0, outputSize);
         var encoderInputBiases = CreateBiasTensor(outputSize);
         var encoderCellBiases = CreateBiasTensor(outputSize);
         var encoderOutputBiases = CreateBiasTensor(outputSize);
         
-        var decoderForgetBiases = TensorGeneration.GenerateVector(_ => 0, outputSize);
+        var decoderForgetBiases = Operations.GenerateVector(_ => 0, outputSize);
         var decoderInputBiases = CreateBiasTensor(outputSize);
         var decoderCellBiases = CreateBiasTensor(outputSize);
         var decoderOutputBiases = CreateBiasTensor(outputSize);
