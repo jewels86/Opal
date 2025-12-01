@@ -12,8 +12,8 @@ public class BatchedVectorFfNetwork : FfNetwork<float[,], float[,], float[,], fl
         Func<Tensor<float[,]>, Tensor<float[,]>> hiddenActivation,
         Func<Tensor<float[,]>, Tensor<float[,]>> outputActivation,
         Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction,
-        Initialization weightsInitialization = Initialization.Random,
-        Initialization biasesInitialization = Initialization.Random) : base(
+        Initialization weightsInitialization = Initialization.Xavier,
+        Initialization biasesInitialization = Initialization.He) : base(
         CreateLayer(inputSize, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
         CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
         CreateLayer(hiddenSize, outputSize, outputActivation, weightsInitialization, biasesInitialization),
@@ -21,7 +21,7 @@ public class BatchedVectorFfNetwork : FfNetwork<float[,], float[,], float[,], fl
         hiddenSize,
         hiddenActivation)
     {
-        DefaultInitialGradient = 1 / (float)batchSize;
+        //DefaultInitialGradient = 1 / (float)batchSize;
     }
 
 
@@ -32,8 +32,8 @@ public class BatchedVectorFfNetwork : FfNetwork<float[,], float[,], float[,], fl
         int inputSize,
         int outputSize,
         Func<Tensor<float[,]>, Tensor<float[,]>> activation,
-        Initialization weightsInitialization = Initialization.Zeros,
-        Initialization biasesInitialization = Initialization.Zeros)
+        Initialization weightsInitialization = Initialization.Xavier,
+        Initialization biasesInitialization = Initialization.He)
     {
         var catalog = new BatchedVectorCatalog();
     

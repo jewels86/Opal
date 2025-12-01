@@ -40,22 +40,29 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, T
     
     public Value<TOut> Forward(Value<TIn> input) => Forward(new Tensor<TIn>(input, input.Zeros())).Value;
 
-    public void UpdateParameters(float lr, float? gradClipNorm = null)
+    public void UpdateParameters(float lr, float? gradClipNorm = null, List<ITensor>? clipTensors = null)
     {
-        InputLayer.UpdateParameters(lr, gradClipNorm);
+        if (clipTensors is not null && gradClipNorm.HasValue)
+            Operations.ClipGradientsByNorm(gradClipNorm.Value, clipTensors.ToArray());
+        InputLayer.UpdateParameters(lr);
         foreach (var layer in HiddenLayers)
-            layer.UpdateParameters(lr, gradClipNorm);
-        OutputLayer.UpdateParameters(lr, gradClipNorm);
+            layer.UpdateParameters(lr);
+        OutputLayer.UpdateParameters(lr);
     }
 
-    public List<float> Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) => 
-        Operations.Train(
-            Forward, 
-            LossFunction, 
-            () => UpdateParameters(lr, DefaultGradClipNorm), 
-            inputs, targets, epochs, 
+    public List<float> Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr)
+    {
+        List<ITensor> tensors = [InputLayer.Weights, InputLayer.Biases, OutputLayer.Weights, OutputLayer.Biases];
+        tensors.AddRange(HiddenLayers.Select(layer => layer.Weights));
+        tensors.AddRange(HiddenLayers.Select(layer => layer.Biases));
+        return Operations.Train(
+            Forward,
+            LossFunction,
+            () => UpdateParameters(lr, DefaultGradClipNorm, tensors),
+            inputs, targets, epochs,
             DefaultTrainingEpsilon, DefaultCheckInterval, DefaultInitialGradient);
-    
+    }
+
     public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
         Operations.EvaluateLoss(Forward, LossFunction, inputs, targets);
 

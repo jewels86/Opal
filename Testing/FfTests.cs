@@ -49,6 +49,7 @@ public static class FfTests
             1, 2, 1, 1, 2,
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
+        network.DefaultGradClipNorm = 1;
     
         Value<float[]>[] inputStorage = inputs.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
         Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
@@ -63,7 +64,7 @@ public static class FfTests
         
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         sw.Restart();
-        var losses = network.Train(batchedInputs, batchedTargets, 1000, 0.02f);
+        var losses = network.Train(batchedInputs, batchedTargets, 2000, 0.02f);
         sw.Stop();
         Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
         
@@ -134,7 +135,7 @@ public static class FfTests
         }
 
         using BatchedVectorFfNetwork network = new(
-            1, 8, 1, 3, n,
+            1, 8, 1, 2, n,
             ActivationFunctions.Tanh, ActivationFunctions.Identity,
             LossFunctions.MeanSquaredError);
         
@@ -144,10 +145,8 @@ public static class FfTests
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        Console.WriteLine($"Initial prediction: {network.Forward(inputStorage[0]).ToHost()[0, 0]:F4} (expected {inputs[0] * inputs[0]:F4})");
-        
         Stopwatch sw = Stopwatch.StartNew();
-        var losses = network.Train(inputStorage, targetStorage, 1000, 0.02f);
+        var losses = network.Train(inputStorage, targetStorage, 2000, 0.02f);
         
         sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
@@ -362,6 +361,7 @@ public static class FfTests
         NonlinearFunctionTest();
         NonlinearFunctionBatchedTest();
         XorTest();
+        XorTestBatched();
         IrisClassificationTest();
         RegressionTest();
     }

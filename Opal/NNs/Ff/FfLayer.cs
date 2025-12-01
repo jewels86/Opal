@@ -28,9 +28,8 @@ public class FfLayer<TIn, TOut, TWeights, TBiases>(
     
     public Value<TOut> Forward(Value<TIn> input) => Forward(new Tensor<TIn>(input, input.Zeros())).Value;
     
-    public void UpdateParameters(float lr, float? gradClipNorm = null)
+    public void UpdateParameters(float lr)
     {
-        if (gradClipNorm.HasValue) Operations.ClipGradientsByNorm(gradClipNorm.Value, Weights, Biases);
         Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Weights.Gradient, Weights.Value, Weights.Value, lr);
         Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Biases.Gradient, Biases.Value, Biases.Value, lr);
         ZeroGradients();

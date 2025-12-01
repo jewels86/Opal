@@ -198,6 +198,81 @@ public static class AutogradTests
         
         Console.WriteLine("✓ Matrix multiply backward test passed!\n");
     }
+    
+    public static void TestMatrixMultiplyBackwardTransposeB()
+    {
+        Console.WriteLine("Testing Matrix Multiply Backward (transposeB=true)...");
+        Stopwatch sw = Stopwatch.StartNew();
+        
+        // Simulating a batched neural network layer:
+        // input: [batch=2, in_features=3]
+        // weights: [out_features=2, in_features=3]
+        // C = input @ weights.T where input is [2,3], weights.T is [3,2]
+        // Result C will be [2,2]
+        //
+        // input = [[1, 2, 3],
+        //          [4, 5, 6]]
+        // weights = [[1, 2, 3],
+        //            [4, 5, 6]]
+        // weights.T = [[1, 4],
+        //              [2, 5],
+        //              [3, 6]]
+        // C = input @ weights.T = [[14, 32],
+        //                          [32, 77]]
+        //
+        // If grad_C = [[1, 1],
+        //              [1, 1]]
+        // grad_input = grad_C @ weights = [[1,1],[1,1]] @ [[1,2,3],[4,5,6]] = [[5,7,9],[5,7,9]]
+        // grad_weights = grad_C.T @ input = [[1,1],[1,1]] @ [[1,2,3],[4,5,6]] = [[5,7,9],[5,7,9]]
+        
+        using var input = Operations.New(new float[,] {{1, 2, 3}, {4, 5, 6}});
+        using var weights = Operations.New(new float[,] {{1, 2, 3}, {4, 5, 6}});
+        
+        using var c = Operations.MatrixMultiply(input, weights, transposeB: true);
+        Operations.Sync();
+        sw.Stop();
+        
+        var cValue = c.Value.ToHost();
+        Console.WriteLine($"Forward pass: [{cValue[0,0]}, {cValue[0,1]}, {cValue[1,0]}, {cValue[1,1]}]");
+        Console.WriteLine($"Expected: [14, 32, 32, 77] - {sw.ElapsedMilliseconds}ms");
+        
+        Assert(Math.Abs(cValue[0,0] - 14) < 1e-5, "Forward [0,0] failed");
+        Assert(Math.Abs(cValue[0,1] - 32) < 1e-5, "Forward [0,1] failed");
+        Assert(Math.Abs(cValue[1,0] - 32) < 1e-5, "Forward [1,0] failed");
+        Assert(Math.Abs(cValue[1,1] - 77) < 1e-5, "Forward [1,1] failed");
+        
+        sw.Restart();
+        c.Backward(Operations.NewValue(new float[,] {{1, 1}, {1, 1}}));
+        Operations.Sync();
+        sw.Stop();
+        
+        var inputGrad = input.Gradient.ToHost();
+        var weightsGrad = weights.Gradient.ToHost();
+        
+        Console.WriteLine($"grad_input shape: [{inputGrad.GetLength(0)}, {inputGrad.GetLength(1)}] (expected [2, 3])");
+        Console.WriteLine($"grad_weights shape: [{weightsGrad.GetLength(0)}, {weightsGrad.GetLength(1)}] (expected [2, 3])");
+        
+        Console.WriteLine($"grad_input: [{inputGrad[0,0]}, {inputGrad[0,1]}, {inputGrad[0,2]}, {inputGrad[1,0]}, {inputGrad[1,1]}, {inputGrad[1,2]}]");
+        Console.WriteLine($"Expected: [5, 7, 9, 5, 7, 9] - {sw.ElapsedMilliseconds}ms");
+        Console.WriteLine($"grad_weights: [{weightsGrad[0,0]}, {weightsGrad[0,1]}, {weightsGrad[0,2]}, {weightsGrad[1,0]}, {weightsGrad[1,1]}, {weightsGrad[1,2]}]");
+        Console.WriteLine($"Expected: [5, 7, 9, 5, 7, 9]");
+        
+        Assert(Math.Abs(inputGrad[0,0] - 5) < 1e-5, "grad_input[0,0] failed");
+        Assert(Math.Abs(inputGrad[0,1] - 7) < 1e-5, "grad_input[0,1] failed");
+        Assert(Math.Abs(inputGrad[0,2] - 9) < 1e-5, "grad_input[0,2] failed");
+        Assert(Math.Abs(inputGrad[1,0] - 5) < 1e-5, "grad_input[1,0] failed");
+        Assert(Math.Abs(inputGrad[1,1] - 7) < 1e-5, "grad_input[1,1] failed");
+        Assert(Math.Abs(inputGrad[1,2] - 9) < 1e-5, "grad_input[1,2] failed");
+        
+        Assert(Math.Abs(weightsGrad[0,0] - 5) < 1e-5, "grad_weights[0,0] failed");
+        Assert(Math.Abs(weightsGrad[0,1] - 7) < 1e-5, "grad_weights[0,1] failed");
+        Assert(Math.Abs(weightsGrad[0,2] - 9) < 1e-5, "grad_weights[0,2] failed");
+        Assert(Math.Abs(weightsGrad[1,0] - 5) < 1e-5, "grad_weights[1,0] failed");
+        Assert(Math.Abs(weightsGrad[1,1] - 7) < 1e-5, "grad_weights[1,1] failed");
+        Assert(Math.Abs(weightsGrad[1,2] - 9) < 1e-5, "grad_weights[1,2] failed");
+        
+        Console.WriteLine("✓ Matrix multiply backward (transposeB) test passed!\n");
+    }
 
     public static void TestMSEBackward()
     {
@@ -298,6 +373,7 @@ public static class AutogradTests
         TestVectorGradients();
         TestComplexGraph();
         TestMatrixMultiplyBackward();
+        TestMatrixMultiplyBackwardTransposeB();
         TestMSEBackward();
         TestMatrixVectorAddBackward();
         Console.WriteLine("All tests passed! ✓");

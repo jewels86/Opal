@@ -45,18 +45,16 @@ public static partial class Operations
     #region Multiplication
     public static Tensor<float[,]> MatrixMultiply(Tensor<float[,]> a, Tensor<float[,]> b, bool transposeA = false, bool transposeB = false)
     {
-        var (aidx, m, k, n) = (a.AcceleratorIndex, a.Value.Shape[0], a.Value.Shape[1], b.Value.Shape[1]);
-        var realM = transposeA ? a.Value.Shape[1] : m;
-        var realN = transposeB ? b.Value.Shape[0] : n;
+        var (aidx, a0, a1, b0, b1) = (a.AcceleratorIndex, a.Value.Shape[0], a.Value.Shape[1], b.Value.Shape[0], b.Value.Shape[1]);
+        var m = transposeA ? a1 :  a0;
+        var n = transposeB ? b0 : b1;
         
-        var result = new MatrixValue(Compute.Get(aidx, realM * realN), [realM, realN]);
-        Compute.MatrixMultiply(a.Value, b.Value, result, m, k, n, transposeA: transposeA, transposeB: transposeB);
+        var result = new MatrixValue(Compute.Get(aidx, m * n), [m, n]);
+        Compute.MatrixMultiply(a.Value, b.Value, result, a0, a1, b0, b1, transposeA: transposeA, transposeB: transposeB);
         return new(result, result.Zeros(), Backward, [a, b]);
 
         void Backward(ITensor tensor)
         {
-            var (a0, a1) = (a.Value.Shape[0], a.Value.Shape[1]);
-            var (b0, b1) = (b.Value.Shape[0], b.Value.Shape[1]);
 
             var gradA = Compute.Get(aidx, a0 * a1);
             var gradB = Compute.Get(aidx, b0 * b1);
@@ -66,65 +64,65 @@ public static partial class Operations
                 case (false, false):
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, b.Value.Data, gradA,
-                        a0, b1, a1,
+                        a0, b1, b0, b1,
                         transposeA: false, transposeB: true // transpose b
                     ); // d/da axb = L'(O) x b^T, m = a0, k = b1, n = a1
-                    // a0xa1
+                    // grad is a0xb1, b is b0xb1 (transposed is b1xb0)
     
                     Compute.MatrixMultiply(
                         a.Value.Data, tensor.Gradient.Data, gradB,
-                        b0, a0, b1,
+                        a0, a1, a0, b1,
                         transposeA: true, transposeB: false // transpose a
                     ); // d/db axb = a^T x L'(O), m = b0, k = a0, n = b1
-                    // b0xb1
+                    // a is a0xa1 (transposed is a1xa0), grad is a0xb1
                     break;
 
                 case (true, false):
                     Compute.MatrixMultiply(
                         b.Value.Data, tensor.Gradient.Data, gradA,
-                        a0, b1, a1,
+                        b0, b1, a1, b1,
                         transposeA: false, transposeB: true // transpose grad
                     ); // d/da a^T x b = b x L'(O)^T, m = a0, k = b1, n = a1
-                    // a0xa1
+                    // b is b0xb1, grad is a1xb1 (transposed is b1xa1)
                     
                     Compute.MatrixMultiply(
                         a.Value.Data, tensor.Gradient.Data, gradB,
-                        b0, a1, b1,
+                        a0, a1, a1, b1,
                         transposeA: false, transposeB: false // transpose none
                     ); // d/db a^T x b = a x L'(O), m = b0, k = a1, n = b1
-                    // b0xb1
+                    // a is a0xa1, grad is a1xb1
                     break;
 
                 case (false, true):
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, b.Value.Data, gradA,
-                        a0, b0, a1,
+                        a0, b0, b0, b1,
                         transposeA: false, transposeB: false // transpose none
                     ); // d/da a x b^T = L'(O) x b, m = a0, k = b0, n = a1
-                    // you get a0xa1 which is right
+                    // grad is a0xb0, b is b0xb1
 
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, a.Value.Data, gradB,
-                        b0, a0, b1,
+                        a0, b0, a0, a1,
                         transposeA: true, transposeB: false // transpose grad
                     ); // d/db a x b^T = L'(O)^T x a, m = b0, k = a0, n = b1
-                    // b0xb1
+                    // grad is a0xb0 (transposed is b0xa0), a is a0xa1
                     break;
 
                 case (true, true):
                     Compute.MatrixMultiply(
                         b.Value.Data, tensor.Gradient.Data, gradA,
-                        a0, b0, a1,
+                        b0, b1, a1, b0,
                         transposeA: true, transposeB: true // transpose both b and grad
                     ); // d/da a^T x b^T = b^T x L'(O)^T, m = a0, k = b0, n = a1
-                    // a0xa1
+                    // b is b0xb1 (transposed is b1xb0), grad is a1xb0 (transposed is b0xa1)
     
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, a.Value.Data, gradB,
-                        b0, a1, b1, 
+                        a1, b0, a0, a1,
                         transposeA: true, transposeB: true // transpose both grad and a
                     ); // d/db a^T x b^T = L'(O)^T x a, m = b0, k = a1, n = b1
-                    // b0xb1
+                    // grad is a1xb0 (transposed is b0xa1), a is a0xa1 (transposed is a1xa0)
                     break;
             }
 
