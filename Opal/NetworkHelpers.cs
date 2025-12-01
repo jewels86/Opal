@@ -32,7 +32,8 @@ public static partial class Operations
         foreach (var target in targets) target.NonDisposable();
         
         int aidx = inputs[0].AcceleratorIndex;
-        var one = new ScalarValue(Compute.Make(aidx, 1, 1)).NonDisposable();
+        var one = new ScalarValue(Compute.Make(aidx, 1, 1)).NonDisposable(); // THIS IS A PROBLEM!!!
+        // for batches you need 1/ batch size >>>:(
         List<float> losses = [];
         
         for (int epoch = 0; epoch < maxEpochs; epoch++)
@@ -53,6 +54,7 @@ public static partial class Operations
             losses.Add(hostLoss);
             
             if (float.IsNaN(hostLoss)) throw new Exception($"Loss is NaN at epoch {epoch}!");
+            if (hostLoss > losses[^1]) throw new Exception($"Loss got bigger somehow at epoch {epoch}!");
             if (hostLoss < epsilon) break;
         }
 

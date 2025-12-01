@@ -9,7 +9,10 @@ internal static class Program
         using var context = new OpalContext(initializeInBackground: false, useGpu: true);
         
         //AutogradTests.RunAll();
-        //FfTests.NonlinearFunctionTest();
-        FfTests.RunAll();
+        FfTests.OverfittingTest();
+        FfTests.OverfittingTestBatched();
+        FfTests.NonlinearFunctionTest();
+        FfTests.NonlinearFunctionBatchedTest();
+        //FfTests.RunAll();
     }
 }
