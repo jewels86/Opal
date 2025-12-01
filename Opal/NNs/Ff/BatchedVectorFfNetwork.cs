@@ -2,27 +2,24 @@
 
 namespace Opal.NNs;
 
-public class BatchedVectorFfNetwork : FfNetwork<float[,], float[,], float[,], float[,], float[], float[]>
-{
-    public BatchedVectorFfNetwork(int inputSize,
-        int hiddenSize,
-        int outputSize,
-        int numHiddenLayers,
-        int batchSize,
-        Func<Tensor<float[,]>, Tensor<float[,]>> hiddenActivation,
-        Func<Tensor<float[,]>, Tensor<float[,]>> outputActivation,
-        Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction,
-        Initialization weightsInitialization = Initialization.Xavier,
-        Initialization biasesInitialization = Initialization.He) : base(
+public class BatchedVectorFfNetwork(
+    int inputSize,
+    int hiddenSize,
+    int outputSize,
+    int numHiddenLayers,
+    Func<Tensor<float[,]>, Tensor<float[,]>> hiddenActivation,
+    Func<Tensor<float[,]>, Tensor<float[,]>> outputActivation,
+    Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction,
+    Initialization weightsInitialization = Initialization.Xavier,
+    Initialization biasesInitialization = Initialization.He)
+    : FfNetwork<float[,], float[,], float[,], float[,], float[], float[]>(
         CreateLayer(inputSize, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
         CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
         CreateLayer(hiddenSize, outputSize, outputActivation, weightsInitialization, biasesInitialization),
         lossFunction,
         hiddenSize,
         hiddenActivation)
-    {
-        //DefaultInitialGradient = 1 / (float)batchSize;
-    }
+{
 
 
     protected override FfLayer<float[,], float[,], float[,], float[]> CreateHiddenLayer() =>

@@ -46,7 +46,7 @@ public static class FfTests
         float[] targets = [1, -1];
 
         using BatchedVectorFfNetwork network = new(
-            1, 2, 1, 1, 2,
+            1, 2, 1, 1, 
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
         network.DefaultGradClipNorm = 1;
@@ -135,7 +135,7 @@ public static class FfTests
         }
 
         using BatchedVectorFfNetwork network = new(
-            1, 8, 1, 2, n,
+            1, 8, 1, 2, 
             ActivationFunctions.Tanh, ActivationFunctions.Identity,
             LossFunctions.MeanSquaredError);
         
@@ -231,7 +231,7 @@ public static class FfTests
         ];
 
         using BatchedVectorFfNetwork network = new(
-            2, 4, 1, 1, 4,
+            2, 4, 1, 1, 
             ActivationFunctions.Tanh, 
             ActivationFunctions.Sigmoid, 
             LossFunctions.MeanSquaredError);
@@ -259,7 +259,7 @@ public static class FfTests
 
     public static void IrisClassificationTest()
     {
-        Console.WriteLine("\nTraining on simplified Iris dataset (2 classes)...");
+        Console.WriteLine("\nTraining on simplified Iris dataset (2 classes)... (batched)");
         
         // Simplified Iris dataset - just 2 features, 2 classes
         // Features: sepal length, sepal width (normalized)
@@ -280,20 +280,20 @@ public static class FfTests
             [0, 1], [0, 1], [0, 1], [0, 1], [0, 1]
         ];
 
-        VectorFfNetwork network = new(
-            2, 8, 2, 2,  // 2 inputs, 8 hidden, 2 outputs, 2 hidden layers
+        using BatchedVectorFfNetwork network = new(
+            2, 16, 2, 2, 
             ActivationFunctions.ReLu, 
             ActivationFunctions.Softmax, 
-            LossFunctions.CrossEntropy);
+            LossFunctions.CreateSoftmaxCrossEntropy(20));
         
-        var inputStorage = inputs.Select(Operations.NewValue).ToArray();
-        var targetStorage = targets.Select(Operations.NewValue).ToArray();
+        Value<float[,]>[] inputStorage = [Operations.Stack(inputs.Select(Operations.NewValue).ToArray())];
+        Value<float[,]>[] targetStorage = [Operations.Stack(targets.Select(Operations.NewValue).ToArray())];
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         Stopwatch sw = Stopwatch.StartNew();
         
-        var losses = network.Train(inputStorage, targetStorage, 3000, 0.1f);
+        var losses = network.Train(inputStorage, targetStorage, 10000, 0.1f);
         
         sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
@@ -302,7 +302,7 @@ public static class FfTests
         int correct = 0;
         for (int i = 0; i < inputs.Length; i++)
         {
-            float[] output = network.Forward(Operations.NewValue(inputs[i])).ToHost();
+            float[] output = network.Forward(Operations.Stack([inputs[i]])).ToProxy().FlatData;
             int predicted = output[0] > output[1] ? 0 : 1;
             int actual = targets[i][0] > targets[i][1] ? 0 : 1;
             if (predicted == actual) correct++;
@@ -326,7 +326,7 @@ public static class FfTests
             targets[i] = [MathF.Sin(x), MathF.Cos(x)];
         }
 
-        VectorFfNetwork network = new(
+        using VectorFfNetwork network = new(
             1, 16, 2, 2,  
             ActivationFunctions.Tanh, 
             ActivationFunctions.Identity, 
@@ -353,6 +353,49 @@ public static class FfTests
             Console.WriteLine($"  x={angle:F4} → sin={output[0]:F4} (expected {Math.Sin(angle):F4}), cos={output[1]:F4} (expected {Math.Cos(angle):F4})");
         }
     }
+    
+    public static void RegressionTestBatched()
+    {
+        Console.WriteLine("\nTraining on multi-output regression (predicting sin and cos)... (batched)");
+        
+        var random = new Random(42);
+        float[][] inputs = new float[30][];
+        float[][] targets = new float[30][];
+        
+        for (int i = 0; i < 30; i++)
+        {
+            float x = (float)random.NextDouble() * MathF.PI * 2; // Range [0, 2π]
+            inputs[i] = [x];
+            targets[i] = [MathF.Sin(x), MathF.Cos(x)];
+        }
+
+        using BatchedVectorFfNetwork network = new(
+            1, 32, 2, 3,  
+            ActivationFunctions.Tanh, 
+            ActivationFunctions.Identity, 
+            LossFunctions.MeanSquaredError);
+        
+        Value<float[,]>[] inputStorage = [Operations.Stack(inputs.Select(Operations.NewValue).ToArray())];
+        Value<float[,]>[] targetStorage = [Operations.Stack(targets.Select(Operations.NewValue).ToArray())];
+        
+        float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
+        Console.WriteLine($"Initial loss: {initialLoss}");
+        Stopwatch sw = Stopwatch.StartNew();
+        
+        var losses = network.Train(inputStorage, targetStorage, 10000, 0.1f);
+        
+        sw.Stop();
+        float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
+        Console.WriteLine($"Final loss: {finalLoss} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
+        
+        Console.WriteLine("\nSample predictions:");
+        float[] testAngles = [0, MathF.PI / 4, MathF.PI / 2, MathF.PI, 3 * MathF.PI / 2];
+        foreach (var angle in testAngles)
+        {
+            float[] output = network.Forward(Operations.Stack([[angle]])).ToProxy().FlatData;
+            Console.WriteLine($"  x={angle:F4} → sin={output[0]:F4} (expected {Math.Sin(angle):F4}), cos={output[1]:F4} (expected {Math.Cos(angle):F4})");
+        }
+    }
 
     public static void RunAll()
     {
@@ -364,5 +407,6 @@ public static class FfTests
         XorTestBatched();
         IrisClassificationTest();
         RegressionTest();
+        RegressionTestBatched();
     }
 }

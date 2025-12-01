@@ -179,7 +179,7 @@ public class RecurrentTests
             1, 8, 2, 1,
             ActivationFunctions.Tanh,
             ActivationFunctions.Softmax,
-            LossFunctions.CrossEntropy);
+            LossFunctions.CreateCrossEntropy());
 
         double initialLoss = network.EvaluateLossSequences(sequenceValues, targetValues);
         Console.WriteLine($"Initial loss: {initialLoss}");
