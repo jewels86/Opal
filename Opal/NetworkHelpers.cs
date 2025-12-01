@@ -23,7 +23,7 @@ public static partial class Operations
     }
     #endregion
     #region Training
-    public static void Train<TIn, TOut>(
+    public static List<float> Train<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action update,
         Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 100)
         where TIn : notnull where TOut : notnull
@@ -33,6 +33,7 @@ public static partial class Operations
         
         int aidx = inputs[0].AcceleratorIndex;
         var one = new ScalarValue(Compute.Make(aidx, 1, 1)).NonDisposable();
+        List<float> losses = [];
         
         for (int epoch = 0; epoch < maxEpochs; epoch++)
         { 
@@ -49,9 +50,13 @@ public static partial class Operations
             }
             if (epoch % checkInterval != 0) continue;
             var hostLoss = totalLoss.ToHost() / inputs.Length;
+            losses.Add(hostLoss);
+            
             if (float.IsNaN(hostLoss)) throw new Exception($"Loss is NaN at epoch {epoch}!");
             if (hostLoss < epsilon) break;
         }
+
+        return losses;
     }
 
     public static void TrainSequences<TIn, TOut>(Func<Tensor<TIn>[], Tensor<TOut>> forward, 

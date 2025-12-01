@@ -30,13 +30,13 @@ public static class FfTests
         sw.Stop();
         
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
-        Console.WriteLine($"Training for 1000 epochs...");
+        Console.WriteLine($"Training for max 1000 epochs...");
         sw.Restart();
-        network.Train(inputStorage, targetStorage, 1000, 0.01f);
+        var losses = network.Train(inputStorage, targetStorage, 1000, 0.01f);
         sw.Stop();
         
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
-        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)} ({sw.ElapsedMilliseconds}ms - {sw.ElapsedMilliseconds / 1000f:F2} ms per epoch)");
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(inputStorage, targetStorage)} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
     }
     
     public static void OverfittingTestBatched()
@@ -64,9 +64,9 @@ public static class FfTests
         Console.WriteLine($"Initial loss: {initialLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Training for 1000 epochs...");
         sw.Restart();
-        network.Train(batchedInputs, batchedTargets, 1000, 0.01f);
+        var losses = network.Train(batchedInputs, batchedTargets, 1000, 0.01f);
         sw.Stop();
-        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"Evaluating the loss: {network.EvaluateLoss(batchedInputs, batchedTargets)} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
         
         var output = network.Forward(batchedInputs[0]).ToHost();
         Console.WriteLine($"Output[0,0] = {output[0, 0]} (target: 1)");
@@ -98,12 +98,14 @@ public static class FfTests
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
+        Stopwatch sw = Stopwatch.StartNew();
         
-        network.Train(inputStorage, targetStorage, 1000, 0.01f);
+        var losses = network.Train(inputStorage, targetStorage, 1000, 0.01f);
         
+        sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Final loss: {finalLoss}");
-        Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}%");
+        Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}% ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
         
         Console.WriteLine("\nTesting predictions:");
         float[] testInputs = [0.0f, 1.0f, -1.5f, 2.0f];
@@ -146,11 +148,13 @@ public static class FfTests
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
+        Stopwatch sw = Stopwatch.StartNew();
         
-        network.Train(inputStorage, targetStorage, 5000, 0.5f);
+        var losses = network.Train(inputStorage, targetStorage, 5000, 0.5f);
         
+        sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
-        Console.WriteLine($"Final loss: {finalLoss}");
+        Console.WriteLine($"Final loss: {finalLoss} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
         
         Console.WriteLine("\nXOR predictions:");
         foreach (var input in inputs)
@@ -194,11 +198,13 @@ public static class FfTests
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
+        Stopwatch sw = Stopwatch.StartNew();
         
-        network.Train(inputStorage, targetStorage, 3000, 0.1f);
+        var losses = network.Train(inputStorage, targetStorage, 3000, 0.1f);
         
+        sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
-        Console.WriteLine($"Final loss: {finalLoss}");
+        Console.WriteLine($"Final loss: {finalLoss} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
         
         int correct = 0;
         for (int i = 0; i < inputs.Length; i++)
@@ -238,11 +244,13 @@ public static class FfTests
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
+        Stopwatch sw = Stopwatch.StartNew();
         
-        network.Train(inputStorage, targetStorage, 3000, 0.01f);
+        var losses = network.Train(inputStorage, targetStorage, 3000, 0.01f);
         
+        sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
-        Console.WriteLine($"Final loss: {finalLoss}");
+        Console.WriteLine($"Final loss: {finalLoss} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
         
         Console.WriteLine("\nSample predictions:");
         float[] testAngles = [0, MathF.PI / 4, MathF.PI / 2, MathF.PI, 3 * MathF.PI / 2];

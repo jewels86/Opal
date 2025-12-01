@@ -46,7 +46,7 @@ public abstract class FfNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn, T
         OutputLayer.UpdateParameters(lr, gradClipNorm);
     }
 
-    public void Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) => 
+    public List<float> Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) => 
         Operations.Train(Forward, LossFunction, () => UpdateParameters(lr, DefaultGradClipNorm), inputs, targets, epochs, epsilon: DefaultTrainingEpsilon ?? 0.0001f);
     
     public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>

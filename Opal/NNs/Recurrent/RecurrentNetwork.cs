@@ -63,7 +63,7 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsH
         OutputLayer.State = new Tensor<TOut>(OutputLayer.State.Value.Zeros(), OutputLayer.State.Gradient.Zeros());
     }
 
-    public void Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) =>
+    public List<float> Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) =>
         Operations.Train(Forward, LossFunction, () => UpdateParameters(lr), inputs, targets, epochs);
 
     public float EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) =>
