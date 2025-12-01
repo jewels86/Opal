@@ -50,7 +50,7 @@ public static partial class Operations
         var realN = transposeB ? b.Value.Shape[0] : n;
         
         var result = new MatrixValue(Compute.Get(aidx, realM * realN), [realM, realN]);
-        Compute.MatrixMultiply(a.Value, b.Value, result, m, k, n, transposeA: transposeA, transposeB: transposeB, noCuBlas: true);
+        Compute.MatrixMultiply(a.Value, b.Value, result, m, k, n, transposeA: transposeA, transposeB: transposeB);
         return new(result, result.Zeros(), Backward, [a, b]);
 
         void Backward(ITensor tensor)
@@ -67,13 +67,13 @@ public static partial class Operations
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, b.Value.Data, gradA,
                         a0, b1, a1,
-                        transposeA: false, transposeB: true, noCuBlas: true
+                        transposeA: false, transposeB: true
                     );
     
                     Compute.MatrixMultiply(
                         a.Value.Data, tensor.Gradient.Data, gradB,
                         a0, a1, b1,
-                        transposeA: true, transposeB: false, noCuBlas: true
+                        transposeA: true, transposeB: false
                     );
                     break;
 
@@ -81,13 +81,13 @@ public static partial class Operations
                     Compute.MatrixMultiply(
                         b.Value.Data, tensor.Gradient.Data, gradA,
                         b0, b1, a1,
-                        transposeA: false, transposeB: true, noCuBlas: true
+                        transposeA: false, transposeB: true
                     );
                     
                     Compute.MatrixMultiply(
                         a.Value.Data, tensor.Gradient.Data, gradB,
                         a0, a1, b1,
-                        transposeA: false, transposeB: false, noCuBlas: true
+                        transposeA: false, transposeB: false
                     );
                     break;
 
@@ -95,13 +95,13 @@ public static partial class Operations
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, b.Value.Data, gradA,
                         a0, b0, b1,
-                        transposeA: false, transposeB: false, noCuBlas: true
+                        transposeA: false, transposeB: false
                     );
 
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, a.Value.Data, gradB,
                         a0, b0, a1,
-                        transposeA: true, transposeB: false, noCuBlas: true
+                        transposeA: true, transposeB: false
                     );
                     break;
 
@@ -109,13 +109,13 @@ public static partial class Operations
                     Compute.MatrixMultiply(
                         b.Value.Data, tensor.Gradient.Data, gradA,
                         b0, b1, a1,
-                        transposeA: true, transposeB: true, noCuBlas: true
+                        transposeA: true, transposeB: true
                     );
     
                     Compute.MatrixMultiply(
                         tensor.Gradient.Data, a.Value.Data, gradB,
                         a1, b0, a0, 
-                        transposeA: true, transposeB: true, noCuBlas: true
+                        transposeA: true, transposeB: true
                     );
                     break;
             }
