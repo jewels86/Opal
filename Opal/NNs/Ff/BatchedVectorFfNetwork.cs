@@ -12,8 +12,8 @@ public class BatchedVectorFfNetwork : FfNetwork<float[,], float[,], float[,], fl
         Func<Tensor<float[,]>, Tensor<float[,]>> hiddenActivation,
         Func<Tensor<float[,]>, Tensor<float[,]>> outputActivation,
         Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction,
-        Initialization weightsInitialization = Initialization.Zeros,
-        Initialization biasesInitialization = Initialization.Zeros) : base(
+        Initialization weightsInitialization = Initialization.Random,
+        Initialization biasesInitialization = Initialization.Random) : base(
         CreateLayer(inputSize, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
         CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
         CreateLayer(hiddenSize, outputSize, outputActivation, weightsInitialization, biasesInitialization),

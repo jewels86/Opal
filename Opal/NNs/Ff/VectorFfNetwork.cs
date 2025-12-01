@@ -11,8 +11,8 @@ public class VectorFfNetwork(
     Func<Tensor<float[]>, Tensor<float[]>> hiddenActivation,
     Func<Tensor<float[]>, Tensor<float[]>> outputActivation,
     Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction,
-    Initialization weightsInitialization = Initialization.Zeros,
-    Initialization biasesInitialization = Initialization.Zeros)
+    Initialization weightsInitialization = Initialization.Random,
+    Initialization biasesInitialization = Initialization.Random)
     : FfNetwork<float[], float[], float[,], float[,], float[], float[]>(
         CreateLayer(inputSize, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
         CreateHiddenLayers(numHiddenLayers, hiddenSize, hiddenActivation, weightsInitialization, biasesInitialization),
