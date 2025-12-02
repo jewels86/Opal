@@ -9,8 +9,8 @@ internal static class Program
         using var context = new OpalContext(initializeInBackground: false, useGpu: true);
         
         //AutogradTests.RunAll();
-        FfTests.BatchedTests();
-        //Tests.SequenceMemoryTest();
+        //FfTests.BatchedTests();
+        Tests.SequenceMemoryTest();
         //RecurrentTests.RunAll();
     }
 }

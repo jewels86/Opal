@@ -1,4 +1,5 @@
-﻿using Opal;
+﻿using System.Diagnostics;
+using Opal;
 using Opal.NNs;
 
 namespace Testing;
@@ -26,28 +27,30 @@ public class Tests
             new[] { -0.6f }
         };
 
-        var sequences = sequencesRaw.Select(x => x.Select(Operations.NewValue).ToArray()).ToArray();
-        var targets = targetsRaw.Select(Operations.NewValue).ToArray();
+        var sequences = sequencesRaw.Select(Operations.Stack).ToArray();
+        var targets = targetsRaw.Select(x => Operations.Stack(x)).ToArray();
 
-        var network = new VectorLstmNetwork(
+        var network = new BatchedVectorLstmNetwork(
             1, 8, 1, 8,
             LossFunctions.MeanSquaredError);
 
-        double initialLoss = network.EvaluateLossSequences(sequences, targets);
+        double initialLoss = network.EvaluateLossSequences([sequences], targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
+        Stopwatch sw = Stopwatch.StartNew();
         
-        network.TrainSequences(sequences, targets, 2000, 0.01f);
+        network.TrainSequences([sequences], targets, 100, 0.01f);
         
-        double finalLoss = network.EvaluateLossSequences(sequences, targets);
+        sw.Stop();
+        double finalLoss = network.EvaluateLossSequences([sequences], targets);
         Console.WriteLine($"Final loss: {finalLoss}");
-        Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}%");
+        Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}% ({sw.ElapsedMilliseconds}ms)");
         
-        Console.WriteLine("\nPredictions:");
-        for (int i = 0; i < sequences.Length; i++)
-        {
-            var prediction = network.ForwardSequence(sequences[i]);
-            var seqString = string.Join(", ", sequencesRaw[i].Select(x => x[0].ToString("F1")));
-            Console.WriteLine($"  [{seqString}] → {prediction.ToHost()[0]:F4} (expected {targetsRaw[i][0]:F1})");
-        }
+        // Console.WriteLine("\nPredictions:");
+        // for (int i = 0; i < sequencesR.Length; i++)
+        // {
+        //     var prediction = network.ForwardSequence(sequences[i]);
+        //     var seqString = string.Join(", ", sequencesRaw[i].Select(x => x[0].ToString("F1")));
+        //     Console.WriteLine($"  [{seqString}] → {prediction.ToHost()[0]:F4} (expected {targetsRaw[i][0]:F1})");
+        // }
     }
 }
