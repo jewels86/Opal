@@ -10,6 +10,7 @@ internal static class Program
         
         //AutogradTests.RunAll();
         FfTests.IrisClassificationTest();
+        //Tests.SequenceMemoryTest();
         //RecurrentTests.RunAll();
     }
 }

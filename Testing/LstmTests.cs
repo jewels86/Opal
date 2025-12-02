@@ -1,6 +1,5 @@
 ﻿using Opal;
-using Opal.Mathematics;
-using Opal.NNs.Lstm;
+using Opal.NNs;
 
 namespace Testing;
 
@@ -13,34 +12,31 @@ public class LstmTests
         // Task: output the first value seen in the sequence
         var sequencesRaw = new[]
         {
-            new[] { new[] { 0.5 }, new[] { 0.1 }, new[] { 0.2 } },
-            new[] { new[] { -0.3 }, new[] { 0.4 }, new[] { 0.1 } },
-            new[] { new[] { 0.8 }, new[] { -0.2 }, new[] { 0.3 } },
-            new[] { new[] { -0.6 }, new[] { 0.2 }, new[] { -0.1 } }
+            new[] { new[] { 0.5f }, new[] { 0.1f }, new[] { 0.2f } },
+            new[] { new[] { -0.3f }, new[] { 0.4f }, new[] { 0.1f } },
+            new[] { new[] { 0.8f }, new[] { -0.2f }, new[] { 0.3f } },
+            new[] { new[] { -0.6f }, new[] { 0.2f }, new[] { -0.1f } }
         };
         
         var targetsRaw = new[]
         {
-            new[] { 0.5 },
-            new[] { -0.3 },
-            new[] { 0.8 },
-            new[] { -0.6 }
+            new[] { 0.5f },
+            new[] { -0.3f },
+            new[] { 0.8f },
+            new[] { -0.6f }
         };
 
-        // Convert to VectorTensorStorage
-        var sequences = sequencesRaw.Select(seq => seq.Select(Operations.NewDefaultVectorStorage).ToArray()).ToArray();
-        var targets = targetsRaw.Select(Operations.NewDefaultVectorStorage).ToArray();
+        var sequences = sequencesRaw.Select(x => x.Select(Operations.NewValue).ToArray()).ToArray();
+        var targets = targetsRaw.Select(Operations.NewValue).ToArray();
 
         var network = new VectorLstmNetwork(
             1, 8, 1, 8,
-            ActivationFunctions.SigmoidVector,
-            ActivationFunctions.TanhVector,
-            LossFunctions.MeanSquaredErrorVector);
+            LossFunctions.MeanSquaredError);
 
         double initialLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
-        network.TrainSequences(sequences, targets, 10, 0.01);
+        network.TrainSequences(sequences, targets, 2000, 0.01f);
         
         double finalLoss = network.EvaluateLossSequences(sequences, targets);
         Console.WriteLine($"Final loss: {finalLoss}");

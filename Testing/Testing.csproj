@@ -20,9 +20,9 @@
     <Compile Remove="BinTest.cs" />
     <Compile Remove="DiagnosticTest.cs" />
     <Compile Remove="GpuTest.cs" />
-    <Compile Remove="LstmTests.cs" />
     <Compile Remove="ScalarMultiplyDiagnosticTest.cs" />
     <Compile Remove="CatalogTests.cs" />
+    <Compile Remove="LstmTests.cs" />
   </ItemGroup>
 
 </Project>

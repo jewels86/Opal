@@ -37,7 +37,7 @@ public static class LossFunctions
             ArrayView1D<float, Stride1D.Dense> r, int size) =>
         {
             var p = XMath.Clamp(pred[i], 1e-7f, 1.0f - 1e-7f);
-            r[i] += grad[i] * -target[i] / p / size;
+            r[i] += grad[0] * -target[i] / p / size;
         });
     
     public static Tensor<float> MeanSquaredError(ITensor predicted, IValue actual)

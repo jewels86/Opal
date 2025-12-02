@@ -112,7 +112,7 @@ public static class ActivationFunctions
     
         compute.Call(BatchedMaxRowKernels, x.Value, maxs, numClasses);
         compute.Call(BatchedExpWithMaxKernels, x.Value, maxs, exp, numClasses);
-        compute.Call(BatchedSumRowKernels, sums, exp, numClasses);
+        compute.Call(BatchedSumRowKernels, exp, sums, numClasses);
         compute.Call(BatchedDivideByRowSumKernels, exp, sums, result, numClasses);
     
         compute.Return(exp, sums, maxs);
@@ -128,7 +128,7 @@ public static class ActivationFunctions
             var dot = compute.Get(aidx, batchSize);
         
             compute.Call(compute.ElementwiseMultiplyKernels, t.Gradient.Data, result, temp);
-            compute.Call(BatchedSumRowKernels, dot, temp, numClasses);
+            compute.Call(BatchedSumRowKernels, temp, dot, numClasses);
             compute.Call(BatchedSoftmaxBackwardKernels, t.Gradient.Data, result, dot, x.Gradient.Data, numClasses);
         
             compute.Return(temp, dot);
