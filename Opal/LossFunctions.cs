@@ -39,17 +39,6 @@ public static class LossFunctions
             var p = XMath.Clamp(pred[i], 1e-7f, 1.0f - 1e-7f);
             r[i] += grad[i] * -target[i] / p / size;
         });
-    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, 
-        ArrayView1D<float, Stride1D.Dense>, int>[] SoftmaxCrossEntropyBackwardKernels { get; } 
-        = compute.Load((
-            Index1D i, 
-            ArrayView1D<float, Stride1D.Dense> pred, 
-            ArrayView1D<float, Stride1D.Dense> target, 
-            ArrayView1D<float, Stride1D.Dense> grad,
-            ArrayView1D<float, Stride1D.Dense> r, int size) =>
-        {
-            r[i] += grad[i] * (pred[i] - target[i]) / size;
-        });
     
     public static Tensor<float> MeanSquaredError(ITensor predicted, IValue actual)
     {
@@ -88,31 +77,12 @@ public static class LossFunctions
     
         compute.Return(temp1, temp2);
     
-        return Operations.New(new ScalarValue(result), new ScalarValue(1f, aidx), Backward, [predicted]);
+        return Operations.New(new ScalarValue(result), new ScalarValue(0f, aidx), Backward, [predicted]);
     
         void Backward(ITensor t) =>
             compute.Call(CrossEntropyBackwardKernels, predicted.Value.Data, actual.Data, t.Gradient.Data, predicted.Gradient.Data, size);
     }
     
-    public static Tensor<float> SoftmaxCrossEntropy(ITensor predicted, IValue actual, int size)
-    {
-        int aidx = predicted.Value.AcceleratorIndex;
-        var result = compute.Get(aidx, 1);
-        var (temp1, temp2) = (compute.Get(aidx, predicted.Value.TotalSize), compute.Get(aidx, 1));
-
-        compute.Call(CrossEntropyKernels, predicted.Value.Data, actual.Data, temp1, size);
-        compute.Sum(temp1, temp2);
-        compute.Call(compute.ElementwiseFloatMultiplyKernels, temp2, result, 1f);
-
-        compute.Return(temp1, temp2);
-
-        return Operations.New(new ScalarValue(result), new ScalarValue(1f, aidx), Backward, [predicted]);
-
-        void Backward(ITensor t) =>
-            compute.Call(SoftmaxCrossEntropyBackwardKernels, predicted.Value.Data, actual.Data, t.Gradient.Data, predicted.Gradient.Data, size);
-    }
-
     public static Func<ITensor, IValue, Tensor<float>> CreateCrossEntropy(int batchSize = 1) => (predicted, actual) => CrossEntropy(predicted, actual, batchSize);
-    public static Func<ITensor, IValue, Tensor<float>> CreateSoftmaxCrossEntropy(int batchSize = 1) => (predicted, actual) => SoftmaxCrossEntropy(predicted, actual, batchSize);
 }
 

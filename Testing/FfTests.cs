@@ -283,11 +283,11 @@ public static class FfTests
         using BatchedVectorFfNetwork network = new(
             2, 16, 2, 2, 
             ActivationFunctions.ReLu, 
-            ActivationFunctions.Softmax, 
-            LossFunctions.CreateSoftmaxCrossEntropy(20));
+            ActivationFunctions.BatchedSoftmax, 
+            LossFunctions.CreateCrossEntropy(20));
         
-        Value<float[,]>[] inputStorage = [Operations.Stack(inputs.Select(Operations.NewValue).ToArray())];
-        Value<float[,]>[] targetStorage = [Operations.Stack(targets.Select(Operations.NewValue).ToArray())];
+        Value<float[,]>[] inputStorage = [Operations.Stack(inputs)];
+        Value<float[,]>[] targetStorage = [Operations.Stack(targets)];
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -306,6 +306,7 @@ public static class FfTests
             int predicted = output[0] > output[1] ? 0 : 1;
             int actual = targets[i][0] > targets[i][1] ? 0 : 1;
             if (predicted == actual) correct++;
+            Console.WriteLine($"Sample {i}: output=[{output[0]:F3}, {output[1]:F3}], predicted={predicted}, actual={actual}, length={output.Length}");
         }
         
         Console.WriteLine($"Classification accuracy: {correct}/{inputs.Length} ({(float)correct / inputs.Length * 100:F1}%)");
