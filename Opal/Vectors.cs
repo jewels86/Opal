@@ -14,6 +14,8 @@ public static partial class Operations
         new(vector, gradient, backwardAction, inputs);
 
     public static Value<float[]> NewValue(float[] vector) => new VectorValue(vector, DefaultAcceleratorIndex);
+    public static Value<float[]>[] NewValues(params float[][] vectors) => vectors.Select(NewValue).ToArray();
+    public static Value<float[]>[] NewValuesFromSingles(params float[] vectors) => vectors.Select(x => new[] { x }).Select(NewValue).ToArray();
     
     #region Value Operations
     public static Value<float> Dot(Value<float[]> a, Value<float[]> b)
@@ -48,6 +50,7 @@ public static partial class Operations
 
         return result;
     }
-    public static Value<float[,]> Stack(float[][] vectors) => Stack(vectors.Select(NewValue).ToArray());
+    public static Value<float[,]> Stack(params float[][] vectors) => Stack(vectors.Select(NewValue).ToArray());
+    public static Value<float[,]> StackSingles(params float[] vectors) => Stack(NewValuesFromSingles(vectors));
     #endregion
 }

@@ -12,16 +12,16 @@ public static class FfTests
     public static void OverfittingTest()
     {
         Console.WriteLine($"Training a network to overfit a simple function...");
-        float[] inputs = [0.5f, -0.5f];
-        float[] targets = [1, -1];
+        float[][] inputs = [[0.5f], [-0.5f]];
+        float[][] targets = [[1], [-1]];
 
         using VectorFfNetwork network = new(
             1, 2, 1, 1,
             ActivationFunctions.Identity, ActivationFunctions.Identity, 
             LossFunctions.MeanSquaredError);
-        
-        Value<float[]>[] inputStorage = inputs.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
-        Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
+
+        Value<float[]>[] inputStorage = Operations.NewValues(inputs);
+        Value<float[]>[] targetStorage = Operations.NewValues(targets);
         Console.WriteLine("Weights sample: " + network.InputLayer.Weights.Value.ToHost()[0, 0]);
         
         OpalContext.GlobalContext.EnsureInitialization();
@@ -42,8 +42,8 @@ public static class FfTests
     public static void OverfittingTestBatched()
     {
         Console.WriteLine($"\nTraining a network to overfit a simple function (batched)...");
-        float[] inputs = [0.5f, -0.5f];
-        float[] targets = [1, -1];
+        float[][] inputs = [[0.5f], [-0.5f]];
+        float[][] targets = [[1], [-1]];
 
         using BatchedVectorFfNetwork network = new(
             1, 2, 1, 1, 
@@ -51,8 +51,8 @@ public static class FfTests
             LossFunctions.MeanSquaredError);
         network.DefaultGradClipNorm = 1;
     
-        Value<float[]>[] inputStorage = inputs.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
-        Value<float[]>[] targetStorage = targets.Select(x => new VectorValue([x], _aidx)).ToArray<Value<float[]>>();
+        Value<float[]>[] inputStorage = Operations.NewValues(inputs);
+        Value<float[]>[] targetStorage = Operations.NewValues(targets);
     
         Value<float[,]>[] batchedInputs = [Operations.Stack(inputStorage)];
         Value<float[,]>[] batchedTargets = [Operations.Stack(targetStorage)];
@@ -92,9 +92,9 @@ public static class FfTests
             1, 8, 1, 3,  
             ActivationFunctions.Tanh, ActivationFunctions.Identity,
             LossFunctions.MeanSquaredError);
-        
-        var inputStorage = inputs.Select(x => Operations.NewValue([x])).ToArray();
-        var targetStorage = targets.Select(x => Operations.NewValue([x])).ToArray();
+
+        var inputStorage = Operations.NewValuesFromSingles(inputs);
+        var targetStorage = Operations.NewValuesFromSingles(targets);
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
@@ -138,15 +138,15 @@ public static class FfTests
             1, 8, 1, 2, 
             ActivationFunctions.Tanh, ActivationFunctions.Identity,
             LossFunctions.MeanSquaredError);
-        
-        Value<float[,]>[] inputStorage = [Operations.Stack(inputs.Select(x => Operations.NewValue([x])).ToArray())];
-        Value<float[,]>[] targetStorage = [Operations.Stack(targets.Select(x => Operations.NewValue([x])).ToArray())];
+
+        Value<float[,]>[] inputStorage = [Operations.StackSingles(inputs)];
+        Value<float[,]>[] targetStorage = [Operations.StackSingles(targets)];
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         
         Stopwatch sw = Stopwatch.StartNew();
-        var losses = network.Train(inputStorage, targetStorage, 2000, 0.02f);
+        var losses = network.Train(inputStorage, targetStorage, 10000, 0.02f);
         
         sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
@@ -203,10 +203,11 @@ public static class FfTests
         Console.WriteLine($"Final loss: {finalLoss} ({sw.ElapsedMilliseconds}ms, {losses.Count * 100} epoches - {sw.ElapsedMilliseconds / (losses.Count * 100f):F2} ms per epoch)");
         
         Console.WriteLine("\nXOR predictions:");
-        foreach (var input in inputs)
+        foreach (var input in inputStorage)
         {
-            float[] output = network.Forward(Operations.NewValue(input)).ToHost();
-            Console.WriteLine($"  [{input[0]}, {input[1]}] → {output[0]:F4}");
+            float[] output = network.Forward(input).ToHost();
+            float[] host = input.ToHost();
+            Console.WriteLine($"  [{host[0]}, {host[1]}] → {output[0]:F4}");
         }
     }
     
@@ -236,14 +237,14 @@ public static class FfTests
             ActivationFunctions.Sigmoid, 
             LossFunctions.MeanSquaredError);
         
-        Value<float[,]>[] inputStorage = [Operations.Stack(inputs.Select(Operations.NewValue).ToArray())];
-        Value<float[,]>[] targetStorage = [Operations.Stack(targets.Select(Operations.NewValue).ToArray())];
+        Value<float[,]>[] inputStorage = [Operations.Stack(inputs)];
+        Value<float[,]>[] targetStorage = [Operations.Stack(targets)];
         
         float initialLoss = network.EvaluateLoss(inputStorage, targetStorage);
         Console.WriteLine($"Initial loss: {initialLoss}");
         Stopwatch sw = Stopwatch.StartNew();
         
-        var losses = network.Train(inputStorage, targetStorage, 5000, 0.5f);
+        var losses = network.Train(inputStorage, targetStorage, 10000, 0.5f);
         
         sw.Stop();
         float finalLoss = network.EvaluateLoss(inputStorage, targetStorage);
@@ -252,7 +253,7 @@ public static class FfTests
         Console.WriteLine("\nXOR predictions:");
         foreach (var input in inputs)
         {
-            float[] output = network.Forward(Operations.Stack([Operations.NewValue(input)])).ToProxy().FlatData;
+            float[] output = network.Forward(Operations.Stack(input)).ToProxy().FlatData;
             Console.WriteLine($"  [{input[0]}, {input[1]}] → {output[0]:F4}");
         }
     }
@@ -408,6 +409,15 @@ public static class FfTests
         XorTestBatched();
         IrisClassificationTest();
         RegressionTest();
+        RegressionTestBatched();
+    }
+
+    public static void BatchedTests()
+    {
+        OverfittingTestBatched();
+        NonlinearFunctionBatchedTest();
+        XorTestBatched();
+        IrisClassificationTest();
         RegressionTestBatched();
     }
 }

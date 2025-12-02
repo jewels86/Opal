@@ -48,6 +48,7 @@ public static partial class Operations
         {
             Initialization.Random => RandomMatrix(1, -1, rows, columns),
             Initialization.Zeros => GenerateMatrix((_, _) => 0, rows, columns),
+            Initialization.Ones => GenerateMatrix((_, _) => 1, rows, columns),
             Initialization.Xavier => XavierMatrix(rows, columns),
             Initialization.He => HeMatrix(rows, columns),
             _ => throw new ArgumentOutOfRangeException(nameof(init), init, null)
@@ -87,6 +88,7 @@ public static partial class Operations
         {
             Initialization.Random => RandomVector(max ?? 1, min ?? -1, size),
             Initialization.Zeros => GenerateVector(_ => 0, size),
+            Initialization.Ones => GenerateVector(_ => 1, size),
             Initialization.Xavier => XavierVector(size, fanIn ?? size),
             Initialization.He => HeVector(size, fanIn ?? size),
             _ => throw new ArgumentOutOfRangeException(nameof(init), init, null)
@@ -106,6 +108,7 @@ public enum Initialization
 {
     Random,
     Zeros,
+    Ones,
     Xavier,
     He
 }
