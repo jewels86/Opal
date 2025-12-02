@@ -1,30 +1,29 @@
 ﻿using Jewels.Lazulite;
-using static Opal.ActivationFunctions;
 
 namespace Opal.NNs;
 
-public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
-    where TIn : notnull where TOut : notnull where TWeights : notnull
+public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
+    where TIn : notnull where TOut : notnull where TWeights : notnull where TBiases : notnull
 {
     public required Tensor<TWeights> EncoderForgetWeights { get; set; } 
-    public required Tensor<TWeights> EncoderInputWeights { get; init; } 
+    public required Tensor<TWeights> EncoderInputWeights { get; set; } 
     public required Tensor<TWeights> EncoderCellWeights { get; set; } 
     public required Tensor<TWeights> EncoderOutputWeights { get; set; }
-    public required Tensor<TOut> EncoderForgetBiases { get; set; }
-    public required Tensor<TOut> EncoderInputBiases { get; set; }
-    public required Tensor<TOut> EncoderCellBiases { get; set; }
-    public required Tensor<TOut> EncoderOutputBiases { get; set; }
+    public required Tensor<TBiases> EncoderForgetBiases { get; set; }
+    public required Tensor<TBiases> EncoderInputBiases { get; set; }
+    public required Tensor<TBiases> EncoderCellBiases { get; set; }
+    public required Tensor<TBiases> EncoderOutputBiases { get; set; }
     
     public required Tensor<TWeights> DecoderForgetWeights { get; set; } 
     public required Tensor<TWeights> DecoderInputWeights { get; set; } 
     public required Tensor<TWeights> DecoderCellWeights { get; set; } 
     public required Tensor<TWeights> DecoderOutputWeights { get; set; }
     
-    public required Tensor<TOut> DecoderForgetBiases { get; set; }
-    public required Tensor<TOut> DecoderInputBiases { get; set; }
-    public required Tensor<TOut> DecoderCellBiases { get; set; }
-    public required Tensor<TOut> DecoderOutputBiases { get; set; }
-    public required ILstmCatalog<TIn, TOut, TWeights> Catalog { get; set; }
+    public required Tensor<TBiases> DecoderForgetBiases { get; set; }
+    public required Tensor<TBiases> DecoderInputBiases { get; set; }
+    public required Tensor<TBiases> DecoderCellBiases { get; set; }
+    public required Tensor<TBiases> DecoderOutputBiases { get; set; }
+    public required ILstmCatalog<TIn, TOut, TWeights, TBiases> Catalog { get; set; }
     
     public required Tensor<TOut> DefaultState { get; set; }
     public required Tensor<TOut> DefaultHidden { get; set; }
@@ -39,13 +38,13 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
         Tensor<TOut> cellWeighted = Catalog.Multiply(EncoderCellWeights, concat);
         Tensor<TOut> outputWeighted = Catalog.Multiply(EncoderOutputWeights, concat);
         
-        Tensor<TOut> forgetGate = Sigmoid(Operations.Add(forgetWeighted, EncoderForgetBiases));
-        Tensor<TOut> inputGate = Sigmoid(Operations.Add(inputWeighted, EncoderInputBiases));
-        Tensor<TOut> cellGate = Tanh(Operations.Add(cellWeighted, EncoderCellBiases));
-        Tensor<TOut> outputGate = Sigmoid(Operations.Add(outputWeighted, EncoderOutputBiases));
+        Tensor<TOut> forgetGate = Catalog.Sigmoid(Catalog.Add(forgetWeighted, EncoderForgetBiases));
+        Tensor<TOut> inputGate = Catalog.Sigmoid(Catalog.Add(inputWeighted, EncoderInputBiases));
+        Tensor<TOut> cellGate = Catalog.Tanh(Catalog.Add(cellWeighted, EncoderCellBiases));
+        Tensor<TOut> outputGate = Catalog.Sigmoid(Catalog.Add(outputWeighted, EncoderOutputBiases));
         
-        Tensor<TOut> newState = Operations.LstmState(forgetGate, state, inputGate, cellGate);
-        Tensor<TOut> newHidden = Operations.Multiply(outputGate, Tanh(newState));
+        Tensor<TOut> newState = Catalog.LstmState(forgetGate, state, inputGate, cellGate);
+        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, Catalog.Tanh(newState));
         
         return (newHidden, newState);
     }
@@ -59,13 +58,13 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
         Tensor<TOut> cellWeighted = Catalog.Multiply(DecoderCellWeights, concat);
         Tensor<TOut> outputWeighted = Catalog.Multiply(DecoderOutputWeights, concat);
         
-        Tensor<TOut> forgetGate = Sigmoid(Operations.Add(forgetWeighted, DecoderForgetBiases));
-        Tensor<TOut> inputGate = Sigmoid(Operations.Add(inputWeighted, DecoderInputBiases));
-        Tensor<TOut> cellGate = Tanh(Operations.Add(cellWeighted, DecoderCellBiases));
-        Tensor<TOut> outputGate = Sigmoid(Operations.Add(outputWeighted, DecoderOutputBiases));
+        Tensor<TOut> forgetGate = Catalog.Sigmoid(Catalog.Add(forgetWeighted, DecoderForgetBiases));
+        Tensor<TOut> inputGate = Catalog.Sigmoid(Catalog.Add(inputWeighted, DecoderInputBiases));
+        Tensor<TOut> cellGate = Catalog.Tanh(Catalog.Add(cellWeighted, DecoderCellBiases));
+        Tensor<TOut> outputGate = Catalog.Sigmoid(Catalog.Add(outputWeighted, DecoderOutputBiases));
         
-        Tensor<TOut> newState = Operations.LstmState(forgetGate, state, inputGate, cellGate);
-        Tensor<TOut> newHidden = Operations.Multiply(outputGate, Tanh(newState));
+        Tensor<TOut> newState = Catalog.LstmState(forgetGate, state, inputGate, cellGate);
+        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, Catalog.Tanh(newState));
         
         return (newHidden, newState);
     }
@@ -234,17 +233,21 @@ public class LstmLayer<TIn, TOut, TWeights> : ILayer<TIn, TOut>
     #endregion
 }
 
-public interface ILstmCatalog<TIn, TOut, TWeights>
-    where TIn : notnull where TOut : notnull
-    where TWeights : notnull
+public interface ILstmCatalog<TIn, TOut, TWeights, TBiases>
+    where TIn : notnull where TOut : notnull where TWeights : notnull where TBiases : notnull
 {
     Tensor<TOut> ConcatInputHidden(Tensor<TIn> a, Tensor<TOut> b);
     Tensor<TOut> ConcatHidden(Tensor<TOut> a, Tensor<TOut> b);
+    Tensor<TOut> Sigmoid(Tensor<TOut> x);
+    Tensor<TOut> Tanh(Tensor<TOut> x);
+    Tensor<TOut> Multiply(Tensor<TOut> a, Tensor<TOut> b);
     Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TOut> b);
+    Tensor<TOut> LstmState(Tensor<TOut> forgetGate, Tensor<TOut> state, Tensor<TOut> inputGate, Tensor<TOut> cellGate);
+    Tensor<TOut> Add(Tensor<TOut> a, Tensor<TBiases> b);
     
     Value<TWeights> ReadWeights(BinaryReader reader);
     void WriteWeights(BinaryWriter writer, Value<TWeights> weight);
     
-    Value<TOut> ReadBias(BinaryReader reader);
-    void WriteBias(BinaryWriter writer, Value<TOut> bias);
+    Value<TBiases> ReadBias(BinaryReader reader);
+    void WriteBias(BinaryWriter writer, Value<TBiases> bias);
 }

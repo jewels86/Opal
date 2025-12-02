@@ -46,7 +46,7 @@ public static class ActivationFunctions
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>[] 
         BatchedMaxRowKernels { get; } = compute.Load((Index1D batchIdx, ArrayView1D<float, Stride1D.Dense> data, ArrayView1D<float, Stride1D.Dense> maxs, int numClasses) =>
     {
-        float max = -3.402823E+38f; 
+        float max = float.MinValue;
         int offset = batchIdx * numClasses;
         for (int i = 0; i < numClasses; i++)
             max = XMath.Max(max, data[offset + i]);
@@ -107,14 +107,18 @@ public static class ActivationFunctions
     public static Tensor<float[,]> BatchedSoftmax(Tensor<float[,]> x)
     {
         var (aidx, batchSize, numClasses, totalSize) = (x.Value.AcceleratorIndex, x.Value.Shape[0], x.Value.Shape[1], x.Value.TotalSize);
-        var (exp, sums, result) = 
-            (compute.Get(aidx, totalSize), compute.Get(aidx, batchSize), compute.Get(aidx, totalSize));
+        var (maxs, exp, sums, result) = 
+            (compute.Get(aidx, batchSize), compute.Get(aidx, totalSize), compute.Get(aidx, batchSize), compute.Get(aidx, totalSize));
     
-        compute.Call(compute.ElementwiseExpKernels, x.Value.Data, exp);
+        compute.Call(BatchedMaxRowKernels, x.Value, maxs, numClasses);
+        compute.Call(BatchedExpWithMaxKernels, x.Value, maxs, exp, numClasses);
         compute.Call(BatchedSumRowKernels, sums, exp, numClasses);
         compute.Call(BatchedDivideByRowSumKernels, exp, sums, result, numClasses);
     
-        compute.Return(exp, sums);
+        compute.Return(exp, sums, maxs);
+        
+        compute.Synchronize(aidx);
+        if (exp.GetAsArray1D().Any(float.IsNaN)) throw new InvalidOperationException("Softmax contains NaN values.");
     
         return x.Create(x.Value.CreateAlike(result), x.Gradient.Zeros(), Backward, [x]);
     

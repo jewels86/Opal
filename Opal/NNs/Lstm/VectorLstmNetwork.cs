@@ -6,21 +6,21 @@ public class VectorLstmNetwork(int inputSize,
     int outputSize,
     int numHiddenLayers,
     Func<Tensor<float[]>, Value<float[]>, Tensor<float>> lossFunction)
-    : LstmNetwork<float[], float[], float[], float[,], float[,], float[,]>(
+    : LstmNetwork<float[], float[], float[,], float[,], float[], float[]>(
         CreateLayer(inputSize, hiddenSize),
         CreateHiddenLayers(numHiddenLayers, hiddenSize),
         CreateLayer(hiddenSize, outputSize),
         lossFunction, hiddenSize)
 {
 
-    protected override LstmLayer<float[], float[], float[,]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize);
+    protected override LstmLayer<float[], float[], float[,], float[]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize);
 
     private static Tensor<float[,]> CreateWeightArray(int outputSize, int weightSize) => Operations.XavierMatrix(outputSize, weightSize);
 
     private static Tensor<float[]> CreateBiasTensor(int size) =>  Operations.HeVector(size, size);
 
 
-    private static LstmLayer<float[], float[], float[,]> CreateLayer(
+    private static LstmLayer<float[], float[], float[,], float[]> CreateLayer(
         int inputSize,
         int outputSize)
     {
@@ -48,7 +48,7 @@ public class VectorLstmNetwork(int inputSize,
         var decoderCellBiases = CreateBiasTensor(outputSize);
         var decoderOutputBiases = CreateBiasTensor(outputSize);
         
-        return new LstmLayer<float[], float[], float[,]>
+        return new LstmLayer<float[], float[], float[,], float[]>
         {
             EncoderForgetWeights = encoderForgetWeights,
             EncoderInputWeights = encoderInputWeights,
@@ -72,9 +72,9 @@ public class VectorLstmNetwork(int inputSize,
         };
     }
 
-    private static List<LstmLayer<float[], float[], float[,]>> CreateHiddenLayers(int numLayers, int hiddenSize)
+    private static List<LstmLayer<float[], float[], float[,], float[]>> CreateHiddenLayers(int numLayers, int hiddenSize)
     {
-        var layers = new List<LstmLayer<float[], float[], float[,]>>();
+        var layers = new List<LstmLayer<float[], float[], float[,], float[]>>();
         for (int i = 0; i < numLayers; i++)
             layers.Add(CreateLayer(hiddenSize, hiddenSize));
         return layers;
