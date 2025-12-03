@@ -3,6 +3,26 @@
 public static partial class Operations
 {
     public static readonly Random Random = new();
+    #region Tensor 3
+    public static float[,,] Fill(float value, int x, int y, int z)
+    {
+        var tensor3 = new float[x, y, z];
+        for (int i = 0; i < x; i++)
+        for (int j = 0; j < y; j++)
+        for (int k = 0; k < z; k++)
+            tensor3[i, j, k] = value;
+        return tensor3;
+    }
+    public static Tensor<float[,,]> GenerateTensor3(Func<int, int, int, float> generator, int x, int y, int z)
+    {
+        var tensor3 = new float[x, y, z];
+        for (int i = 0; i < x; i++)
+        for (int j = 0; j < y; j++)
+        for (int k = 0; k < z; k++)
+            tensor3[i, j, k] = generator(i, j, k);
+        return New(tensor3, Fill(0, x, y, z));;
+    }
+    #endregion
     #region Matrices
     public static Tensor<float[,]> GenerateMatrix(Func<int, int, float> generator, int rows, int columns)
     {

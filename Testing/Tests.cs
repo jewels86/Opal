@@ -27,21 +27,21 @@ public class Tests
             new[] { -0.6f }
         };
 
-        var sequences = sequencesRaw.Select(Operations.Stack).ToArray();
-        var targets = targetsRaw.Select(x => Operations.Stack(x)).ToArray();
+        var sequences = Operations.Stack(sequencesRaw);
+        var targets = Operations.Stack(targetsRaw.Select(x => new[] { x }).ToArray());
 
         var network = new BatchedVectorLstmNetwork(
             1, 8, 1, 8,
             LossFunctions.MeanSquaredError);
 
-        double initialLoss = network.EvaluateLossSequences([sequences], targets);
+        double initialLoss = network.EvaluateLoss([sequences], [targets]);
         Console.WriteLine($"Initial loss: {initialLoss}");
         Stopwatch sw = Stopwatch.StartNew();
         
-        network.TrainSequences([sequences], targets, 100, 0.01f);
+        network.TrainSequences([[sequences]], [targets], 1000, 0.01f);
         
         sw.Stop();
-        double finalLoss = network.EvaluateLossSequences([sequences], targets);
+        double finalLoss = network.EvaluateLossSequences([[sequences]], [targets]);
         Console.WriteLine($"Final loss: {finalLoss}");
         Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}% ({sw.ElapsedMilliseconds}ms)");
         

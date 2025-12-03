@@ -52,5 +52,18 @@ public static partial class Operations
     }
     public static Value<float[,]> Stack(params float[][] vectors) => Stack(vectors.Select(NewValue).ToArray());
     public static Value<float[,]> StackSingles(params float[] vectors) => Stack(NewValuesFromSingles(vectors));
+
+    public static Value<float[,,]> Stack(Value<float[]>[][] vectors)
+    {
+        var (n, sequences, features, aidx) = (vectors.Length, vectors[0].Length, vectors[0][0].TotalSize, vectors[0][0].AcceleratorIndex);
+        var result = new TensorValue3(Compute.Get(aidx, n * sequences * features), [n, sequences, features]);
+    
+        for (int i = 0; i < n; i++)
+            for (int j = 0; j < sequences; j++)
+                Compute.Call(Compute.CopyKernels, vectors[i][j].Data, result.Data.View.SubView(i * sequences * features + j * features, features));
+        
+        return result;
+    }
+    public static Value<float[,,]> Stack(params float[][][] vectors) => Stack(vectors.Select(x => x.Select(NewValue).ToArray()).ToArray());
     #endregion
 }
