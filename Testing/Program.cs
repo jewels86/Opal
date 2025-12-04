@@ -1,4 +1,4 @@
-﻿using Opal;
+﻿using Jewels.Opal;
 
 namespace Testing;
 

@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Opal", "Opal\Opal.csproj", "{4B199E82-F2E4-4A14-99C6-F76C36B04660}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jewels.Opal", "Jewels.Opal\Jewels.Opal.csproj", "{4B199E82-F2E4-4A14-99C6-F76C36B04660}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Testing", "Testing\Testing.csproj", "{11CA27F6-BEA5-42EB-AE0F-7240551CD96A}"
 EndProject

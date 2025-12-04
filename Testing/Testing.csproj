@@ -9,7 +9,7 @@
 
 
   <ItemGroup>
-    <ProjectReference Include="..\Opal\Opal.csproj" />
+    <ProjectReference Include="..\Jewels.Opal\Jewels.Opal.csproj" />
   </ItemGroup>
 
   <ItemGroup>

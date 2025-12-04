@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 using Jewels.Lazulite;
-using Opal;
+using Jewels.Opal;
 
 namespace Testing;
 

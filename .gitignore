@@ -173,9 +173,9 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 /.vs
-/Opal/.vs/Opal
-/Opal/obj
-/Opal/.vs/ProjectEvaluation
+/Jewels.Opal/.vs/Opal
+/Jewels.Opal/obj
+/Jewels.Opal/.vs/ProjectEvaluation
 /Testing/obj
-/Opal/bin/Debug/net9.0
+/Jewels.Opal/bin/Debug/net9.0
 /Testing/bin/Debug/net9.0

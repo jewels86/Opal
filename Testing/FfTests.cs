@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using Jewels.Lazulite;
-using Opal;
-using Opal.NNs;
+using Jewels.Opal;
+using Jewels.Opal.NNs;
 
 namespace Testing;
 
