@@ -50,6 +50,20 @@ public static partial class Operations
             ArrayView1D<float, Stride1D.Dense> grad, 
             float min, float max) => grad[i] = XMath.Max(min, XMath.Min(max, grad[i])));
     
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] SinKernels { get; } 
+        = Compute.Load((i, x, r) => r[i] = XMath.Sin(x[i]));
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] CosKernels { get; } 
+        = Compute.Load((i, x, r) => r[i] = XMath.Cos(x[i]));
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] TanKernels { get; } 
+        = Compute.Load((i, x, r) => r[i] = XMath.Tan(x[i]));
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] NegSinKernels { get; } 
+        = Compute.Load((i, x, r) => r[i] = -XMath.Sin(x[i]));
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] Sec2Kernels { get; } 
+        = Compute.Load((i, x, r) => r[i] = 1 / XMath.Pow(XMath.Cos(x[i]), 2));
+    
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] SqrtBackwardsKernels { get; } 
+        = Compute.Load((i, x, r) => r[i] = 0.5f / x[i]);
+    
     public static Value<T> Multiply<T>(Value<T> a, Value<T> b) where T : notnull => 
         a.Create(Compute.BinaryCall(Compute.ElementwiseMultiplyKernels, a.Data, b.Data), a.Shape);
     public static void Multiply(IValue a, IValue b, IValue result) => 
@@ -82,6 +96,10 @@ public static partial class Operations
         Compute.Call(ElementwiseDivAccumulateKernels, a.Data, b.Data, result.Data);
     public static void DivBackward(IValue a, IValue b, IValue grad, IValue result) => 
         Compute.Call(ElementwiseDivBackwardKernels, a.Data, b.Data, grad.Data, result.Data);
+    
+    public static void Sine(IValue x, IValue result) => Compute.Call(SinKernels, x.Data, result.Data);
+    public static void Cosine(IValue x, IValue result) => Compute.Call(CosKernels, x.Data, result.Data);
+    public static void Tangent(IValue x, IValue result) => Compute.Call(TanKernels, x.Data, result.Data);
     #endregion
 
     #region Tensor Operations
@@ -147,6 +165,15 @@ public static partial class Operations
     }
     #endregion
 
+    public static Tensor<T> Negate<T>(Tensor<T> a) where T : notnull
+    {
+        var result = Compute.GetLike(a.Value);
+        Compute.Call(Compute.ElementwiseNegateKernels, a.Value, result);
+        return new(a.Value.CreateAlike(result), a.Value.Zeros(), Backward, [a]);
+
+        void Backward(ITensor t) => NegAccumulate(t.Gradient, a.Gradient);
+    }
+
     public static Tensor<T> Concat<T>(Tensor<T> a, Tensor<T> b) where T : notnull
     {
         var result = Compute.Get(a.Value.AcceleratorIndex, a.Value.TotalSize + b.Value.TotalSize);
@@ -164,6 +191,71 @@ public static partial class Operations
             Compute.Call(Compute.ElementwiseAddKernels, slicedB, b.Gradient, b.Gradient);
         }
     }
+
+    public static Tensor<T> Square<T>(Tensor<T> a) where T : notnull
+    {
+        var result = Compute.GetLike(a.Value);
+        Compute.Call(Compute.ElementwiseMultiplyKernels, a.Value, a.Value, result);
+        return new(a.Value.CreateAlike(result), a.Value.Zeros(), Backwards, [a]);
+
+        void Backwards(ITensor t) => MulAccumulate(t.Gradient, a.Gradient, a.Gradient);
+    }
+
+    public static Tensor<T> Sqrt<T>(Tensor<T> a) where T : notnull
+    {
+        var result = Compute.GetLike(a.Value);
+        Compute.Call(Compute.ElementwiseSqrtKernels, a.Value, result);
+        return new(a.Value.CreateAlike(result), a.Value.Zeros(), Backwards, [a]);
+
+        void Backwards(ITensor t)
+        {
+            var grad = Compute.GetLike(a.Gradient);
+            Compute.Call(SqrtBackwardsKernels, a.Value, grad);
+            Compute.Call(ElementwiseMulAccumulateKernels, grad, t.Gradient.Data, a.Gradient);
+        }
+    }
+    #region Trig
+    public static Tensor<T> Sine<T>(Tensor<T> a) where T : notnull
+    {
+        var result = Compute.GetLike(a.Value);
+        Compute.Call(SinKernels, a.Value, result);
+        return new(a.Value.CreateAlike(result), a.Value.Zeros(), Backward, [a]);
+
+        void Backward(ITensor t)
+        {
+            var grad = Compute.GetLike(a.Gradient);
+            Compute.Call(CosKernels, a.Value, grad);
+            Compute.Call(ElementwiseMulAccumulateKernels, grad, t.Gradient.Data, a.Gradient);
+        }
+    }
+    public static Tensor<T> Cosine<T>(Tensor<T> a) where T : notnull
+    {
+        var result = Compute.GetLike(a.Value);
+        Compute.Call(CosKernels, a.Value, result);
+        return new(a.Value.CreateAlike(result), a.Value.Zeros(), Backward, [a]);
+
+        void Backward(ITensor t)
+        {
+            var grad = Compute.GetLike(a.Gradient);
+            Compute.Call(NegSinKernels, a.Value, grad);
+            Compute.Call(ElementwiseMulAccumulateKernels, grad, t.Gradient.Data, a.Gradient);
+        }
+    }
+    
+    public static Tensor<T> Tangent<T>(Tensor<T> a) where T : notnull
+    {
+        var result = Compute.GetLike(a.Value);
+        Compute.Call(TanKernels, a.Value, result);
+        return new(a.Value.CreateAlike(result), a.Value.Zeros(), Backward, [a]);
+
+        void Backward(ITensor t)
+        {
+            var grad = Compute.GetLike(a.Gradient);
+            Compute.Call(Sec2Kernels, a.Value, grad);
+            Compute.Call(ElementwiseMulAccumulateKernels, grad, t.Gradient.Data, a.Gradient);
+        }
+    }
+    #endregion
     
     #region LSTM
     public static Tensor<T> LstmState<T>(Tensor<T> forget, Tensor<T> state, Tensor<T> input, Tensor<T> cell) where T : notnull

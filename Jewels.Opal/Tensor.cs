@@ -76,6 +76,12 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
     }
     
     public static implicit operator Value<T>(Tensor<T> tensor) => tensor.Value;
+    
+    public static Tensor<T> operator +(Tensor<T> a, Tensor<T> b) => Operations.Add(a, b);
+    public static Tensor<T> operator *(Tensor<T> a, Tensor<T> b) => Operations.Multiply(a, b);
+    public static Tensor<T> operator -(Tensor<T> a, Tensor<T> b) => Operations.Subtract(a, b);
+    public static Tensor<T> operator /(Tensor<T> a, Tensor<T> b) => Operations.Divide(a, b);
+    public static Tensor<T> operator -(Tensor<T> a) => Operations.Negate(a);
 }
 
 public static class TensorExtensions

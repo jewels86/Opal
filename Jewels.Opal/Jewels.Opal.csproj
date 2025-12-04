@@ -4,6 +4,13 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <Version>0.0.2-alpha</Version>
+    <Title>Opal</Title>
+    <PackageProjectUrl>https://github.com/jewels86/Opal</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/jewels86/Opal.git</RepositoryUrl>
+    <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -23,5 +30,9 @@
 
   <ItemGroup>
     <None Remove="Modules\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="\"/>
   </ItemGroup>
 </Project>
