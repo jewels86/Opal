@@ -40,6 +40,8 @@ public static partial class Operations
             for (int row = 0; row < rows; row++) sum += grad[row * cols + col];
             vectorGrad[col] += sum;
         });
+    
+    
     #endregion
     
     #region Multiplication
@@ -55,7 +57,6 @@ public static partial class Operations
 
         void Backward(ITensor tensor)
         {
-
             var gradA = Compute.Get(aidx, a0 * a1);
             var gradB = Compute.Get(aidx, b0 * b1);
 
@@ -168,4 +169,6 @@ public static partial class Operations
             Compute.Call(AddVectorToMatrixBackwardKernel, vector.Gradient.Data, tensor.Gradient.Data, cols, rows);
         }
     }
+
+    
 }

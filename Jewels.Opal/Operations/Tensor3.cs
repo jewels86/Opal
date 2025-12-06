@@ -32,6 +32,43 @@ public partial class Operations
                 sum += grad[(batch * seqLength + seq) * features + featureIdx];
             vectorGrad[featureIdx] += sum;
         });
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int, int>[]
+        GetSliceKernel { get; } = Compute.Load((Index1D i,
+        ArrayView1D<float, Stride1D.Dense> tensor3,
+        ArrayView1D<float, Stride1D.Dense> result,
+        int timestep,
+        int seqLen,
+        int features) => 
+        {
+            int batch = i / features;
+            int feature = i % features;
+            result[i] = tensor3[batch * seqLen * features + timestep * features + feature];
+        });
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int, int>[]
+        SetSliceKernel { get; } = Compute.Load((Index1D i,
+        ArrayView1D<float, Stride1D.Dense> matrix,
+        ArrayView1D<float, Stride1D.Dense> result,
+        int timestep,
+        int seqLen,
+        int features) => 
+        {
+            int batch = i / features;
+            int feature = i % features;
+            result[batch * seqLen * features + timestep * features + feature] = matrix[i];
+        });
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int, int>[]
+        GetSliceBackwardKernel { get; } = Compute.Load((Index1D i,
+        ArrayView1D<float, Stride1D.Dense> tensor3Grad,
+        ArrayView1D<float, Stride1D.Dense> sliceGrad,
+        int timestep,
+        int seqLen,
+        int features) => 
+        {
+            int batch = i / features;
+            int feature = i % features;
+            Atomic.Add(ref tensor3Grad[batch * seqLen * features + timestep * features + feature], sliceGrad[i]);
+        });
+    
     #endregion
     
     public static Tensor<float[,,]> Add(Tensor<float[,,]> tensor, Tensor<float[]> vector)
@@ -138,5 +175,23 @@ public partial class Operations
             Compute.Call(ElementwiseAccumulateKernels, gradB, b.Gradient);
             Compute.Return(gradA, gradB);
         }
+    }
+    
+    public static Tensor<float[,]> GetSlice(Tensor<float[,,]> tensor3, int timestep)
+    {
+        var (aidx, batch, seqLen, features) = (tensor3.AcceleratorIndex, 
+            tensor3.Value.Shape[0], tensor3.Value.Shape[1], tensor3.Value.Shape[2]);
+        var result = new MatrixValue(Compute.Get(aidx, batch * features), [batch, features]);
+        Compute.Call(GetSliceKernel, tensor3.Value.Data, result.Data, timestep, seqLen, features);
+
+        return new(result, result.Zeros(), Backward, [tensor3]);
+
+        void Backward(ITensor tensor) => Compute.Call(GetSliceBackwardKernel, tensor3.Gradient.Data, tensor.Gradient.Data, timestep, seqLen, features);
+    }
+
+    public static void SetSlice(Tensor<float[,,]> tensor3, Tensor<float[,]> slice, int timestep)
+    {
+        var (seqLen, features) = (tensor3.Value.Shape[1], tensor3.Value.Shape[2]);
+        Compute.Call(SetSliceKernel, slice.Value, tensor3.Value, timestep, seqLen, features);
     }
 }

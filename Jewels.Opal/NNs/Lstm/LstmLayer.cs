@@ -110,6 +110,13 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
         var decoderOutput = Decoder(encoderOutput.hidden, encoderOutput.state, encoderOutput.hidden);
         return decoderOutput.hidden;
     }
+
+    public virtual (Tensor<TOut> hidden, Tensor<TOut> state) ForwardWithState(Tensor<TIn> input, Tensor<TOut> hidden, Tensor<TOut> state)
+    {
+        var encoderOutput = Encoder(input, state, hidden);
+        var decoderOutput = Decoder(encoderOutput.hidden, encoderOutput.state, encoderOutput.hidden);
+        return decoderOutput;
+    }
     
     #region Overloads
     public Value<TOut> Forward(Value<TIn> input)
@@ -123,7 +130,6 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
     
     public Tensor<TOut> Forward(Tensor<TIn> input, Tensor<TOut> initialHidden, Tensor<TOut> initialState) => ForwardCore(input, initialHidden, initialState);
     public Tensor<TOut> Forward(Tensor<TIn> input) => ForwardCore(input, DefaultHidden, DefaultState);
-
     public Tensor<TOut>[] ForwardTransforming(Tensor<TIn>[] inputs)
     {
         Tensor<TOut> initialHidden = DefaultHidden;

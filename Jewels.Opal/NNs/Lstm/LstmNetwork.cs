@@ -39,6 +39,16 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
         return OutputLayer.Forward(hidden);
     }
 
+    public (Tensor<TOut> output, Tensor<TOut> state) ForwardWithState(
+        Tensor<TIn> input, 
+        Tensor<TOut> hidden, 
+        Tensor<TOut> state)
+    {
+        var (h, s) = InputLayer.ForwardWithState(input, hidden, state);
+        foreach (var layer in HiddenLayers) (h, s) =layer.ForwardWithState(h, h, s);
+        return OutputLayer.ForwardWithState(h, h, s);
+    }
+
     public Tensor<TOut> ForwardSequence(Tensor<TIn>[] sequence) => Operations.ForwardSequence(() => { }, Forward, sequence);
 
     public Value<TOut> ForwardSequence(Value<TIn>[] sequence) => 
