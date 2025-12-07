@@ -7,7 +7,7 @@ public class Scalar(float value, float? gradient = null, List<Scalar>? inputs = 
     public List<Scalar> Inputs { get; set; } = inputs ?? [];
     public Action<Scalar> BackwardAction { get; set; } = backwardAction ?? (_ => { });
     
-    #region Backwards
+    #region Backward
     public void Backward(float initialGradient)
     {
         (List<Scalar> topo, HashSet<Scalar> visited) = ([], []);
