@@ -27,22 +27,22 @@ public class Tests
             new[] { -0.6f }
         };
 
-        var sequences = Operations.From(Operations.Stack(sequencesRaw));
-        var targets = Operations.From(Operations.Stack(targetsRaw.Select(x => new[] { x }).ToArray()));
+        var sequences = Operations.New(Operations.Stack(sequencesRaw));
+        var targets = Operations.New(Operations.Stack(targetsRaw));
 
         var network = new BatchedVectorLstmNetwork(
             1, 8, 1, 8,
             LossFunctions.MeanSquaredError);
 
-        float initialLoss = network.EvaluateLoss(sequences, targets, LossFunctions.MeanSquaredError);
+        float initialLoss = network.EvaluateLossFinal(sequences, targets, LossFunctions.MeanSquaredError);
         Console.WriteLine($"Initial loss: {initialLoss}");
         Stopwatch sw = Stopwatch.StartNew();
         
-        network.Train(sequences, targets, LossFunctions.MeanSquaredError, 1000, 0.01f);
+        network.TrainFinal(sequences, targets, LossFunctions.MeanSquaredError, 1000, 0.01f);
         
         sw.Stop();
-        float finalLoss = network.EvaluateLoss(sequences, targets, LossFunctions.MeanSquaredError);
-        Console.WriteLine($"Final loss: {finalLoss}");
+        float finalLoss = network.EvaluateLossFinal(sequences, targets, LossFunctions.MeanSquaredError);
+        Console.WriteLine($"Final loss: {finalLoss} ({sw.ElapsedMilliseconds}ms)");
         Console.WriteLine($"Loss reduction: {(1 - finalLoss / initialLoss) * 100:F2}% ({sw.ElapsedMilliseconds}ms)");
         
         // Console.WriteLine("\nPredictions:");

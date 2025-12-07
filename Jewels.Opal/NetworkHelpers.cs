@@ -21,7 +21,7 @@ public static partial class Operations
     #region Training
     public static List<float> Train<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action update,
-        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 100, float initialGrad = 1)
+        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 1, float initialGrad = 1)
         where TIn : notnull where TOut : notnull
     {
         foreach (var input in inputs) input.NonDisposable();

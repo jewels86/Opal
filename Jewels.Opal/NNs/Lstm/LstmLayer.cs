@@ -38,13 +38,13 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
         Tensor<TOut> cellWeighted = Catalog.Multiply(EncoderCellWeights, concat);
         Tensor<TOut> outputWeighted = Catalog.Multiply(EncoderOutputWeights, concat);
         
-        Tensor<TOut> forgetGate = Catalog.Sigmoid(Catalog.Add(forgetWeighted, EncoderForgetBiases));
-        Tensor<TOut> inputGate = Catalog.Sigmoid(Catalog.Add(inputWeighted, EncoderInputBiases));
-        Tensor<TOut> cellGate = Catalog.Tanh(Catalog.Add(cellWeighted, EncoderCellBiases));
-        Tensor<TOut> outputGate = Catalog.Sigmoid(Catalog.Add(outputWeighted, EncoderOutputBiases));
+        Tensor<TOut> forgetGate = Catalog.LstmSigmoidGate(forgetWeighted, EncoderForgetBiases);
+        Tensor<TOut> inputGate = Catalog.LstmSigmoidGate(inputWeighted, EncoderInputBiases);
+        Tensor<TOut> cellGate = Catalog.LstmTanhGate(cellWeighted, EncoderCellBiases);
+        Tensor<TOut> outputGate = Catalog.LstmSigmoidGate(outputWeighted, EncoderOutputBiases);
         
         Tensor<TOut> newState = Catalog.LstmState(forgetGate, state, inputGate, cellGate);
-        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, Catalog.Tanh(newState));
+        Tensor<TOut> newHidden = Catalog.LstmHidden(outputGate, newState);
         
         return (newHidden, newState);
     }
@@ -58,13 +58,13 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
         Tensor<TOut> cellWeighted = Catalog.Multiply(DecoderCellWeights, concat);
         Tensor<TOut> outputWeighted = Catalog.Multiply(DecoderOutputWeights, concat);
         
-        Tensor<TOut> forgetGate = Catalog.Sigmoid(Catalog.Add(forgetWeighted, DecoderForgetBiases));
-        Tensor<TOut> inputGate = Catalog.Sigmoid(Catalog.Add(inputWeighted, DecoderInputBiases));
-        Tensor<TOut> cellGate = Catalog.Tanh(Catalog.Add(cellWeighted, DecoderCellBiases));
-        Tensor<TOut> outputGate = Catalog.Sigmoid(Catalog.Add(outputWeighted, DecoderOutputBiases));
+        Tensor<TOut> forgetGate = Catalog.LstmSigmoidGate(forgetWeighted, DecoderForgetBiases);
+        Tensor<TOut> inputGate = Catalog.LstmSigmoidGate(inputWeighted, DecoderInputBiases);
+        Tensor<TOut> cellGate = Catalog.LstmTanhGate(cellWeighted, DecoderCellBiases);
+        Tensor<TOut> outputGate = Catalog.LstmSigmoidGate(outputWeighted, DecoderOutputBiases);
         
         Tensor<TOut> newState = Catalog.LstmState(forgetGate, state, inputGate, cellGate);
-        Tensor<TOut> newHidden = Catalog.Multiply(outputGate, Catalog.Tanh(newState));
+        Tensor<TOut> newHidden = Catalog.LstmHidden(outputGate, newState);
         
         return (newHidden, newState);
     }
@@ -146,25 +146,26 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
 
     public virtual void UpdateParameters(float lr)
     {
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetWeights.Value, EncoderForgetWeights.Value, EncoderForgetWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderInputWeights.Value, EncoderInputWeights.Value, EncoderInputWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderCellWeights.Value, EncoderCellWeights.Value, EncoderCellWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputWeights.Value, EncoderOutputWeights.Value, EncoderOutputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetWeights.Gradient, EncoderForgetWeights.Value, EncoderForgetWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderInputWeights.Gradient, EncoderInputWeights.Value, EncoderInputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderCellWeights.Gradient, EncoderCellWeights.Value, EncoderCellWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputWeights.Gradient, EncoderOutputWeights.Value, EncoderOutputWeights.Value, lr);
         
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetBiases.Value, EncoderForgetBiases.Value, EncoderForgetBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderInputBiases.Value, EncoderInputBiases.Value, EncoderInputBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderCellBiases.Value, EncoderCellBiases.Value, EncoderCellBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputBiases.Value, EncoderOutputBiases.Value, EncoderOutputBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetBiases.Gradient, EncoderForgetBiases.Value, EncoderForgetBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderInputBiases.Gradient, EncoderInputBiases.Value, EncoderInputBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderCellBiases.Gradient, EncoderCellBiases.Value, EncoderCellBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputBiases.Gradient, EncoderOutputBiases.Value, EncoderOutputBiases.Value, lr);
         
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetWeights.Value, DecoderForgetWeights.Value, DecoderForgetWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderInputWeights.Value, DecoderInputWeights.Value, DecoderInputWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderCellWeights.Value, DecoderCellWeights.Value, DecoderCellWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputWeights.Value, DecoderOutputWeights.Value, DecoderOutputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetWeights.Gradient, DecoderForgetWeights.Value, DecoderForgetWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderInputWeights.Gradient, DecoderInputWeights.Value, DecoderInputWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderCellWeights.Gradient, DecoderCellWeights.Value, DecoderCellWeights.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputWeights.Gradient, DecoderOutputWeights.Value, DecoderOutputWeights.Value, lr);
         
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetBiases.Value, DecoderForgetBiases.Value, DecoderForgetBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderInputBiases.Value, DecoderInputBiases.Value, DecoderInputBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderCellBiases.Value, DecoderCellBiases.Value, DecoderCellBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputBiases.Value, DecoderOutputBiases.Value, DecoderOutputBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetBiases.Gradient, DecoderForgetBiases.Value, DecoderForgetBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderInputBiases.Gradient, DecoderInputBiases.Value, DecoderInputBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderCellBiases.Gradient, DecoderCellBiases.Value, DecoderCellBiases.Value, lr);
+        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputBiases.Gradient, DecoderOutputBiases.Value, DecoderOutputBiases.Value, lr);
+        ZeroGradients();
     }
 
     public virtual void ZeroGradients()
@@ -244,12 +245,11 @@ public interface ILstmCatalog<TIn, TOut, TWeights, TBiases>
 {
     Tensor<TOut> ConcatInputHidden(Tensor<TIn> a, Tensor<TOut> b);
     Tensor<TOut> ConcatHidden(Tensor<TOut> a, Tensor<TOut> b);
-    Tensor<TOut> Sigmoid(Tensor<TOut> x);
-    Tensor<TOut> Tanh(Tensor<TOut> x);
-    Tensor<TOut> Multiply(Tensor<TOut> a, Tensor<TOut> b);
     Tensor<TOut> Multiply(Tensor<TWeights> a, Tensor<TOut> b);
-    Tensor<TOut> LstmState(Tensor<TOut> forgetGate, Tensor<TOut> state, Tensor<TOut> inputGate, Tensor<TOut> cellGate);
-    Tensor<TOut> Add(Tensor<TOut> a, Tensor<TBiases> b);
+    Tensor<TOut> LstmState(Tensor<TOut> forgetGate, Tensor<TOut> state, Tensor<TOut> inputGate, Tensor<TOut> cellGate); // (forgetGate * state) + (inputGate * cellGate)
+    Tensor<TOut> LstmHidden(Tensor<TOut> outputGate, Tensor<TOut> newState);  // outputGate * Tanh(newState)
+    Tensor<TOut> LstmSigmoidGate(Tensor<TOut> weighted, Tensor<TBiases> bias); // Sigmoid(weighted + bias)
+    Tensor<TOut> LstmTanhGate(Tensor<TOut> weighted, Tensor<TBiases> bias); // Tanh(weighted + bias)
     
     Value<TWeights> ReadWeights(BinaryReader reader);
     void WriteWeights(BinaryWriter writer, Value<TWeights> weight);

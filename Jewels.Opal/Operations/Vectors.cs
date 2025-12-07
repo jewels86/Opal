@@ -65,7 +65,5 @@ public static partial class Operations
         return result;
     }
     public static Value<float[,,]> Stack(params float[][][] vectors) => Stack(vectors.Select(x => x.Select(NewValue).ToArray()).ToArray());
-
-    public static Tensor<float[,,]> From(Value<float[,,]> tensor) => new(tensor, tensor.Zeros());
     #endregion
 }

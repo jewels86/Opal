@@ -10,8 +10,8 @@ public partial class Operations
         new TensorValue3(tensor3, aidx ?? DefaultAcceleratorIndex),
         new TensorValue3(gradient ?? Fill(0, tensor3.GetLength(0), tensor3.GetLength(1), tensor3.GetLength(2)), 
             aidx ?? DefaultAcceleratorIndex), backwardAction, inputs);
-    public static Tensor<float[,,]> New(Value<float[,,]> tensor3, Value<float[,,]> gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) => 
-        new(tensor3, gradient, backwardAction, inputs);
+    public static Tensor<float[,,]> New(Value<float[,,]> tensor3, Value<float[,,]>? gradient = null, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) => 
+        new(tensor3, gradient ?? tensor3.Zeros(), backwardAction, inputs);
 
     
     #region Kernels

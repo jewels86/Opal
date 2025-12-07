@@ -1,4 +1,5 @@
-﻿using ILGPU;
+﻿using System.Text;
+using ILGPU;
 using ILGPU.Algorithms;
 using ILGPU.Runtime;
 using Jewels.Lazulite;
@@ -174,7 +175,7 @@ public static partial class Operations
         void Backward(ITensor t) => NegAccumulate(t.Gradient, a.Gradient);
     }
 
-    public static Tensor<T> Concat<T>(Tensor<T> a, Tensor<T> b) where T : notnull
+    public static Tensor<float[]> Concat(Tensor<float[]> a, Tensor<float[]> b)
     {
         var result = Compute.Get(a.Value.AcceleratorIndex, a.Value.TotalSize + b.Value.TotalSize);
         Compute.Call(Compute.ConcatKernels, a.Value.Data, b.Value.Data, result);
@@ -261,11 +262,7 @@ public static partial class Operations
     public static Tensor<T> LstmState<T>(Tensor<T> forget, Tensor<T> state, Tensor<T> input, Tensor<T> cell) where T : notnull
     {
         var result = Compute.GetLike(state.Value);
-        Compute.Call(
-            state.AcceleratorIndex, ElementwiseLstmStateKernels, 
-            forget.Value.Data.IntExtent, forget.Value.Data, 
-            state.Value.Data, input.Value.Data, 
-            cell.Value.Data, result);
+        Compute.Call(ElementwiseLstmStateKernels, forget.Value, state.Value, input.Value, cell.Value, result);
         
         return new(state.Value.Create(result, state.Value.Shape), state.Value.Zeros(), Backward, [forget, state, input, cell]);
 
@@ -299,4 +296,22 @@ public static partial class Operations
             Compute.Call(ElementwiseClampKernels, grad.Data, min, max);
     }
     #endregion
+    
+    public static string ToString(float x) => x.ToString("0.00");
+    
+    public static string ToString(float[] vector) => "[" + string.Join(", ", vector.Select(ToString)) + "]";
+    public static string ToString(int[] vector) => "[" +string.Join(", ", vector) + "]";
+
+    public static string ToString(float[,] matrix)
+    {
+        StringBuilder sb = new("[");
+        for (int i = 0; i < matrix.GetLength(0); i++)
+        {
+            sb.Append(" [");
+            sb.Append(ToString(matrix[i, 0]));
+            for (int j = 1; j < matrix.GetLength(1); j++) sb.Append($", {ToString(matrix[i, j])}");
+            sb.Append("] ");
+        }
+        return sb.Append(']').ToString();
+    }
 }

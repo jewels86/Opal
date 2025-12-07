@@ -39,12 +39,12 @@ public class BatchedVectorLstmNetwork(
         var decoderCellWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize);
         var decoderOutputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize);
 
-        var encoderForgetBiases = Operations.GenerateVector(_ => 0, outputSize);
+        var encoderForgetBiases = Operations.GenerateVector(_ => 1, outputSize);
         var encoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
         var encoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
         var encoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
 
-        var decoderForgetBiases = Operations.GenerateVector(_ => 0, outputSize);
+        var decoderForgetBiases = Operations.GenerateVector(_ => 1, outputSize);
         var decoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
         var decoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
         var decoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
@@ -85,7 +85,7 @@ public class BatchedVectorLstmNetwork(
         return layers;
     }
 
-    public Tensor<float[,,]> Forward(Tensor<float[,,]> sequences)
+    public Tensor<float[,,]> ForwardSequence(Tensor<float[,,]> sequences)
     {
         var (batch, seqLength, features) = (sequences.Value.Shape[0], 
             sequences.Value.Shape[1], sequences.Value.Shape[2]);
@@ -108,9 +108,36 @@ public class BatchedVectorLstmNetwork(
     
         return result;
     }
+
+    public Tensor<float[,]> ForwardSequenceFinal(Tensor<float[,,]> sequences)
+    {
+        var (batch, seqLength, features) = (sequences.Value.Shape[0], 
+            sequences.Value.Shape[1], sequences.Value.Shape[2]);
+    
+        var hidden = Operations.New(Operations.Fill(0f, batch, features));
+        var state = Operations.New(Operations.Fill(0f, batch, features));
+
+        for (int t = 0; t < seqLength; t++)
+        {
+            var timestepInput = Operations.GetSlice(sequences, t);
+            var (output, newState) = ForwardWithState(timestepInput, hidden, state);
+
+            hidden = output;
+            state = newState;
+        }
+        
+        return hidden;
+    }
+    
     public void Train(Tensor<float[,,]> sequences, Tensor<float[,,]> targets, Func<Tensor<float[,,]>, Value<float[,,]>, Tensor<float>> loss, int epochs, float lr) => 
-        Operations.Train<float[,,], float[,,]>(Forward, loss,  () => UpdateParameters(lr), [sequences], [targets], epochs);
+        Operations.Train<float[,,], float[,,]>(ForwardSequence, loss,  () => UpdateParameters(lr), [sequences], [targets], epochs);
     
     public float EvaluateLoss(Tensor<float[,,]> sequences, Tensor<float[,,]> targets, Func<Tensor<float[,,]>, Value<float[,,]>, Tensor<float>> loss) =>
-        Operations.EvaluateLoss<float[,,], float[,,]>(Forward, loss, [sequences], [targets]);
+        Operations.EvaluateLoss<float[,,], float[,,]>(ForwardSequence, loss, [sequences], [targets]);
+    
+    public void TrainFinal(Tensor<float[,,]> sequences, Tensor<float[,]> targets, Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> loss, int epochs, float lr)
+        => Operations.Train<float[,,], float[,]>(ForwardSequenceFinal, loss, () => UpdateParameters(lr), [sequences], [targets], epochs);
+    
+    public float EvaluateLossFinal(Tensor<float[,,]> sequences, Tensor<float[,]> targets, Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> loss)
+        => Operations.EvaluateLoss<float[,,], float[,]>(ForwardSequenceFinal, loss, [sequences], [targets]);
 }

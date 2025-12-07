@@ -19,8 +19,8 @@ public static partial class Operations
             new MatrixValue(matrix, aidx ?? DefaultAcceleratorIndex),
             new MatrixValue(gradient ?? Fill(0, matrix.GetLength(0), matrix.GetLength(1)), aidx ?? DefaultAcceleratorIndex),
             backwardAction, inputs);
-    public static Tensor<float[,]> New(Value<float[,]> matrix, Value<float[,]> gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) => 
-        new(matrix, gradient, backwardAction, inputs);
+    public static Tensor<float[,]> New(Value<float[,]> matrix, Value<float[,]>? gradient = null, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) => 
+        new(matrix, gradient ?? matrix.Zeros(), backwardAction, inputs);
 
     public static Value<float[,]> NewValue(float[,] matrix) => new MatrixValue(matrix, DefaultAcceleratorIndex);
     
@@ -41,7 +41,30 @@ public static partial class Operations
             vectorGrad[col] += sum;
         });
     
-    
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int>[]
+        ConcatMatricesKernel { get; } = Compute.Load((Index1D i,
+        ArrayView1D<float, Stride1D.Dense> a,
+        ArrayView1D<float, Stride1D.Dense> b,
+        ArrayView1D<float, Stride1D.Dense> result,
+        int colsA, int colsB) => 
+        {
+            int totalCols = colsA + colsB;
+            var (row, col) = (i / totalCols, i % totalCols);
+            if (col < colsA) result[i] = a[row * colsA + col];
+            else result[i] = b[row * colsB + (col - colsA)];
+        });
+    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int, int>[]
+        ConcatMatricesBackwardKernel { get; } = Compute.Load((Index1D i,
+        ArrayView1D<float, Stride1D.Dense> gradConcat,
+        ArrayView1D<float, Stride1D.Dense> gradA,
+        ArrayView1D<float, Stride1D.Dense> gradB,
+        int colsA, int colsB) => 
+        {
+            int totalCols = colsA + colsB;
+            var (row, col) = (i / totalCols, i % totalCols);
+            if (col < colsA) gradA[row * colsA + col] = gradConcat[i];
+            else gradB[row * colsB + (col - colsA)] = gradConcat[i];
+        });
     #endregion
     
     #region Multiplication
@@ -170,5 +193,24 @@ public static partial class Operations
         }
     }
 
-    
+    public static Tensor<float[,]> Concat(Tensor<float[,]> a, Tensor<float[,]> b)
+    {
+        var (aidx, rows, colsA, colsB) = (a.AcceleratorIndex, a.Value.Shape[0], a.Value.Shape[1], b.Value.Shape[1]);
+        if (a.Value.Shape[0] != b.Value.Shape[0]) throw new ArgumentException($"Concatenating matrices with different dimensions along axis- {ToString(a.Value.Shape)} vs {ToString(b.Value.Shape)} along d0");
+        var result = new MatrixValue(Compute.Get(aidx, rows * (colsA + colsB)), [rows, colsA + colsB]);
+        Compute.Call(ConcatMatricesKernel, a.Value.Data, b.Value.Data, result, colsA, colsB);
+
+        return new(result, result.Zeros(), Backward, [a, b]);
+        
+        void Backward(ITensor t)
+        {
+            var slicedA = Compute.Get(aidx, rows * colsA);
+            var slicedB = Compute.Get(aidx, rows * colsB);
+        
+            Compute.Call(ConcatMatricesBackwardKernel, t.Gradient.Data, slicedA, slicedB, colsA, colsB);
+        
+            Compute.Call(Compute.ElementwiseAddKernels, slicedA, a.Gradient.Data, a.Gradient.Data);
+            Compute.Call(Compute.ElementwiseAddKernels, slicedB, b.Gradient.Data, b.Gradient.Data);
+        }
+    }
 }
