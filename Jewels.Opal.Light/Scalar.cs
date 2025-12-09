@@ -54,14 +54,14 @@ internal static class ScalarOperations
 
     public static Scalar Multiply(Scalar a, Scalar b) => new(a.Value * b.Value, 0f, [a, b], s =>
     {
-        a.Gradient += s.Value * b.Value;
-        b.Gradient += s.Value * a.Value;
+        a.Gradient += s.Gradient * b.Value;
+        b.Gradient += s.Gradient * a.Value;
     });
     
     public static Scalar Divide(Scalar a, Scalar b) => new(a.Value / b.Value, 0f, [a, b], s =>
     {
-        a.Gradient += s.Value / b.Value;
-        b.Gradient -= s.Value * a.Value / (b.Value * b.Value);
+        a.Gradient += s.Gradient / b.Value;
+        b.Gradient -= s.Gradient * a.Value / (b.Value * b.Value);
     });
     
     public static Scalar Negate(Scalar a) => new(-a.Value, 0f, [a], s => a.Gradient -= s.Gradient);
@@ -75,5 +75,5 @@ internal static class ScalarOperations
     public static Scalar Cosine(Scalar a) => 
         new(MathF.Cos(a.Value), 0f, [a], s => a.Gradient -= s.Gradient * MathF.Sin(a.Value));
     public static Scalar Tangent(Scalar a) => 
-        new(MathF.Tan(a.Value), 0f, [a], s => a.Gradient += s.Gradient * (1f + MathF.Tan(a.Value) * MathF.Tan(a.Value)));
+        new(MathF.Tan(a.Value), 0f, [a], s => a.Gradient += s.Gradient * (1f + (MathF.Tan(a.Value) * MathF.Tan(a.Value))));
 }

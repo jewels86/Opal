@@ -1,4 +1,5 @@
-﻿using Jewels.Lazulite;
+﻿using System.Data;
+using Jewels.Lazulite;
 
 namespace Jewels.Opal.NNs;
 
@@ -146,50 +147,35 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
 
     public virtual void UpdateParameters(float lr)
     {
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetWeights.Gradient, EncoderForgetWeights.Value, EncoderForgetWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderInputWeights.Gradient, EncoderInputWeights.Value, EncoderInputWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderCellWeights.Gradient, EncoderCellWeights.Value, EncoderCellWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputWeights.Gradient, EncoderOutputWeights.Value, EncoderOutputWeights.Value, lr);
-        
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderForgetBiases.Gradient, EncoderForgetBiases.Value, EncoderForgetBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderInputBiases.Gradient, EncoderInputBiases.Value, EncoderInputBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderCellBiases.Gradient, EncoderCellBiases.Value, EncoderCellBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, EncoderOutputBiases.Gradient, EncoderOutputBiases.Value, EncoderOutputBiases.Value, lr);
-        
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetWeights.Gradient, DecoderForgetWeights.Value, DecoderForgetWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderInputWeights.Gradient, DecoderInputWeights.Value, DecoderInputWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderCellWeights.Gradient, DecoderCellWeights.Value, DecoderCellWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputWeights.Gradient, DecoderOutputWeights.Value, DecoderOutputWeights.Value, lr);
-        
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderForgetBiases.Gradient, DecoderForgetBiases.Value, DecoderForgetBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderInputBiases.Gradient, DecoderInputBiases.Value, DecoderInputBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderCellBiases.Gradient, DecoderCellBiases.Value, DecoderCellBiases.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, DecoderOutputBiases.Gradient, DecoderOutputBiases.Value, DecoderOutputBiases.Value, lr);
+        //Console.WriteLine($"weights sample: {EncoderForgetWeights.Value.ToProxy().FlatData[0]}");
+        Operations.Sgd(Weights, lr);
+        Operations.Sgd(Biases, lr);
         ZeroGradients();
     }
 
     public virtual void ZeroGradients()
     {
-        EncoderForgetWeights.Gradient.UpdateWith(EncoderForgetWeights.Gradient.Zeros());
-        EncoderInputWeights.Gradient.UpdateWith(EncoderInputWeights.Gradient.Zeros());
-        EncoderCellWeights.Gradient.UpdateWith(EncoderCellWeights.Gradient.Zeros());
-        EncoderOutputWeights.Gradient.UpdateWith(EncoderOutputWeights.Gradient.Zeros());
-        
-        EncoderForgetBiases.Gradient.UpdateWith(EncoderForgetBiases.Gradient.Zeros());
-        EncoderInputBiases.Gradient.UpdateWith(EncoderInputBiases.Gradient.Zeros());
-        EncoderCellBiases.Gradient.UpdateWith(EncoderCellBiases.Gradient.Zeros());
-        EncoderOutputBiases.Gradient.UpdateWith(EncoderOutputBiases.Gradient.Zeros());
-        
-        DecoderForgetWeights.Gradient.UpdateWith(DecoderForgetWeights.Gradient.Zeros());
-        DecoderInputWeights.Gradient.UpdateWith(DecoderInputWeights.Gradient.Zeros());
-        DecoderCellWeights.Gradient.UpdateWith(DecoderCellWeights.Gradient.Zeros());
-        DecoderOutputWeights.Gradient.UpdateWith(DecoderOutputWeights.Gradient.Zeros());
-        
-        DecoderForgetBiases.Gradient.UpdateWith(DecoderForgetBiases.Gradient.Zeros());
-        DecoderInputBiases.Gradient.UpdateWith(DecoderInputBiases.Gradient.Zeros());
-        DecoderCellBiases.Gradient.UpdateWith(DecoderCellBiases.Gradient.Zeros());
-        DecoderOutputBiases.Gradient.UpdateWith(DecoderOutputBiases.Gradient.Zeros());
+        Operations.ZeroGradients(Weights);
+        Operations.ZeroGradients(Biases);
     }
+
+    public virtual Tensor<TWeights>[] Weights =>
+    [
+        EncoderForgetWeights, EncoderInputWeights, EncoderCellWeights, EncoderOutputWeights,
+        DecoderForgetWeights, DecoderInputWeights, DecoderCellWeights, DecoderOutputWeights
+    ];
+    public virtual Tensor<TBiases>[] Biases =>
+    [
+        EncoderForgetBiases, EncoderInputBiases, EncoderCellBiases, EncoderOutputBiases,
+        DecoderForgetBiases, DecoderInputBiases, DecoderCellBiases, DecoderOutputBiases
+    ];
+    public virtual ITensor[] Parameters =>
+    [
+        EncoderForgetWeights, EncoderInputWeights, EncoderCellWeights, EncoderOutputWeights,
+        EncoderForgetBiases, EncoderInputBiases, EncoderCellBiases, EncoderOutputBiases,
+        DecoderForgetWeights, DecoderInputWeights, DecoderCellWeights, DecoderOutputWeights,
+        DecoderForgetBiases, DecoderInputBiases, DecoderCellBiases, DecoderOutputBiases
+    ];
 
     #region Read/Write
     public void Write(BinaryWriter writer)

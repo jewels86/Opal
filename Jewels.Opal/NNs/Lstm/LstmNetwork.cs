@@ -20,6 +20,8 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
     public List<LstmLayer<TOut, TOut, TWeightsOut, TBiasesOut>> HiddenLayers { get; set; } = hiddenLayers;
     public LstmLayer<TOut, TOut, TWeightsOut, TBiasesOut> OutputLayer { get; set; } = outputLayer;
     public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; } = lossFunction;
+    
+    public float? DefaultGradClipNorm { get; set; } = 1f;
 
     protected int HiddenSize { get; } = hiddenSize;
 
@@ -54,8 +56,10 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
     public Value<TOut> ForwardSequence(Value<TIn>[] sequence) => 
         ForwardSequence(sequence.Select(i => new Tensor<TIn>(i, i.Zeros())).ToArray()).Value;
 
-    public void UpdateParameters(float lr)
+    public void UpdateParameters(float lr, float? gradClipNorm = null, List<ITensor>? clipTensors = null)
     {
+        if (clipTensors is not null && gradClipNorm.HasValue)
+            Operations.ClipGradientsByNorm(gradClipNorm.Value, clipTensors.ToArray());
         InputLayer.UpdateParameters(lr);
         foreach (var layer in HiddenLayers)
             layer.UpdateParameters(lr);
@@ -67,9 +71,16 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
 
     public double EvaluateLoss(Value<TIn>[] inputs, Value<TOut>[] targets) => Operations.EvaluateLoss(Forward, LossFunction, inputs, targets);
 
-    public void TrainSequences(Value<TIn>[][] sequences, Value<TOut>[] targets, int epochs, float lr) =>
-        Operations.TrainSequences(ForwardSequence, LossFunction, () => { }, () => UpdateParameters(lr), sequences, targets, epochs);
-    
+    public void TrainSequences(Value<TIn>[][] sequences, Value<TOut>[] targets, int epochs, float lr)
+    {
+        List<ITensor> tensors = [];
+        tensors.AddRange(InputLayer.Parameters);
+        foreach (var hidden in HiddenLayers) tensors.AddRange(hidden.Parameters);
+        tensors.AddRange(OutputLayer.Parameters);
+        
+        Operations.TrainSequences(ForwardSequence, LossFunction, () => { }, () => UpdateParameters(lr, DefaultGradClipNorm, tensors), sequences, targets, epochs);
+    }
+
     public float EvaluateLossSequences(Value<TIn>[][] sequences, Value<TOut>[] targets) =>
         Operations.EvaluateLossSequences(ForwardSequence, LossFunction, sequences, targets);
     

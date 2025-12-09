@@ -21,7 +21,7 @@ public static partial class Operations
     #region Training
     public static List<float> Train<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action update,
-        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 1, float initialGrad = 1)
+        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.0001f, int checkInterval = 100, float initialGrad = 1)
         where TIn : notnull where TOut : notnull
     {
         foreach (var input in inputs) input.NonDisposable();
@@ -49,15 +49,20 @@ public static partial class Operations
                 using var lossTensor = loss(outputTensor, targets[i]);
                 
                 lossTensor.Backward(scale);
+                
+                //Console.WriteLine($"Epoch {epoch}: value sample {outputTensor.Value.ToProxy().FlatData[0]} grad sample {outputTensor.Gradient.ToProxy().FlatData[0]}");
+                //if (float.IsNaN(outputTensor.Value.ToProxy().FlatData[0]) || float.IsNaN(outputTensor.Gradient.ToProxy().FlatData[0]))
+                //    throw new Exception($"Output is NaN at epoch {epoch}! value sample {outputTensor.Value.ToProxy().FlatData[0]} grad sample {outputTensor.Gradient.ToProxy().FlatData[0]}");
+                
                 totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
                 update();
             }
-            if (epoch % checkInterval != 0) continue;
+            if (epoch % checkInterval != 0 || epoch == 0) continue;
             var hostLoss = totalLoss.ToHost() / inputs.Length;
             losses.Add(hostLoss);
-            
+            Console.WriteLine($"Epoch {epoch}: loss {hostLoss}");
             if (float.IsNaN(hostLoss)) throw new Exception($"Loss is NaN at epoch {epoch}!");
-            if (hostLoss > losses[^1]) throw new Exception($"Loss got bigger somehow at epoch {epoch}!");
+            //if (hostLoss > losses[^1]) throw new Exception($"Loss got bigger somehow at epoch {epoch}!");
             if (hostLoss < epsilon) break;
         }
 
@@ -152,4 +157,18 @@ public static partial class Operations
         outputLayer.Read(reader);
     }
     #endregion
+
+    public static void Sgd<T>(Tensor<T> tensor, float lr) where T : notnull => 
+        Compute.Call(ElementwiseFloatMulAndSubKernels, tensor.Gradient, tensor.Value, tensor.Value, lr);
+    public static void Sgd<T>(Tensor<T>[] tensors, float lr) where T : notnull
+    {
+        foreach (var tensor in tensors) Sgd(tensor, lr);
+    }
+    
+    public static void ZeroGradient<T>(Tensor<T> tensor) where T : notnull =>
+        tensor.Gradient.UpdateWith(tensor.Gradient.Zeros());
+    public static void ZeroGradients<T>(Tensor<T>[] tensors) where T : notnull
+    {
+        foreach (var tensor in tensors) ZeroGradient(tensor);
+    }
 }

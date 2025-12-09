@@ -9,7 +9,7 @@ public class BatchedVectorLstmNetwork(
     int numHiddenLayers,
     Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction,
     Initialization weightsInitialization = Initialization.Xavier,
-    Initialization biasesInitialization = Initialization.He)
+    Initialization biasesInitialization = Initialization.Zeros)
     : LstmNetwork<float[,], float[,], float[,], float[,], float[], float[]>(
         CreateLayer(inputSize, hiddenSize, weightsInitialization, biasesInitialization),
         CreateHiddenLayers(numHiddenLayers, hiddenSize, weightsInitialization, biasesInitialization),
@@ -23,31 +23,31 @@ public class BatchedVectorLstmNetwork(
         int inputSize,
         int outputSize,
         Initialization weightsInitialization = Initialization.Xavier,
-        Initialization biasesInitialization = Initialization.He)
+        Initialization biasesInitialization = Initialization.Zeros)
     {
         var catalog = new BatchedVectorCatalog();
 
         int encoderConcatSize = inputSize + outputSize;
-        var encoderForgetWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize);
-        var encoderInputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize);
-        var encoderCellWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize);
-        var encoderOutputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize);
+        var encoderForgetWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize).NonDisposable();
+        var encoderInputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize).NonDisposable();
+        var encoderCellWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize).NonDisposable();
+        var encoderOutputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize).NonDisposable();
 
         int decoderConcatSize = outputSize + outputSize;
-        var decoderForgetWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize);
-        var decoderInputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize);
-        var decoderCellWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize);
-        var decoderOutputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize);
+        var decoderForgetWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize).NonDisposable();
+        var decoderInputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize).NonDisposable();
+        var decoderCellWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize).NonDisposable();
+        var decoderOutputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize).NonDisposable();
 
-        var encoderForgetBiases = Operations.GenerateVector(_ => 1, outputSize);
-        var encoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
-        var encoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
-        var encoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
+        var encoderForgetBiases = Operations.GenerateVector(_ => 1, outputSize).NonDisposable();
+        var encoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
+        var encoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
+        var encoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
 
-        var decoderForgetBiases = Operations.GenerateVector(_ => 1, outputSize);
-        var decoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
-        var decoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
-        var decoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize);
+        var decoderForgetBiases = Operations.GenerateVector(_ => 1, outputSize).NonDisposable();
+        var decoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
+        var decoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
+        var decoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
 
         return new LstmLayer<float[,], float[,], float[,], float[]>
         {
@@ -67,8 +67,8 @@ public class BatchedVectorLstmNetwork(
             DecoderInputBiases = decoderInputBiases,
             DecoderCellBiases = decoderCellBiases,
             DecoderOutputBiases = decoderOutputBiases,
-            DefaultHidden = Operations.New(new float[outputSize, outputSize]),
-            DefaultState = Operations.New(new float[outputSize, outputSize]),
+            DefaultHidden = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
+            DefaultState = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
             Catalog = catalog
         };
     }
@@ -100,7 +100,7 @@ public class BatchedVectorLstmNetwork(
             var timestepInput = Operations.GetSlice(sequences, t);
             var (output, newState) = ForwardWithState(timestepInput, hidden, state);
         
-            Operations.SetSlice(result, output, t);
+            result = Operations.SetSlice(result, output, t);
 
             hidden = output;
             state = newState;
@@ -114,8 +114,8 @@ public class BatchedVectorLstmNetwork(
         var (batch, seqLength, features) = (sequences.Value.Shape[0], 
             sequences.Value.Shape[1], sequences.Value.Shape[2]);
     
-        var hidden = Operations.New(Operations.Fill(0f, batch, features));
-        var state = Operations.New(Operations.Fill(0f, batch, features));
+        var hidden = Operations.New(Operations.Fill(0f, batch, HiddenSize));
+        var state = Operations.New(Operations.Fill(0f, batch, HiddenSize));
 
         for (int t = 0; t < seqLength; t++)
         {
@@ -134,10 +134,16 @@ public class BatchedVectorLstmNetwork(
     
     public float EvaluateLoss(Tensor<float[,,]> sequences, Tensor<float[,,]> targets, Func<Tensor<float[,,]>, Value<float[,,]>, Tensor<float>> loss) =>
         Operations.EvaluateLoss<float[,,], float[,,]>(ForwardSequence, loss, [sequences], [targets]);
-    
+
     public void TrainFinal(Tensor<float[,,]> sequences, Tensor<float[,]> targets, Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> loss, int epochs, float lr)
-        => Operations.Train<float[,,], float[,]>(ForwardSequenceFinal, loss, () => UpdateParameters(lr), [sequences], [targets], epochs);
-    
+    {
+        List<ITensor> tensors = [];
+        tensors.AddRange(InputLayer.Parameters);
+        foreach (var hidden in HiddenLayers) tensors.AddRange(hidden.Parameters);
+        tensors.AddRange(OutputLayer.Parameters);
+        Operations.Train<float[,,], float[,]>(ForwardSequenceFinal, loss, () => UpdateParameters(lr, DefaultGradClipNorm, tensors), [sequences.Value], [targets.Value], epochs);
+    }
+
     public float EvaluateLossFinal(Tensor<float[,,]> sequences, Tensor<float[,]> targets, Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> loss)
         => Operations.EvaluateLoss<float[,,], float[,]>(ForwardSequenceFinal, loss, [sequences], [targets]);
 }

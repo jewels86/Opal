@@ -360,6 +360,136 @@ public static class AutogradTests
         
         Console.WriteLine("✓ Matrix-vector add backward test passed!\n");
     }
+
+    public static void TestTanhBackward()
+    {
+        Console.WriteLine("Testing Tanh backward...");
+        Stopwatch sw = Stopwatch.StartNew();
+        
+        // tanh(0) = 0, tanh'(0) = 1 - 0^2 = 1
+        // tanh(1) = around 0.76, tanh'(0) = 1 - 0.76^2 = around 0.42
+        // tanh(20) = 1, tanh'(20) = 1 - 1^2 = 0
+        
+        using var zero = Operations.New(0);
+        using var one = Operations.New(1);
+        using var twenty = Operations.New(20);
+        
+        using var tanhZero = ActivationFunctions.Tanh(zero);
+        using var tanhOne = ActivationFunctions.Tanh(one);
+        using var tanhTwenty = ActivationFunctions.Tanh(twenty);
+        
+        Operations.Sync();
+        sw.Stop();
+        
+        var tanhZeroValue = tanhZero.Value.ToHost();
+        var tanhOneValue = tanhOne.Value.ToHost();
+        var tanhTwentyValue = tanhTwenty.Value.ToHost();
+        
+        Console.WriteLine($"Forward pass: {tanhZeroValue} (expected 0 - {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"Forward pass: {tanhOneValue} (expected around 0.76 - {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"Forward pass: {tanhTwentyValue} (expected 1 - {sw.ElapsedMilliseconds}ms)");
+        Assert(Math.Abs(tanhZeroValue - 0) < 1e-5, "Tanh forward failed");
+        Assert(Math.Abs(tanhOneValue - 0.76) < 1e-2, "Tanh forward failed");
+        Assert(Math.Abs(tanhTwentyValue - 1) < 1e-5, "Tanh forward failed");
+        
+        sw.Restart();
+        tanhZero.Backward(Operations.NewValue(1));
+        tanhOne.Backward(Operations.NewValue(1));
+        tanhTwenty.Backward(Operations.NewValue(1));
+        Operations.Sync();
+        sw.Stop();
+        
+        var zeroGrad = zero.Gradient.ToHost();
+        var oneGrad = one.Gradient.ToHost();
+        var twentyGrad = twenty.Gradient.ToHost();
+        
+        Console.WriteLine($"grad_zero: {zeroGrad} (expected 1 - {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"grad_one: {oneGrad} (expected around 0.42 - {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"grad_twenty: {twentyGrad} (expected 0 - {sw.ElapsedMilliseconds}ms)");
+        
+        Assert(Math.Abs(zeroGrad - 1) < 1e-5f, "grad_zero failed");
+        Assert(Math.Abs(oneGrad - 0.42) < 1e-2f, "grad_one failed");
+        Assert(Math.Abs(twentyGrad - 0) < 1e-5f, "grad_twenty failed");
+        
+        Console.WriteLine("Tests passed.");
+    }
+
+    public static void TestLstmGraphs()
+    {
+        Console.WriteLine("Testing Lstm State backward...");
+        Stopwatch sw = Stopwatch.StartNew();
+        
+        // forget = 2, oldState = 3, input = 4, cell = 5
+        // lstm state = forget * oldState + input * cell = 2 * 3 + 4 * 5 = 26
+        // d/dforget = oldState = 3
+        // d/doldState = forget = 2
+        // d/dinput = cell = 5
+        // d/dcell = input = 4
+        
+        using var forget = Operations.New(2);
+        using var oldState = Operations.New(3);
+        using var input = Operations.New(4);
+        using var cell = Operations.New(5);
+        
+        using var state = Operations.LstmState(forget, oldState, input, cell);
+        
+        Operations.Sync();
+        sw.Stop();
+        
+        var stateValue = state.Value.ToHost();
+        Console.WriteLine($"State forward pass: {stateValue} (expected 26 - {sw.ElapsedMilliseconds}ms)");
+        Assert(Math.Abs(stateValue - 26) < 1e-5, "LSTM state forward failed");
+        
+        sw.Restart();
+        state.Backward(Operations.NewValue(1));
+        Operations.Sync();
+        
+        var forgetGrad = forget.Gradient.ToHost();
+        var oldStateGrad = oldState.Gradient.ToHost();
+        var inputGrad = input.Gradient.ToHost();
+        var cellGrad = cell.Gradient.ToHost();
+        
+        Console.WriteLine($"grad_forget: {forgetGrad} (expected 3 - {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"grad_oldState: {oldStateGrad} (expected 2 - {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"grad_input: {inputGrad} (expected 5 - {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"grad_cell: {cellGrad} (expected 4 - {sw.ElapsedMilliseconds}ms)");
+        
+        Assert(Math.Abs(forgetGrad - 3) < 1e-5, "forgetGrad failed");
+        Assert(Math.Abs(oldStateGrad - 2) < 1e-5, "oldStateGrad failed");
+        Assert(Math.Abs(inputGrad - 5) < 1e-5, "oldStateGrad failed");
+        Assert(Math.Abs(cellGrad - 4) < 1e-5, "oldStateGrad failed");
+        
+        // output = 5, newState is our state we made = 32
+        // lstm hidden: output * tanh(newState) = 5 * tanh(32) = 5 * 1 = 5
+        // d/doutput = tanh(newState) = 1
+        // d/dnewState
+        
+        sw.Restart();
+        using var output = Operations.New(5);
+        using var hidden = Operations.Multiply(output, ActivationFunctions.Tanh(state));
+        Operations.Sync();
+        sw.Stop();
+        
+        var hiddenValue = hidden.Value.ToHost();
+        Console.WriteLine($"\nHidden forward pass: {hiddenValue} (expected 5 - {sw.ElapsedMilliseconds}ms)");
+        Assert(Math.Abs(hiddenValue - 5) < 1e-5, "LSTM hidden forward failed");
+        
+        sw.Restart();
+        hidden.Backward(Operations.NewValue(1));
+        Operations.Sync();
+        sw.Stop();
+        
+        var outputGrad = output.Gradient.ToHost();
+        var newStateGrad = state.Gradient.ToHost();
+        
+        Console.WriteLine($"grad_output: {outputGrad} (expected 1 - {sw.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"grad_newState: {newStateGrad} (expected 1 - {sw.ElapsedMilliseconds}ms)");
+        
+        Assert(Math.Abs(outputGrad - 1) < 1e-5, "outputGrad failed");
+        Assert(Math.Abs(newStateGrad - 1) < 1e-5, "newStateGrad failed");
+        
+        Console.WriteLine("Tests passed...");
+    }
     
     private static void Assert(bool condition, string message)
     {
@@ -376,6 +506,8 @@ public static class AutogradTests
         TestMatrixMultiplyBackwardTransposeB();
         TestMSEBackward();
         TestMatrixVectorAddBackward();
+        TestTanhBackward();
+        TestLstmGraphs();
         Console.WriteLine("All tests passed! ✓");
     }
 }

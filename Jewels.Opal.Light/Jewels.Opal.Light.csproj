@@ -7,7 +7,7 @@
         <PackageLicenseExpression>AGPL-3.0-only</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <Version>0.0.0-alpha</Version>
+        <Version>0.0.1-alpha</Version>
         <Title>Opal.Light</Title>
         <Authors>Jewels</Authors>
     </PropertyGroup>

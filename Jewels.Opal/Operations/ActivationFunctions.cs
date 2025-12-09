@@ -16,7 +16,7 @@ public static class ActivationFunctions
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] SigmoidBackwardKernels { get; } 
         = compute.Load((i, x, grad, r) => r[i] += grad[i] * x[i] * (1 - x[i]));
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] TanhBackwardKernels { get; } 
-        = compute.Load((i, x, grad, r) => r[i] += grad[i] * (1 - x[i] * x[i]));
+        = compute.Load((i, x, grad, r) => r[i] += grad[i] * (1 - (x[i] * x[i])));
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] AccumulateGradientKernels { get; } 
         = compute.Load((i, grad, r) => r[i] += grad[i]);
 
