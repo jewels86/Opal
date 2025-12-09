@@ -1,5 +1,4 @@
-﻿using System.Data;
-using Jewels.Lazulite;
+﻿using Jewels.Lazulite;
 
 namespace Jewels.Opal.NNs;
 
@@ -24,7 +23,7 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
     public required Tensor<TBiases> DecoderInputBiases { get; set; }
     public required Tensor<TBiases> DecoderCellBiases { get; set; }
     public required Tensor<TBiases> DecoderOutputBiases { get; set; }
-    public required ILstmCatalog<TIn, TOut, TWeights, TBiases> Catalog { get; set; }
+    public required ILstmCatalog<TIn, TOut, TWeights, TBiases> Catalog { get; init; }
     
     public required Tensor<TOut> DefaultState { get; set; }
     public required Tensor<TOut> DefaultHidden { get; set; }

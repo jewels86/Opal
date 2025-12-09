@@ -9,24 +9,25 @@ public class BatchedVectorLstmNetwork(
     int numHiddenLayers,
     Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction,
     Initialization weightsInitialization = Initialization.Xavier,
-    Initialization biasesInitialization = Initialization.Zeros)
+    Initialization biasesInitialization = Initialization.Zeros,
+    bool optimized = true)
     : LstmNetwork<float[,], float[,], float[,], float[,], float[], float[]>(
-        CreateLayer(inputSize, hiddenSize, weightsInitialization, biasesInitialization),
-        CreateHiddenLayers(numHiddenLayers, hiddenSize, weightsInitialization, biasesInitialization),
-        CreateLayer(hiddenSize, outputSize, weightsInitialization, biasesInitialization),
+        CreateLayer(inputSize, hiddenSize, optimized, weightsInitialization, biasesInitialization),
+        CreateHiddenLayers(numHiddenLayers, hiddenSize, optimized, weightsInitialization, biasesInitialization),
+        CreateLayer(hiddenSize, outputSize, optimized, weightsInitialization, biasesInitialization),
         lossFunction, hiddenSize)
 {
+    public bool Optimized => optimized;
 
-    protected override LstmLayer<float[,], float[,], float[,], float[]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize);
+    protected override LstmLayer<float[,], float[,], float[,], float[]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize, Optimized);
 
     private static LstmLayer<float[,], float[,], float[,], float[]> CreateLayer(
         int inputSize,
         int outputSize,
+        bool optimized,
         Initialization weightsInitialization = Initialization.Xavier,
         Initialization biasesInitialization = Initialization.Zeros)
     {
-        var catalog = new BatchedVectorCatalog();
-
         int encoderConcatSize = inputSize + outputSize;
         var encoderForgetWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize).NonDisposable();
         var encoderInputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, encoderConcatSize).NonDisposable();
@@ -49,7 +50,9 @@ public class BatchedVectorLstmNetwork(
         var decoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
         var decoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
 
-        return new LstmLayer<float[,], float[,], float[,], float[]>
+        var catalog = new BatchedVectorCatalog();
+        
+        if (!optimized) return new LstmLayer<float[,], float[,], float[,], float[]>
         {
             EncoderForgetWeights = encoderForgetWeights,
             EncoderInputWeights = encoderInputWeights,
@@ -69,19 +72,44 @@ public class BatchedVectorLstmNetwork(
             DecoderOutputBiases = decoderOutputBiases,
             DefaultHidden = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
             DefaultState = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
-            Catalog = catalog
+            Catalog = new BatchedVectorCatalog()
+        };
+
+        return new OptimizedLstmLayer<float[,], float[,], float[,], float[]>
+        {
+            EncoderForgetWeights = encoderForgetWeights,
+            EncoderInputWeights = encoderInputWeights,
+            EncoderCellWeights = encoderCellWeights,
+            EncoderOutputWeights = encoderOutputWeights,
+            EncoderForgetBiases = encoderForgetBiases,
+            EncoderInputBiases = encoderInputBiases,
+            EncoderCellBiases = encoderCellBiases,
+            EncoderOutputBiases = encoderOutputBiases,
+            DecoderForgetWeights = decoderForgetWeights,
+            DecoderInputWeights = decoderInputWeights,
+            DecoderCellWeights = decoderCellWeights,
+            DecoderOutputWeights = decoderOutputWeights,
+            DecoderForgetBiases = decoderForgetBiases,
+            DecoderInputBiases = decoderInputBiases,
+            DecoderCellBiases = decoderCellBiases,
+            DecoderOutputBiases = decoderOutputBiases,
+            DefaultHidden = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
+            DefaultState = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
+            Catalog = catalog,
+            OptimizedCatalog = catalog
         };
     }
 
     private static List<LstmLayer<float[,], float[,], float[,], float[]>> CreateHiddenLayers(
         int numLayers, 
         int hiddenSize,
+        bool optimized,
         Initialization weightsInitialization = Initialization.Xavier,
         Initialization biasesInitialization = Initialization.He)
     {
         var layers = new List<LstmLayer<float[,], float[,], float[,], float[]>>();
         for (int i = 0; i < numLayers; i++)
-            layers.Add(CreateLayer(hiddenSize, hiddenSize, weightsInitialization, biasesInitialization));
+            layers.Add(CreateLayer(hiddenSize, hiddenSize, optimized, weightsInitialization, biasesInitialization));
         return layers;
     }
 

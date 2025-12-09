@@ -1,6 +1,4 @@
-﻿using Jewels.Lazulite;
-
-namespace Jewels.Opal;
+﻿namespace Jewels.Opal;
 
 public sealed class OpalContext : IDisposable
 {

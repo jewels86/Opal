@@ -1,6 +1,4 @@
-﻿using ILGPU;
-using ILGPU.Runtime;
-using Jewels.Lazulite;
+﻿using Jewels.Lazulite;
 using Jewels.Opal.NNs;
 using Jewels.Opal.Utilities;
 

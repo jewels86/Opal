@@ -1,5 +1,4 @@
 ﻿using Jewels.Lazulite;
-using Jewels.Opal.Utilities;
 
 namespace Jewels.Opal.NNs;
 
