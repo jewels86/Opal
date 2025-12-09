@@ -26,3 +26,4 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
     public void WriteBias(BinaryWriter writer, Value<float[]> bias) => BinaryWriting.WriteVector(writer, bias.ToHost());
     public void WriteWeights(BinaryWriter writer, Value<float[,]> weight) => BinaryWriting.WriteMatrix(writer, weight.ToHost());
 }
+
