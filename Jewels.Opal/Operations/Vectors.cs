@@ -18,12 +18,7 @@ public static partial class Operations
     public static Value<float[]>[] NewValuesFromSingles(params float[] vectors) => vectors.Select(x => new[] { x }).Select(NewValue).ToArray();
     
     #region Value Operations
-    public static Value<float> Dot(Value<float[]> a, Value<float[]> b)
-    {
-        var result = Compute.Get(a.AcceleratorIndex, 1);
-        Compute.Dot(a, b, result);
-        return new ScalarValue(result);
-    }
+    public static Value<float> Dot(Value<float[]> a, Value<float[]> b) => Compute.Dot(a, b);
     #endregion
     
     #region Vector Operations
@@ -33,8 +28,8 @@ public static partial class Operations
         
         void Backward(ITensor t)
         {
-            MulScalarAccumulate(b.Value, t.Gradient, a.Gradient);
-            MulScalarAccumulate(a.Value, t.Gradient, b.Gradient);
+            MulScalarAccumulateX(a.Gradient, b.Value, t.Gradient);
+            MulScalarAccumulateX(b.Gradient, a.Value, t.Gradient);
         }
     }
     #endregion
@@ -46,7 +41,7 @@ public static partial class Operations
         var result = new MatrixValue(Compute.Get(aidx, n * features), [n, features]);
     
         for (int i = 0; i < n; i++)
-            Compute.Call(Compute.CopyKernels, vectors[i].Data, result.Data.View.SubView(i * features, features));
+            Compute.Call(Compute.CopyKernels, result.Data.View.SubView(i * features, features), vectors[i].Data);
 
         return result;
     }
@@ -60,7 +55,7 @@ public static partial class Operations
     
         for (int i = 0; i < n; i++)
             for (int j = 0; j < sequences; j++)
-                Compute.Call(Compute.CopyKernels, vectors[i][j].Data, result.Data.View.SubView(i * sequences * features + j * features, features));
+                Compute.Call(Compute.CopyKernels, result.Data.View.SubView(i * sequences * features + j * features, features), vectors[i][j].Data);
         
         return result;
     }

@@ -32,7 +32,7 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
         var cellWeighted = Multiply(parameters.CellWeights, concat);
         var outputWeighted = Multiply(parameters.OutputWeights, concat);
         
-        
+        throw new NotImplementedException();
     }
 
     public (Tensor<float[,]>, Tensor<float[,]>) OutLstmUpdate(Tensor<float[,]> input, Tensor<float[,]> hidden, Tensor<float[,]> state, LstmUpdateParameters<float[,], float[]> parameters)
@@ -51,11 +51,8 @@ public static partial class Operations
     /*public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,  ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,  ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] LstmUpdateKernel { get; } 
-        = Compute.Load<ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-    ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-    ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,  ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
-    ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,  ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>((i, 
+        ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,  ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] LstmUpdateKernels { get; } 
+        = Compute.Load((i, 
             forgetWeighted, inpuWeighted, 
             cellWeighed, outputWeighted, 
             forgetBias, inputBias, cellBias, outputBias,

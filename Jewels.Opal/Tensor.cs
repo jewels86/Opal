@@ -17,11 +17,11 @@ public interface ITensor : IDisposable
     public ITensor Create(IValue value, IValue gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null);
 }
 
-public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) : ITensor
+public class Tensor<T>(Value<T> value, Value<T>? gradient = null, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null) : ITensor
     where T : notnull
 {
     public Value<T> Value { get; } = value;
-    public Value<T> Gradient { get; } = gradient;
+    public Value<T> Gradient { get; } = gradient ?? value.Zeros();
     public Action<ITensor> BackwardAction { get; } = backwardAction ?? (_ => { });
     public List<ITensor> Inputs { get; } = inputs ?? [];
 
@@ -47,14 +47,12 @@ public class Tensor<T>(Value<T> value, Value<T> gradient, Action<ITensor>? backw
     private bool _isDisposed;
 
     #region Backward Pass
-    // initialGradient should be of the same type as the tensor's value
     public void Backward(IValue initialGradient)
     {
-        if (initialGradient is not Value<T> valueGrad) throw new ArgumentException("Invalid gradient type");
         (List<ITensor> topo, HashSet<ITensor> visited) = ([], []);
         Build(this, topo, visited);
 
-        Gradient.UpdateWith(valueGrad);
+        Gradient.UpdateWith((Value<T>)initialGradient); // initial gradient should be of the same type as the tensor's gradient- if not we would throw anyway
         foreach (var node in topo.AsEnumerable().Reverse()) node.BackwardAction(node);
     }
 

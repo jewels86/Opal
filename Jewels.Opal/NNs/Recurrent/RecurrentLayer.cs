@@ -35,17 +35,13 @@ public class RecurrentLayer<TIn, TOut, TWeights>(
 
     public void UpdateParameters(float lr)
     {
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, InputWeights.Value, InputWeights.Value, InputWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, RecurrentWeights.Value, RecurrentWeights.Value, RecurrentWeights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Biases.Value, Biases.Value, Biases.Value, lr);
+        Operations.Sgd([InputWeights, RecurrentWeights, Biases], lr);
         ZeroGradients();
     }
 
     public void ZeroGradients()
     {
-        InputWeights.Gradient.UpdateWith(InputWeights.Gradient.Zeros());
-        RecurrentWeights.Gradient.UpdateWith(RecurrentWeights.Gradient.Zeros());
-        Biases.Gradient.UpdateWith(Biases.Gradient.Zeros());
+        Operations.ZeroGradients([InputWeights, RecurrentWeights, Biases]);
     }
 
     public void Write(BinaryWriter writer)

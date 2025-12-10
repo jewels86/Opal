@@ -21,21 +21,14 @@ public static partial class Operations
     #region Training
     public static List<float> Train<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action update,
-        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.0001f, int checkInterval = 100, float initialGrad = 1)
+        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 100, float initialGrad = 1)
         where TIn : notnull where TOut : notnull
     {
         foreach (var input in inputs) input.NonDisposable();
         foreach (var target in targets) target.NonDisposable();
         
         int aidx = inputs[0].AcceleratorIndex;
-        var scale = new ScalarValue(Compute.Make(aidx, 1, initialGrad)).NonDisposable(); // me: THIS IS A PROBLEM!!!
-        // copilot: it is not a problem
-        // me: is it a problem?
-        // me: but what if you have different batch sizes?
-        // copilot: nixon said: "it's not a problem, it's just a different way of thinking"
-        // copilot: so it's not a problem, it's just a different way of thinking
-        // someone remind me to remove all of that later 
-        // i just think its weird that copilot quoted nixon???
+        var scale = new ScalarValue(Compute.Make(aidx, 1, initialGrad)).NonDisposable();
 
         List<float> losses = [];
         
@@ -49,20 +42,15 @@ public static partial class Operations
                 using var lossTensor = loss(outputTensor, targets[i]);
                 
                 lossTensor.Backward(scale);
-                
-                //Console.WriteLine($"Epoch {epoch}: value sample {outputTensor.Value.ToProxy().FlatData[0]} grad sample {outputTensor.Gradient.ToProxy().FlatData[0]}");
-                //if (float.IsNaN(outputTensor.Value.ToProxy().FlatData[0]) || float.IsNaN(outputTensor.Gradient.ToProxy().FlatData[0]))
-                //    throw new Exception($"Output is NaN at epoch {epoch}! value sample {outputTensor.Value.ToProxy().FlatData[0]} grad sample {outputTensor.Gradient.ToProxy().FlatData[0]}");
-                
                 totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
                 update();
             }
             if (epoch % checkInterval != 0 || epoch == 0) continue;
+            
             var hostLoss = totalLoss.ToHost() / inputs.Length;
             losses.Add(hostLoss);
-            Console.WriteLine($"Epoch {epoch}: loss {hostLoss}");
+            
             if (float.IsNaN(hostLoss)) throw new Exception($"Loss is NaN at epoch {epoch}!");
-            //if (hostLoss > losses[^1]) throw new Exception($"Loss got bigger somehow at epoch {epoch}!");
             if (hostLoss < epsilon) break;
         }
 
@@ -158,16 +146,16 @@ public static partial class Operations
     }
     #endregion
 
-    public static void Sgd<T>(Tensor<T> tensor, float lr) where T : notnull => 
-        Compute.Call(ElementwiseFloatMulAndSubKernels, tensor.Gradient, tensor.Value, tensor.Value, lr);
-    public static void Sgd<T>(Tensor<T>[] tensors, float lr) where T : notnull
+    public static void Sgd(ITensor tensor, float lr) => 
+        Compute.Call(FloatMulAndSubKernels, tensor.Value.Data, tensor.Value.Data, tensor.Gradient.Data, lr);
+    public static void Sgd(ITensor[] tensors, float lr)
     {
         foreach (var tensor in tensors) Sgd(tensor, lr);
     }
     
-    public static void ZeroGradient<T>(Tensor<T> tensor) where T : notnull =>
+    public static void ZeroGradient(ITensor tensor) =>
         tensor.Gradient.UpdateWith(tensor.Gradient.Zeros());
-    public static void ZeroGradients<T>(Tensor<T>[] tensors) where T : notnull
+    public static void ZeroGradients(ITensor[] tensors)
     {
         foreach (var tensor in tensors) ZeroGradient(tensor);
     }

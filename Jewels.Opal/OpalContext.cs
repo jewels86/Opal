@@ -1,4 +1,6 @@
-﻿namespace Jewels.Opal;
+﻿using Jewels.Lazulite;
+
+namespace Jewels.Opal;
 
 public sealed class OpalContext : IDisposable
 {
@@ -15,14 +17,14 @@ public sealed class OpalContext : IDisposable
         UseGpu(useGpu);
     }
     
-    public void BeginInitialization() => Operations.Compute.InitializeKernelsAsync();
-    public void EnsureInitialization() => Operations.Compute.WaitForInitializationAsync();
-    public void Initialize() => Operations.Compute.InitializeKernels(warmup: false);
+    public void BeginInitialization() => Compute.InitializeKernelsAsync();
+    public void EnsureInitialization() => Compute.WaitForInitializationAsync();
+    public void Initialize() => Compute.InitializeKernels(warmup: false);
 
     public void UseGpu(bool useGpu = true)
     {
-        if (Operations.DefaultAcceleratorIndex != -1) Operations.Compute.ReleaseAccelerator(Operations.DefaultAcceleratorIndex);
-        Operations.DefaultAcceleratorIndex = Operations.Compute.RequestAccelerator(useGpu);
+        if (Operations.DefaultAcceleratorIndex != -1) Compute.ReleaseAccelerator(Operations.DefaultAcceleratorIndex);
+        Operations.DefaultAcceleratorIndex = Compute.RequestAccelerator(useGpu);
     }
     
     public int GetAcceleratorIndex() => Operations.DefaultAcceleratorIndex;

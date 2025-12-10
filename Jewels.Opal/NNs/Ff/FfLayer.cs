@@ -30,16 +30,11 @@ public class FfLayer<TIn, TOut, TWeights, TBiases>(
     
     public void UpdateParameters(float lr)
     {
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Weights.Gradient, Weights.Value, Weights.Value, lr);
-        Operations.Compute.Call(Operations.ElementwiseFloatMulAndSubKernels, Biases.Gradient, Biases.Value, Biases.Value, lr);
+        Operations.Sgd([Weights, Biases], lr);
         ZeroGradients();
     }
     
-    public void ZeroGradients()
-    {
-        Weights.Gradient.UpdateWith(Weights.Gradient.Zeros());
-        Biases.Gradient.UpdateWith(Biases.Gradient.Zeros());
-    }
+    public void ZeroGradients() => Operations.ZeroGradients([Weights, Biases]);
 
     public void Write(BinaryWriter writer)
     {

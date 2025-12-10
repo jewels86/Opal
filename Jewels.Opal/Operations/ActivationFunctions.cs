@@ -7,44 +7,74 @@ namespace Jewels.Opal;
 
 public static class ActivationFunctions
 {
-    private static Compute compute => Compute.Instance;
-    
+    /// <summary>
+    /// (r, x, grad) => r += x > 0 ? grad : 0
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] ReLuBackwardKernels { get; }
-        = compute.Load((i, x, grad, r) => r[i] += x[i] > 0 ? grad[i] : 0.0f);
+        = Compute.Load((i, r, x, grad) => r[i] += x[i] > 0 ? grad[i] : 0.0f);
+    
+    /// <summary>
+    /// (r, x) => r = 1 / (1 + e^(-x))
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] SigmoidKernels { get; } 
-        = compute.Load((i, x, r) => r[i] = 1 / (1 + XMath.Exp(-x[i])));
+        = Compute.Load((i, r, x) => r[i] = 1 / (1 + XMath.Exp(-x[i])));
+    
+    /// <summary>
+    /// (r, x, grad) => r += grad * x * (1 - x)
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] SigmoidBackwardKernels { get; } 
-        = compute.Load((i, x, grad, r) => r[i] += grad[i] * x[i] * (1 - x[i]));
-    public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] TanhBackwardKernels { get; } 
-        = compute.Load((i, x, grad, r) => r[i] += grad[i] * (1 - (x[i] * x[i])));
+        = Compute.Load((i, r, x, grad) => r[i] += grad[i] * x[i] * (1 - x[i]));
+    
+    /// <summary>
+    /// (r, grad) => r += grad
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>>[] AccumulateGradientKernels { get; } 
-        = compute.Load((i, grad, r) => r[i] += grad[i]);
+        = Compute.Load((i, r, grad) => r[i] += grad[i]);
 
+    /// <summary>
+    /// (r, grad, softmax, dot) => r += softmax * (grad - dot[0])
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>>[] SoftmaxBackwardKernels { get; }
-        = compute.Load((i, grad, softmax, dot, r) => r[i] += softmax[i] * (grad[i] - dot[0]));
+        = Compute.Load((i, r, grad, softmax, dot) => r[i] += softmax[i] * (grad[i] - dot[0]));
+    
+    /// <summary>
+    /// (sums, data, numClasses) => sums[batchIdx] = sum of row
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>[] 
-        BatchedSumRowKernels { get; } = compute.Load((Index1D batchIdx, ArrayView1D<float, Stride1D.Dense> data, ArrayView1D<float, Stride1D.Dense> sums, int numClasses) =>
+        BatchedSumRowKernels { get; } = Compute.Load((Index1D batchIdx, ArrayView1D<float, Stride1D.Dense> sums, ArrayView1D<float, Stride1D.Dense> data, int numClasses) =>
     {
         var (sum, offset) = (0f, batchIdx * numClasses);
         for (int i = 0; i < numClasses; i++)
             sum += data[offset + i];
         sums[batchIdx] = sum;
     });
+    
+    /// <summary>
+    /// (result, data, sums, numClasses) => result[i] = data[i] / sums[batchIdx]
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>[] 
-        BatchedDivideByRowSumKernels { get; } = compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> data, ArrayView1D<float, Stride1D.Dense> sums, ArrayView1D<float, Stride1D.Dense> result, int numClasses) =>
+        BatchedDivideByRowSumKernels { get; } = Compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> result, ArrayView1D<float, Stride1D.Dense> data, ArrayView1D<float, Stride1D.Dense> sums, int numClasses) =>
     {
         int batchIdx = i / numClasses;
         result[i] = data[i] / sums[batchIdx];
     });
+    
+    /// <summary>
+    /// (result, grad, softmax, dot, numClasses) => result[i] += softmax[i] * (grad[i] - dot[batchIdx])
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>[] 
-        BatchedSoftmaxBackwardKernels { get; } = compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> grad, ArrayView1D<float, Stride1D.Dense> softmax, ArrayView1D<float, Stride1D.Dense> dot, ArrayView1D<float, Stride1D.Dense> result, int numClasses) =>
+        BatchedSoftmaxBackwardKernels { get; } = Compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> result, ArrayView1D<float, Stride1D.Dense> grad, ArrayView1D<float, Stride1D.Dense> softmax, ArrayView1D<float, Stride1D.Dense> dot, int numClasses) =>
     {
         int batchIdx = i / numClasses;
         result[i] += softmax[i] * (grad[i] - dot[batchIdx]);
     });
+    
+    /// <summary>
+    /// (maxs, data, numClasses) => maxs[batchIdx] = max of row
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>[] 
-        BatchedMaxRowKernels { get; } = compute.Load((Index1D batchIdx, ArrayView1D<float, Stride1D.Dense> data, ArrayView1D<float, Stride1D.Dense> maxs, int numClasses) =>
+        BatchedMaxRowKernels { get; } = Compute.Load((Index1D batchIdx, ArrayView1D<float, Stride1D.Dense> maxs, ArrayView1D<float, Stride1D.Dense> data, int numClasses) =>
     {
         float max = float.MinValue;
         int offset = batchIdx * numClasses;
@@ -53,8 +83,11 @@ public static class ActivationFunctions
         maxs[batchIdx] = max;
     });
 
+    /// <summary>
+    /// (result, x, maxs, numClasses) => result[i] = e^(x[i] - maxs[batchIdx])
+    /// </summary>
     public static Action<Index1D, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, ArrayView1D<float, Stride1D.Dense>, int>[] 
-        BatchedExpWithMaxKernels { get; } = compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> x, ArrayView1D<float, Stride1D.Dense> maxs, ArrayView1D<float, Stride1D.Dense> result, int numClasses) =>
+        BatchedExpWithMaxKernels { get; } = Compute.Load((Index1D i, ArrayView1D<float, Stride1D.Dense> result, ArrayView1D<float, Stride1D.Dense> x, ArrayView1D<float, Stride1D.Dense> maxs, int numClasses) =>
     {
         int batchIdx = i / numClasses;
         result[i] = XMath.Exp(x[i] - maxs[batchIdx]);
@@ -67,71 +100,68 @@ public static class ActivationFunctions
         Func<int, MemoryBuffer1D<float, Stride1D.Dense>, Action<ITensor>> backward)
     {
         int aidx = x.Value.AcceleratorIndex;
-        var result = compute.Get(aidx, x.Value.TotalSize);
+        var result = Compute.Get(aidx, x.Value.TotalSize);
         forward(aidx, result);
         return x.Create(x.Value.CreateAlike(result), x.Gradient.Zeros(), backward(aidx, result), [x]);
     }
     
     public static ITensor ReLu(ITensor x) => ActivationFunction(x, 
-            (_, r) => compute.Call(compute.ElementwiseFloatMaxKernels, x.Value.Data, r, 0.0f), 
-            (_, _) => t => compute.Call(ReLuBackwardKernels, x.Value.Data, t.Gradient.Data, x.Gradient.Data));
+            (_, r) => Compute.FloatMax(r, x.Value.Data, 0.0f), 
+            (_, _) => t => Compute.Call(ReLuBackwardKernels, x.Gradient.Data, x.Value.Data, t.Gradient.Data));
 
     public static ITensor Sigmoid(ITensor x) => ActivationFunction(x, 
-        (_, r) => compute.Call(SigmoidKernels, x.Value.Data, r),
-            (_, r) => t => compute.Call(SigmoidBackwardKernels, r, t.Gradient.Data, x.Gradient.Data));
+        (_, r) => Compute.Call(SigmoidKernels, r, x.Value.Data),
+            (_, r) => t => Compute.Call(SigmoidBackwardKernels, x.Gradient.Data, r, t.Gradient.Data));
 
     public static ITensor Tanh(ITensor x) =>
-        ActivationFunction(x, (_, r) => compute.Call(compute.ElementwiseTanhKernels, x.Value.Data, r),
-            (_, r) => t => compute.Call(TanhBackwardKernels, r, t.Gradient.Data, x.Gradient.Data));
+        ActivationFunction(x, (_, r) => Compute.Call(Operations.TanhKernels, r, x.Value.Data),
+            (_, r) => t => Compute.Call(Operations.TanhBackwardKernels, x.Gradient.Data, r, t.Gradient.Data));
 
     public static ITensor Identity(ITensor x) =>
-        ActivationFunction(x, (_, r) => compute.Call(compute.CopyKernels, x.Value.Data, r), 
-            (_, _) => t => compute.Call(AccumulateGradientKernels, t.Gradient.Data, x.Gradient.Data));
+        ActivationFunction(x, (_, r) => Compute.Call(Compute.CopyKernels, r, x.Value.Data), 
+            (_, _) => t => Compute.Call(AccumulateGradientKernels, x.Gradient.Data, t.Gradient.Data));
 
     public static ITensor Softmax(ITensor x) =>
         ActivationFunction(x, (a, r) =>
         {
-            var temps = compute.Get(a, 2, x.Value.TotalSize);
-            compute.Call(compute.ElementwiseExpKernels, x.Value.Data, temps[0]);
-            compute.Sum(temps[0], temps[1]);
-            compute.Call(compute.ElementwiseScalarDivideKernels, temps[0], temps[1], r);
-            compute.Return(temps);
+            var temps = Compute.Get(a, 2, x.Value.TotalSize);
+            Compute.Call(Compute.ExpKernels, temps[0], x.Value.Data);
+            Compute.Sum(temps[0], temps[1]);
+            Compute.Call(Compute.ScalarDivideKernels, r, temps[0], temps[1]);
+            Compute.Return(temps);
         }, (a, r) => t =>
         {
-            var temp = compute.Get(a, x.Value.TotalSize);
-            compute.Dot(t.Gradient.Data, r, temp);
-            compute.Call(SoftmaxBackwardKernels, t.Gradient.Data, r, temp, x.Gradient.Data);
-            compute.Return(temp);
+            var temp = Compute.Get(a, x.Value.TotalSize);
+            Compute.Dot(temp, t.Gradient.Data, r);
+            Compute.Call(SoftmaxBackwardKernels, x.Gradient.Data, t.Gradient.Data, r, temp);
+            Compute.Return(temp);
         });
 
     public static Tensor<float[,]> BatchedSoftmax(Tensor<float[,]> x)
     {
         var (aidx, batchSize, numClasses, totalSize) = (x.Value.AcceleratorIndex, x.Value.Shape[0], x.Value.Shape[1], x.Value.TotalSize);
         var (maxs, exp, sums, result) = 
-            (compute.Get(aidx, batchSize), compute.Get(aidx, totalSize), compute.Get(aidx, batchSize), compute.Get(aidx, totalSize));
+            (Compute.Get(aidx, batchSize), Compute.Get(aidx, totalSize), Compute.Get(aidx, batchSize), Compute.Get(aidx, totalSize));
     
-        compute.Call(BatchedMaxRowKernels, x.Value, maxs, numClasses);
-        compute.Call(BatchedExpWithMaxKernels, x.Value, maxs, exp, numClasses);
-        compute.Call(BatchedSumRowKernels, exp, sums, numClasses);
-        compute.Call(BatchedDivideByRowSumKernels, exp, sums, result, numClasses);
+        Compute.Call(BatchedMaxRowKernels, maxs, x.Value, numClasses);
+        Compute.Call(BatchedExpWithMaxKernels, exp, x.Value, maxs, numClasses);
+        Compute.Call(BatchedSumRowKernels, sums, exp, numClasses);
+        Compute.Call(BatchedDivideByRowSumKernels, result, exp, sums, numClasses);
     
-        compute.Return(exp, sums, maxs);
-        
-        compute.Synchronize(aidx);
-        if (exp.GetAsArray1D().Any(float.IsNaN)) throw new InvalidOperationException("Softmax contains NaN values.");
+        Compute.Return(exp, sums, maxs);
     
         return x.Create(x.Value.CreateAlike(result), x.Gradient.Zeros(), Backward, [x]);
     
         void Backward(ITensor t)
         {
-            var temp = compute.Get(aidx, totalSize);
-            var dot = compute.Get(aidx, batchSize);
+            var temp = Compute.Get(aidx, totalSize);
+            var dot = Compute.Get(aidx, batchSize);
         
-            compute.Call(compute.ElementwiseMultiplyKernels, t.Gradient.Data, result, temp);
-            compute.Call(BatchedSumRowKernels, temp, dot, numClasses);
-            compute.Call(BatchedSoftmaxBackwardKernels, t.Gradient.Data, result, dot, x.Gradient.Data, numClasses);
+            Compute.Call(Compute.ElementwiseMultiplyKernels, temp, t.Gradient.Data, result);
+            Compute.Call(BatchedSumRowKernels, dot, temp, numClasses);
+            Compute.Call(BatchedSoftmaxBackwardKernels, x.Gradient.Data, t.Gradient.Data, result, dot, numClasses);
         
-            compute.Return(temp, dot);
+            Compute.Return(temp, dot);
         }
     }
     
