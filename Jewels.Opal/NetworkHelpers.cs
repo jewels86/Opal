@@ -49,7 +49,7 @@ public static partial class Operations
             
             var hostLoss = totalLoss.ToHost() / inputs.Length;
             losses.Add(hostLoss);
-            
+            Console.WriteLine($"Epoch {epoch}: Loss {hostLoss}");
             if (float.IsNaN(hostLoss)) throw new Exception($"Loss is NaN at epoch {epoch}!");
             if (hostLoss < epsilon) break;
         }

@@ -1,6 +1,4 @@
-﻿using Jewels.Lazulite;
-
-namespace Jewels.Opal.NNs;
+﻿namespace Jewels.Opal.NNs;
 
 public class OptimizedLstmLayer<TIn, TOut, TWeights, TBiases> : LstmLayer<TIn, TOut, TWeights, TBiases>
     where TIn : notnull where TOut : notnull where TWeights : notnull where TBiases : notnull

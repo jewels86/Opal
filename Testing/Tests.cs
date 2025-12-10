@@ -23,7 +23,7 @@ public class Tests
         var targets = Operations.New(Operations.Stack(targetsRaw));
 
         var network = new BatchedVectorLstmNetwork(
-            1, 4, 1, 2,
+            1, 5, 1, 2,
             LossFunctions.MeanSquaredError);
 
         float initialLoss = network.EvaluateLossFinal(sequences, targets, LossFunctions.MeanSquaredError);
