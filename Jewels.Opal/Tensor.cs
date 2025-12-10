@@ -22,7 +22,7 @@ public class Tensor<T>(Value<T> value, Value<T>? gradient = null, Action<ITensor
 {
     public Value<T> Value { get; } = value;
     public Value<T> Gradient { get; } = gradient ?? value.Zeros();
-    public Action<ITensor> BackwardAction { get; } = backwardAction ?? (_ => { });
+    public Action<ITensor> BackwardAction { get; set; } = backwardAction ?? (_ => { });
     public List<ITensor> Inputs { get; } = inputs ?? [];
 
     public bool Disposable
