@@ -47,7 +47,7 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
         Tensor<TOut> state)
     {
         var (h, s) = InputLayer.ForwardWithState(input, hidden, state);
-        foreach (var layer in HiddenLayers) (h, s) =layer.ForwardWithState(h, h, s);
+        foreach (var layer in HiddenLayers) (h, s) = layer.ForwardWithState(h, h, s);
         return OutputLayer.ForwardWithState(h, h, s);
     }
 

@@ -21,11 +21,9 @@ public class Tests
         var targetsRaw = sequencesRaw.Select(seq => seq[0]).ToArray();
         var sequences = Operations.New(Operations.Stack(sequencesRaw));
         var targets = Operations.New(Operations.Stack(targetsRaw));
+        Console.WriteLine($"Sequences shape: {Operations.ToString(sequences.Value.Shape)}, targets shape: {Operations.ToString(targets.Value.Shape)}");
 
-        var network = new BatchedVectorLstmNetwork(
-            1, 5, 1, 2,
-            LossFunctions.MeanSquaredError);
-
+        var network = new BatchedVectorLstmNetwork(1, 5, 1, 0, LossFunctions.MeanSquaredError);
         float initialLoss = network.EvaluateLossFinal(sequences, targets, LossFunctions.MeanSquaredError);
         Console.WriteLine($"Initial loss: {initialLoss}");
         Stopwatch sw = Stopwatch.StartNew();

@@ -96,8 +96,12 @@ public static partial class Operations
     public static Tensor<float[,]> MatrixMultiply(Tensor<float[,]> a, Tensor<float[,]> b, bool transposeA = false, bool transposeB = false)
     {
         var (aidx, a0, a1, b0, b1) = (a.AcceleratorIndex, a.Value.Shape[0], a.Value.Shape[1], b.Value.Shape[0], b.Value.Shape[1]);
-        var m = transposeA ? a1 :  a0;
+        var m = transposeA ? a1 : a0;
         var n = transposeB ? b0 : b1;
+        var kA = transposeA ? a0 : a1;
+        var kB = transposeB ? b1 : b0;
+
+        if (kA != kB) throw new Exception($"Matrices of shapes {ToString([m, kA])} and {ToString([kB, n])} (after transposing if necessary- flags a={transposeA}, b={transposeB}) cannot be multiplied.");
         
         var result = new MatrixValue(Compute.Get(aidx, m * n), [m, n]);
         Compute.MatrixMultiply(result, a.Value, b.Value, a0, a1, b0, b1, transposeA: transposeA, transposeB: transposeB);

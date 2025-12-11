@@ -41,14 +41,14 @@ public class BatchedVectorLstmNetwork(
         var decoderOutputWeights = Operations.GenerateMatrix(weightsInitialization, outputSize, decoderConcatSize).NonDisposable();
 
         var encoderForgetBiases = Operations.GenerateVector(_ => 1, outputSize).NonDisposable();
-        var encoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
-        var encoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
-        var encoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
+        var encoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: encoderConcatSize).NonDisposable();
+        var encoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: encoderConcatSize).NonDisposable();
+        var encoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: encoderConcatSize).NonDisposable();
 
         var decoderForgetBiases = Operations.GenerateVector(_ => 1, outputSize).NonDisposable();
-        var decoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
-        var decoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
-        var decoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: inputSize).NonDisposable();
+        var decoderInputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: decoderConcatSize).NonDisposable();
+        var decoderCellBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: decoderConcatSize).NonDisposable();
+        var decoderOutputBiases = Operations.GenerateVector(biasesInitialization, outputSize, fanIn: decoderConcatSize).NonDisposable();
 
         var catalog = new BatchedVectorCatalog();
         
@@ -148,6 +148,9 @@ public class BatchedVectorLstmNetwork(
         for (int t = 0; t < seqLength; t++)
         {
             var timestepInput = Operations.GetSlice(sequences, t);
+            Console.WriteLine($"Hidden shape: {Operations.ToString(hidden.Value.Shape)}");
+            Console.WriteLine($"State shape: {Operations.ToString(state.Value.Shape)}");
+            Console.WriteLine($"Timestep input shape: {Operations.ToString(timestepInput.Value.Shape)}");
             var (output, newState) = ForwardWithState(timestepInput, hidden, state);
 
             hidden = output;
