@@ -25,13 +25,15 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
     public required Tensor<TBiases> DecoderOutputBiases { get; set; }
     public required ILstmCatalog<TIn, TOut, TWeights, TBiases> Catalog { get; init; }
     
-    public required Tensor<TOut> DefaultState { get; set; }
-    public required Tensor<TOut> DefaultHidden { get; set; }
+    public required Tensor<TOut> EncoderHidden { get; set; }
+    public required Tensor<TOut> EncoderState { get; set; }
+    public required Tensor<TOut> DecoderHidden { get; set; }
+    public required Tensor<TOut> DecoderState { get; set; }
 
     #region Encoder/Decoder
-    public virtual (Tensor<TOut> hidden, Tensor<TOut> state) Encoder(Tensor<TIn> input, Tensor<TOut> state, Tensor<TOut> prevHidden)
+    public virtual Tensor<TOut> Encoder(Tensor<TIn> input)
     {
-        Tensor<TOut> concat = Catalog.ConcatInputHidden(input, prevHidden);
+        Tensor<TOut> concat = Catalog.ConcatInputHidden(input, EncoderHidden);
         
         Tensor<TOut> forgetWeighted = Catalog.Multiply(EncoderForgetWeights, concat);
         Tensor<TOut> inputWeighted = Catalog.Multiply(EncoderInputWeights, concat);
@@ -43,15 +45,15 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
         Tensor<TOut> cellGate = Catalog.LstmTanhGate(cellWeighted, EncoderCellBiases);
         Tensor<TOut> outputGate = Catalog.LstmSigmoidGate(outputWeighted, EncoderOutputBiases);
         
-        Tensor<TOut> newState = Catalog.LstmState(forgetGate, state, inputGate, cellGate);
-        Tensor<TOut> newHidden = Catalog.LstmHidden(outputGate, newState);
+        EncoderState = Catalog.LstmState(forgetGate, EncoderState, inputGate, cellGate);
+        EncoderHidden = Catalog.LstmHidden(outputGate, EncoderState);
         
-        return (newHidden, newState);
+        return EncoderHidden;
     }
     
-    public virtual (Tensor<TOut> hidden, Tensor<TOut> state) Decoder(Tensor<TOut> input, Tensor<TOut> state, Tensor<TOut> prevHidden)
+    public virtual Tensor<TOut> Decoder(Tensor<TOut> input)
     {
-        Tensor<TOut> concat = Catalog.ConcatHidden(input, prevHidden);
+        Tensor<TOut> concat = Catalog.ConcatHidden(input, DecoderHidden);
         
         Tensor<TOut> forgetWeighted = Catalog.Multiply(DecoderForgetWeights, concat);
         Tensor<TOut> inputWeighted = Catalog.Multiply(DecoderInputWeights, concat);
@@ -63,90 +65,24 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
         Tensor<TOut> cellGate = Catalog.LstmTanhGate(cellWeighted, DecoderCellBiases);
         Tensor<TOut> outputGate = Catalog.LstmSigmoidGate(outputWeighted, DecoderOutputBiases);
         
-        Tensor<TOut> newState = Catalog.LstmState(forgetGate, state, inputGate, cellGate);
-        Tensor<TOut> newHidden = Catalog.LstmHidden(outputGate, newState);
-        
-        return (newHidden, newState);
-    }
+        DecoderState = Catalog.LstmState(forgetGate, DecoderState, inputGate, cellGate);
+        DecoderHidden = Catalog.LstmHidden(outputGate, DecoderState);
 
-    public Tensor<TOut>[] EncoderSequence(Tensor<TIn>[] inputs, Tensor<TOut> initialHidden, Tensor<TOut> initialState)
-    {
-        List<Tensor<TOut>> hiddenStates = new();
-        Tensor<TOut> currentHidden = initialHidden;
-        Tensor<TOut> currentState = initialState;
-        
-        foreach (var input in inputs)
-        {
-            var (hidden, state) = Encoder(input, currentState, currentHidden);
-            hiddenStates.Add(hidden);
-            currentHidden = hidden;
-            currentState = state;
-        }
-        
-        return hiddenStates.ToArray();
-    }
-    
-    public Tensor<TOut>[] DecoderSequence(Tensor<TOut>[] inputs, Tensor<TOut> initialHidden, Tensor<TOut> initialState)
-    {
-        List<Tensor<TOut>> hiddenStates = new();
-        Tensor<TOut> currentHidden = initialHidden;
-        Tensor<TOut> currentState = initialState;
-        
-        foreach (var input in inputs)
-        {
-            var (hidden, state) = Decoder(input, currentState, currentHidden);
-            hiddenStates.Add(hidden);
-            currentHidden = hidden;
-            currentState = state;
-        }
-        
-        return hiddenStates.ToArray();
+        return DecoderHidden;
     }
     #endregion
 
-    public virtual Tensor<TOut> ForwardCore(Tensor<TIn> input, Tensor<TOut> initialHidden, Tensor<TOut> initialState)
+    public virtual Tensor<TOut> Forward(Tensor<TIn> input)
     {
-        var encoderOutput = Encoder(input, initialState, initialHidden);
-        var decoderOutput = Decoder(encoderOutput.hidden, encoderOutput.state, encoderOutput.hidden);
-        return decoderOutput.hidden;
-    }
-
-    public virtual (Tensor<TOut> hidden, Tensor<TOut> state) ForwardWithState(Tensor<TIn> input, Tensor<TOut> hidden, Tensor<TOut> state)
-    {
-        var encoderOutput = Encoder(input, state, hidden);
-        var decoderOutput = Decoder(encoderOutput.hidden, encoderOutput.state, encoderOutput.hidden);
+        var encoderOutput = Encoder(input);
+        var decoderOutput = Decoder(encoderOutput);
         return decoderOutput;
     }
     
-    #region Overloads
-    public Value<TOut> Forward(Value<TIn> input)
-    {
-        Tensor<TIn> tensorInput = new(input, input.Zeros());
-        Tensor<TOut> initialHidden = DefaultHidden;
-        Tensor<TOut> initialState = DefaultState;
-        
-        return ForwardCore(tensorInput, initialHidden, initialState).Value;
-    }
-    
-    public Tensor<TOut> Forward(Tensor<TIn> input, Tensor<TOut> initialHidden, Tensor<TOut> initialState) => ForwardCore(input, initialHidden, initialState);
-    public Tensor<TOut> Forward(Tensor<TIn> input) => ForwardCore(input, DefaultHidden, DefaultState);
-    public Tensor<TOut>[] ForwardTransforming(Tensor<TIn>[] inputs)
-    {
-        Tensor<TOut> initialHidden = DefaultHidden;
-        Tensor<TOut> initialState = DefaultState;
-        var encoderOutputs = EncoderSequence(inputs, initialHidden, initialState);
-        var decoderOutputs = DecoderSequence(encoderOutputs, initialHidden, initialState);
-        
-        return decoderOutputs;
-    }
-    public Tensor<TOut> ForwardSequence(Tensor<TIn>[] inputs) => ForwardTransforming(inputs).Last();
-    public Value<TOut> ForwardSequence(Value<TIn>[] inputs) => ForwardSequence(inputs.Select(x => new Tensor<TIn>(x, x.Zeros())).ToArray()).Value;
-    public Value<TOut>[] ForwardTransforming(Value<TIn>[] inputs) => ForwardTransforming(inputs.Select(x => new Tensor<TIn>(x, x.Zeros())).ToArray()).Select(x => x.Value).ToArray();
-    #endregion
+    public Value<TOut> Forward(Value<TIn> input) => Forward(new Tensor<TIn>(input)).Value;
 
     public virtual void UpdateParameters(float lr)
     {
-        //Console.WriteLine($"weights sample: {EncoderForgetWeights.Value.ToProxy().FlatData[0]}");
         Operations.Sgd(Weights, lr);
         Operations.Sgd(Biases, lr);
         ZeroGradients();
@@ -158,12 +94,20 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
         Operations.ZeroGradients(Biases);
     }
 
-    public virtual Tensor<TWeights>[] Weights =>
+    public virtual void ResetState()
+    {
+        Compute.Zero(EncoderState.Value);
+        Compute.Zero(DecoderState.Value);
+        Compute.Zero(EncoderHidden.Value);
+        Compute.Zero(DecoderHidden.Value);
+    }
+
+    public virtual ITensor[] Weights =>
     [
         EncoderForgetWeights, EncoderInputWeights, EncoderCellWeights, EncoderOutputWeights,
         DecoderForgetWeights, DecoderInputWeights, DecoderCellWeights, DecoderOutputWeights
     ];
-    public virtual Tensor<TBiases>[] Biases =>
+    public virtual ITensor[] Biases =>
     [
         EncoderForgetBiases, EncoderInputBiases, EncoderCellBiases, EncoderOutputBiases,
         DecoderForgetBiases, DecoderInputBiases, DecoderCellBiases, DecoderOutputBiases

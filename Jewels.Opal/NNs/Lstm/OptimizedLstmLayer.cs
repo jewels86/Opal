@@ -6,11 +6,21 @@ public class OptimizedLstmLayer<TIn, TOut, TWeights, TBiases> : LstmLayer<TIn, T
     public required IOptimizedLstmCatalog<TIn, TOut, TWeights, TBiases> OptimizedCatalog { get; init; } 
 
     #region Encoder/Decoder
-    public override (Tensor<TOut> hidden, Tensor<TOut> state) Encoder(Tensor<TIn> input, Tensor<TOut> state, Tensor<TOut> prevHidden) => 
-        OptimizedCatalog.InLstmUpdate(input, prevHidden, state, EncoderParameters);
+    public override Tensor<TOut> Encoder(Tensor<TIn> input)
+    {
+        var (hidden, state) = OptimizedCatalog.InLstmUpdate(input, EncoderHidden, EncoderState, EncoderParameters);
+        EncoderHidden = hidden;
+        EncoderState = state;
+        return hidden;
+    }
 
-    public override (Tensor<TOut> hidden, Tensor<TOut> state) Decoder(Tensor<TOut> input, Tensor<TOut> state, Tensor<TOut> prevHidden) => 
-        OptimizedCatalog.OutLstmUpdate(input, prevHidden, state, DecoderParameters);
+    public override Tensor<TOut> Decoder(Tensor<TOut> input)
+    {
+        var (hidden, state) = OptimizedCatalog.OutLstmUpdate(input, DecoderHidden, DecoderState, DecoderParameters);
+        DecoderHidden = hidden;
+        DecoderState = state;
+        return hidden;
+    }
     #endregion
     
     public LstmUpdateParameters<TWeights, TBiases> EncoderParameters => new()

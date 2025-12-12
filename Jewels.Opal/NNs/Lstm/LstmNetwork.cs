@@ -41,22 +41,12 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
         return OutputLayer.Forward(hidden);
     }
 
-    public (Tensor<TOut> output, Tensor<TOut> state) ForwardWithState(
-        Tensor<TIn> input, 
-        Tensor<TOut> hidden, 
-        Tensor<TOut> state)
-    {
-        var (h, s) = InputLayer.ForwardWithState(input, hidden, state);
-        foreach (var layer in HiddenLayers) (h, s) = layer.ForwardWithState(h, h, s);
-        return OutputLayer.ForwardWithState(h, h, s);
-    }
-
-    public Tensor<TOut> ForwardSequence(Tensor<TIn>[] sequence) => Operations.ForwardSequence(() => { }, Forward, sequence);
+    public Tensor<TOut> ForwardSequence(Tensor<TIn>[] sequence) => Operations.ForwardSequence(ResetState, Forward, sequence);
 
     public Value<TOut> ForwardSequence(Value<TIn>[] sequence) => 
         ForwardSequence(sequence.Select(i => new Tensor<TIn>(i, i.Zeros())).ToArray()).Value;
 
-    public void UpdateParameters(float lr, float? gradClipNorm = null, List<ITensor>? clipTensors = null)
+    public void UpdateParameters(float lr, float? gradClipNorm = null, List<ITensor>? clipTensors = null, bool reset = true)
     {
         if (clipTensors is not null && gradClipNorm.HasValue)
             Operations.ClipGradientsByNorm(gradClipNorm.Value, clipTensors.ToArray());
@@ -64,6 +54,14 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
         foreach (var layer in HiddenLayers)
             layer.UpdateParameters(lr);
         OutputLayer.UpdateParameters(lr);
+        if (reset) ResetState();
+    }
+
+    public void ResetState()
+    {
+        InputLayer.ResetState();
+        foreach (var layer in HiddenLayers) layer.ResetState();
+        OutputLayer.ResetState();
     }
 
     public void Train(Value<TIn>[] inputs, Value<TOut>[] targets, int epochs, float lr) =>
@@ -78,7 +76,7 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
         foreach (var hidden in HiddenLayers) tensors.AddRange(hidden.Parameters);
         tensors.AddRange(OutputLayer.Parameters);
         
-        Operations.TrainSequences(ForwardSequence, LossFunction, () => { }, () => UpdateParameters(lr, DefaultGradClipNorm, tensors), sequences, targets, epochs);
+        Operations.TrainSequences(ForwardSequence, LossFunction, ResetState, () => UpdateParameters(lr, DefaultGradClipNorm, tensors), sequences, targets, epochs);
     }
 
     public float EvaluateLossSequences(Value<TIn>[][] sequences, Value<TOut>[] targets) =>

@@ -66,8 +66,10 @@ public class VectorLstmNetwork(int inputSize,
             DecoderInputBiases = decoderInputBiases,
             DecoderCellBiases = decoderCellBiases,
             DecoderOutputBiases = decoderOutputBiases,
-            DefaultHidden = Operations.New(Operations.Fill(0, outputSize)),
-            DefaultState = Operations.New(Operations.Fill(0, outputSize)),
+            EncoderHidden = Operations.New(Operations.Fill(0f, outputSize)),
+            DecoderHidden = Operations.New(Operations.Fill(0f, outputSize)),
+            EncoderState = Operations.New(Operations.Fill(0f, outputSize)),
+            DecoderState = Operations.New(Operations.Fill(0f, outputSize)),
             Catalog = catalog
         };
     }

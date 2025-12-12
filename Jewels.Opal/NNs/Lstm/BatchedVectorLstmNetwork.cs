@@ -70,8 +70,10 @@ public class BatchedVectorLstmNetwork(
             DecoderInputBiases = decoderInputBiases,
             DecoderCellBiases = decoderCellBiases,
             DecoderOutputBiases = decoderOutputBiases,
-            DefaultHidden = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
-            DefaultState = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
+            EncoderHidden = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
+            DecoderHidden = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
+            EncoderState = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
+            DecoderState = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
             Catalog = new BatchedVectorCatalog()
         };
 
@@ -93,8 +95,10 @@ public class BatchedVectorLstmNetwork(
             DecoderInputBiases = decoderInputBiases,
             DecoderCellBiases = decoderCellBiases,
             DecoderOutputBiases = decoderOutputBiases,
-            DefaultHidden = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
-            DefaultState = Operations.New(new float[outputSize, outputSize]).NonDisposable(),
+            EncoderHidden = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
+            DecoderHidden = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
+            EncoderState = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
+            DecoderState = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
             Catalog = catalog,
             OptimizedCatalog = catalog
         };
@@ -120,18 +124,12 @@ public class BatchedVectorLstmNetwork(
     
         var result = Operations.New(new float[batch, seqLength, outputSize]);
         
-        var hidden = Operations.New(Operations.Fill(0f, outputSize, outputSize));
-        var state = Operations.New(Operations.Fill(0f, outputSize, outputSize));
-    
         for (int t = 0; t < seqLength; t++)
         {
             var timestepInput = Operations.GetSlice(sequences, t);
-            var (output, newState) = ForwardWithState(timestepInput, hidden, state);
+            var output = Forward(timestepInput);
         
             result = Operations.SetSlice(result, output, t);
-
-            hidden = output;
-            state = newState;
         }
     
         return result;
@@ -141,27 +139,21 @@ public class BatchedVectorLstmNetwork(
     {
         var (batch, seqLength, features) = (sequences.Value.Shape[0], 
             sequences.Value.Shape[1], sequences.Value.Shape[2]);
-    
-        var hidden = Operations.New(Operations.Fill(0f, batch, HiddenSize));
-        var state = Operations.New(Operations.Fill(0f, batch, HiddenSize));
+        
+        List<Tensor<float[,]>> results = [Operations.New(new float[batch, outputSize])];
 
         for (int t = 0; t < seqLength; t++)
         {
             var timestepInput = Operations.GetSlice(sequences, t);
-            Console.WriteLine($"Hidden shape: {Operations.ToString(hidden.Value.Shape)}");
-            Console.WriteLine($"State shape: {Operations.ToString(state.Value.Shape)}");
             Console.WriteLine($"Timestep input shape: {Operations.ToString(timestepInput.Value.Shape)}");
-            var (output, newState) = ForwardWithState(timestepInput, hidden, state);
-
-            hidden = output;
-            state = newState;
+            results.Add(Forward(timestepInput));
         }
         
-        return hidden;
+        return results[^1];
     }
     
     public void Train(Tensor<float[,,]> sequences, Tensor<float[,,]> targets, Func<Tensor<float[,,]>, Value<float[,,]>, Tensor<float>> loss, int epochs, float lr) => 
-        Operations.Train<float[,,], float[,,]>(ForwardSequence, loss,  () => UpdateParameters(lr), [sequences], [targets], epochs);
+        Operations.Train<float[,,], float[,,]>(ForwardSequence, loss, () => UpdateParameters(lr), [sequences], [targets], epochs);
     
     public float EvaluateLoss(Tensor<float[,,]> sequences, Tensor<float[,,]> targets, Func<Tensor<float[,,]>, Value<float[,,]>, Tensor<float>> loss) =>
         Operations.EvaluateLoss<float[,,], float[,,]>(ForwardSequence, loss, [sequences], [targets]);
