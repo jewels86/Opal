@@ -7,9 +7,13 @@ using Jewels.Opal.Utilities;
 
 namespace Jewels.Opal;
 
-public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], float[]>, ILstmCatalog<float[,], float[,], float[,], float[]>, IOptimizedLstmCatalog<float[,], float[,], float[,], float[]>
+public class BatchedVectorCatalog : 
+    IFfCatalog<float[,], float[,], float[,], float[]>, 
+    ILstmCatalog<float[,], float[,], float[,], float[]>, 
+    IOptimizedLstmCatalog<float[,], float[,], float[,], float[]>
 {
     public int AcceleratorIndex { get; set; } = Operations.DefaultAcceleratorIndex;
+    public bool Production { get; set; } = false;
     
     public Tensor<float[,]> Multiply(Tensor<float[,]> a, Tensor<float[,]> b) => Operations.MatrixMultiply(b, a, transposeB: true);
     public Tensor<float[,]> Add(Tensor<float[]> a, Tensor<float[,]> b) => Operations.Add(b, a);
@@ -32,17 +36,20 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
         var outputWeighted = Multiply(parameters.OutputWeights, concat);
         
         var (newHidden, newState) = (Compute.GetLike(forgetWeighted.Value), Compute.GetLike(forgetWeighted.Value));
+        var gatesOut = Production ? Compute.Get(forgetWeighted.AcceleratorIndex, 0) : Compute.Get(forgetWeighted.AcceleratorIndex, forgetWeighted.TotalSize * 4);
         Compute.Call(LstmUpdateKernels,
-            newHidden, newState, prevState.Value,
+            newHidden, newState, gatesOut, prevState.Value,
             forgetWeighted.Value, inputWeighted.Value, cellWeighted.Value, outputWeighted.Value,
             parameters.ForgetBiases.Value, parameters.InputBiases.Value, parameters.CellBiases.Value, parameters.OutputBiases.Value);
-
+        
+        if (Production) gatesOut.Dispose();
         var newHiddenValue = hidden.Value.CreateAlike(newHidden);
         var newStateValue = prevState.Value.CreateAlike(newState);
 
         List<ITensor> inputs =
         [
             input, hidden, prevState,
+            forgetWeighted, inputWeighted, cellWeighted, outputWeighted,
             parameters.ForgetWeights, parameters.InputWeights, parameters.CellWeights, parameters.OutputWeights,
             parameters.ForgetBiases, parameters.InputBiases, parameters.CellBiases, parameters.OutputBiases
         ];
@@ -54,19 +61,12 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
 
         void Backward(ITensor tensor) // for hidden
         {
-            Compute.Call(LstmUpdateBackward1Kernels,
-                newStateTensor.Gradient, forgetWeighted.Value, inputWeighted.Value, cellWeighted.Value,
-                parameters.ForgetBiases.Value, parameters.InputBiases.Value, parameters.CellBiases.Value,
-                inputWeighted.Gradient, cellWeighted.Gradient,
-                parameters.InputBiases.Gradient, parameters.CellBiases.Gradient,
-                prevState.Value, newHiddenTensor.Gradient);
-            Compute.Call(LstmUpdateBackward2Kernels,
-                newStateTensor.Gradient, prevState.Gradient,
-                forgetWeighted.Value, outputWeighted.Value,
-                parameters.ForgetBiases.Value, parameters.OutputBiases.Value,
-                forgetWeighted.Gradient, outputWeighted.Gradient,
-                parameters.ForgetBiases.Gradient, parameters.OutputBiases.Gradient,
-                prevState.Value, newStateTensor.Value, newHiddenTensor.Gradient);
+            Compute.Call(LstmUpdateBackwardKernels, 
+                newStateTensor.Gradient, prevState.Gradient, gatesOut,
+                forgetWeighted.Gradient, inputWeighted.Gradient, cellWeighted.Gradient, outputWeighted.Gradient,
+                parameters.ForgetBiases.Gradient, parameters.InputBiases.Gradient, parameters.CellBiases.Gradient, parameters.OutputBiases.Gradient,
+                newStateTensor.Value, prevState.Value, hidden.Gradient);
+            gatesOut.Return();
         }
     }
 
@@ -91,19 +91,27 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
         ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>>[] LstmUpdateKernels { get; }
     = Compute.Load((i,
-        hidden, state, prevState, 
+        hidden, state, gatesOut,  prevState, 
         forgetWeighted, inputWeighted, cellWeighted, outputWeighted,
         forgetBias, inputBias, cellBias, outputBias) =>
     {
         var featureIndex = i % forgetBias.Length;
-        var forgetGate = Operations.Sigmoid(forgetWeighted[i] + forgetBias[featureIndex]);
-        var inputGate = Operations.Sigmoid(inputWeighted[i] + inputBias[featureIndex]);
-        var cellGate = Operations.Tanh(cellWeighted[i] + cellBias[featureIndex]);
-        var outputGate = Operations.Sigmoid(outputWeighted[i] + outputBias[featureIndex]);
+        var forgetGate = Operations.FloatSigmoid(forgetWeighted[i] + forgetBias[featureIndex]);
+        var inputGate = Operations.FloatSigmoid(inputWeighted[i] + inputBias[featureIndex]);
+        var cellGate = Operations.FloatTanh(cellWeighted[i] + cellBias[featureIndex]);
+        var outputGate = Operations.FloatSigmoid(outputWeighted[i] + outputBias[featureIndex]);
         state[i] = forgetGate * prevState[i] + inputGate * cellGate;
-        hidden[i] = outputGate * Operations.Tanh(state[i]);
+        hidden[i] = outputGate * Operations.FloatTanh(state[i]);
+
+        if (gatesOut.IntLength == 0) return;
+        
+        gatesOut[KernelProgramming.StridedIndexOf(i, 4)] = forgetGate;
+        gatesOut[KernelProgramming.StridedIndexOf(i, 4, 1)] = inputGate;
+        gatesOut[KernelProgramming.StridedIndexOf(i, 4, 2)] = cellGate;
+        gatesOut[KernelProgramming.StridedIndexOf(i, 4, 3)] = outputGate;
     });
 
     public static Action<Index1D,
@@ -119,77 +127,46 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
         ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>,
         ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>>[] LstmUpdateBackward1Kernels { get; }
+        ArrayView1D<float, Stride1D.Dense>,
+        ArrayView1D<float, Stride1D.Dense>>[] LstmUpdateBackwardKernels { get; }
     = Compute.Load((
-        i, stateGrad, 
-        forgetWeighted, inputWeighted, cellWeighted,
-        forgetBias, inputBias, cellBias,
-        inputWeightedGrad, cellWeightedGrad, 
-        inputBiasGrad, cellBiasGrad,
-        prevState, hiddenGrad) =>
+        i, stateGrad, prevStateGrad, gatesOut,
+        forgetWeightedGrad, inputWeightedGrad, cellWeightedGrad, outputWeightedGrad,
+        forgetBiasGrad, inputBiasGrad, cellBiasGrad, outputBiasGrad,
+        state, prevState, hiddenGrad) =>
     {
-        var featureIndex = i % forgetBias.Length;
-        var forgetGate = Operations.Sigmoid(forgetWeighted[i] + forgetBias[featureIndex]);
-        var inputGate = Operations.Sigmoid(inputWeighted[i] + inputBias[featureIndex]);
-        var cellGate = Operations.Tanh(cellWeighted[i] + cellBias[featureIndex]);
-        var state = forgetGate * prevState[i] + inputGate * cellGate;
-
-        stateGrad[i] += hiddenGrad[i] * Operations.TanhBackward(state);
+        var forgetGate = gatesOut[KernelProgramming.StridedIndexOf(i, 4)];
+        var inputGate = gatesOut[KernelProgramming.StridedIndexOf(i, 4, 1)];
+        var cellGate = gatesOut[KernelProgramming.StridedIndexOf(i, 4, 2)];
+        var outputGate = gatesOut[KernelProgramming.StridedIndexOf(i, 4, 3)];
         
-        var inputPart = stateGrad[i] * cellGate * Operations.SigmoidBackward(inputGate);
-        var cellPart = stateGrad[i] * inputGate * Operations.TanhBackward(cellGate);
+        stateGrad[i] += hiddenGrad[i] * outputGate * Operations.FloatTanhBackward(state[i]);
+        prevStateGrad[i] += stateGrad[i] * forgetGate;
         
-        inputWeightedGrad[i] += inputPart;
-        cellWeightedGrad[i] += cellPart;
-
-        Atomic.Add(ref inputBiasGrad[featureIndex], inputPart);
-        Atomic.Add(ref cellBiasGrad[featureIndex], cellPart);
-    });
-
-    public static Action<Index1D,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>,
-        ArrayView1D<float, Stride1D.Dense>>[] LstmUpdateBackward2Kernels { get; }
-    = Compute.Load((
-        i, stateGrad, prevStateGrad,
-        forgetWeighted, outputWeighted,
-        forgetBias, outputBias,
-        forgetWeightedGrad, outputWeightedGrad, 
-        forgetBiasGrad, outputBiasGrad,
-        prevState, state, hiddenGrad) =>
-    {
-        var featureIndex = i % forgetBias.Length;
-        var forgetGate = Operations.Sigmoid(forgetWeighted[i] + forgetBias[featureIndex]);
-        var outputGate = Operations.Sigmoid(outputWeighted[i] + outputBias[featureIndex]);
-        
-        var forgetPart = stateGrad[i] * prevState[i] * Operations.SigmoidBackward(forgetGate);
-        var outputPart = hiddenGrad[i] * Operations.Tanh(state[i]) * Operations.SigmoidBackward(outputGate);
+        var forgetPart = stateGrad[i] * prevState[i] * Operations.FloatSigmoidBackward(forgetGate);
+        var inputPart = stateGrad[i] * cellGate * Operations.FloatSigmoidBackward(inputGate);
+        var cellPart = stateGrad[i] * inputGate * Operations.FloatTanhBackward(cellGate);
+        var outputPart = hiddenGrad[i] * Operations.FloatTanh(state[i]) * Operations.FloatSigmoidBackward(outputGate);
         
         forgetWeightedGrad[i] += forgetPart;
+        inputWeightedGrad[i] += inputPart;
+        cellWeightedGrad[i] += cellPart;
         outputWeightedGrad[i] += outputPart;
-        
+
+        var featureIndex = i % inputBiasGrad.Length;
         Atomic.Add(ref forgetBiasGrad[featureIndex], forgetPart);
-        Atomic.Add(ref outputBiasGrad[featureIndex], outputPart);
-        
-        prevStateGrad[i] += stateGrad[i] * forgetGate;
+        Atomic.Add(ref inputBiasGrad[featureIndex], inputPart);
+        Atomic.Add(ref cellBiasGrad[featureIndex], cellPart);
+        Atomic.Add(ref outputBiasGrad[featureIndex], outputPart); 
+        // later, this can be replaced with a strided array and a reduction pass
     });
 }
 
 public static partial class Operations
 {
-    public static float Sigmoid(float x) => 1f / (1f + XMath.Exp(-x));
-    public static float Tanh(float x) => (float)Math.Tanh(x);
+    public static float FloatSigmoid(float x) => 1f / (1f + XMath.Exp(-x));
+    public static float FloatTanh(float x) => (float)Math.Tanh(x);
     
-    public static float SigmoidBackward(float output) => output * (1f - output);
-    public static float TanhBackward(float output) => 1f - (output * output);
+    public static float FloatSigmoidBackward(float output) => output * (1f - output);
+    public static float FloatTanhBackward(float output) => 1f - (output * output);
 }

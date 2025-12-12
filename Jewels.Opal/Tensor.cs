@@ -13,6 +13,8 @@ public interface ITensor : IDisposable
     
     public bool Disposable { get; set; }
     public int AcceleratorIndex { get; }
+    public int[] Shape { get; }
+    public int TotalSize { get; }
 
     public ITensor Create(IValue value, IValue gradient, Action<ITensor>? backwardAction = null, List<ITensor>? inputs = null);
 }
@@ -36,6 +38,8 @@ public class Tensor<T>(Value<T> value, Value<T>? gradient = null, Action<ITensor
     }
 
     public int AcceleratorIndex => Value.AcceleratorIndex;
+    public int[] Shape => Value.Shape;
+    public int TotalSize => Value.TotalSize;
     
     IValue ITensor.Value => Value;
     IValue ITensor.Gradient => Gradient;
