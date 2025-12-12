@@ -48,14 +48,14 @@ public partial class Operations
         });
     
     /// <summary>
-    /// (tensor3Grad, sliceGrad, timestep, seqLen, features) => tensor3Grad[batch, timestep, feature] += sliceGrad[i]
+    /// (sliceGrad, tensor3Grad, timestep, seqLen, features) => tensor3Grad[batch, timestep, feature] += sliceGrad[i]
     /// </summary>
     public static Action<Index1D, 
             ArrayView1D<float, Stride1D.Dense>, 
             ArrayView1D<float, Stride1D.Dense>, int, int, int>[]
         GetSliceBackwardKernel { get; } = Compute.Load((Index1D i,
-        ArrayView1D<float, Stride1D.Dense> tensor3Grad,
         ArrayView1D<float, Stride1D.Dense> sliceGrad,
+        ArrayView1D<float, Stride1D.Dense> tensor3Grad,
         int timestep, int seqLen, int features) => 
         {
             int batch = i / features;
@@ -74,7 +74,7 @@ public partial class Operations
 
         return new(result, result.Zeros(), Backward, [tensor3]);
 
-        void Backward(ITensor tensor) => Compute.Call(GetSliceBackwardKernel, tensor3.Gradient.Data, tensor.Gradient.Data, timestep, seqLen, features);
+        void Backward(ITensor tensor) => Compute.Call(GetSliceBackwardKernel, tensor.Gradient.Data, tensor3.Gradient.Data, timestep, seqLen, features);
     }
 
     public static Tensor<float[,,]> SetSlice(Tensor<float[,,]> tensor3, Tensor<float[,]> slice, int timestep)

@@ -40,12 +40,14 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
         var newHiddenValue = hidden.Value.CreateAlike(newHidden);
         var newStateValue = prevState.Value.CreateAlike(newState);
 
-        var newHiddenTensor = new Tensor<float[,]>(newHiddenValue, newHiddenValue.Zeros(), _ => {}, [
+        List<ITensor> inputs =
+        [
             input, hidden, prevState,
             parameters.ForgetWeights, parameters.InputWeights, parameters.CellWeights, parameters.OutputWeights,
             parameters.ForgetBiases, parameters.InputBiases, parameters.CellBiases, parameters.OutputBiases
-        ]);
-        var newStateTensor = new Tensor<float[,]>(newStateValue, newStateValue.Zeros());
+        ];
+        var newHiddenTensor = new Tensor<float[,]>(newHiddenValue, newHiddenValue.Zeros(), _ => {}, inputs);
+        var newStateTensor = new Tensor<float[,]>(newStateValue, newStateValue.Zeros(), _ => {}, inputs);
         newHiddenTensor.BackwardAction = Backward;
         
         return (newHiddenTensor, newStateTensor);
@@ -64,7 +66,7 @@ public class BatchedVectorCatalog : IFfCatalog<float[,], float[,], float[,], flo
                 parameters.ForgetBiases.Value, parameters.OutputBiases.Value,
                 forgetWeighted.Gradient, outputWeighted.Gradient,
                 parameters.ForgetBiases.Gradient, parameters.OutputBiases.Gradient,
-                prevState.Value, hidden.Value, newHiddenTensor.Gradient);
+                prevState.Value, newStateTensor.Value, newHiddenTensor.Gradient);
         }
     }
 

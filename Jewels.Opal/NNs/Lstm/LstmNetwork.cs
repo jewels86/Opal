@@ -76,7 +76,7 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
         foreach (var hidden in HiddenLayers) tensors.AddRange(hidden.Parameters);
         tensors.AddRange(OutputLayer.Parameters);
         
-        Operations.TrainSequences(ForwardSequence, LossFunction, ResetState, () => UpdateParameters(lr, DefaultGradClipNorm, tensors), sequences, targets, epochs);
+        Operations.TrainSequencesFinal(ForwardSequence, LossFunction, ResetState, () => UpdateParameters(lr, DefaultGradClipNorm, tensors), sequences, targets, epochs);
     }
 
     public float EvaluateLossSequences(Value<TIn>[][] sequences, Value<TOut>[] targets) =>

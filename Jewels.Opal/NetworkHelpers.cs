@@ -21,7 +21,7 @@ public static partial class Operations
     #region Training
     public static List<float> Train<TIn, TOut>(
         Func<Tensor<TIn>, Tensor<TOut>> forward, Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action update,
-        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.001f, int checkInterval = 100, float initialGrad = 1)
+        Value<TIn>[] inputs, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.005f, int checkInterval = 100, float initialGrad = 1)
         where TIn : notnull where TOut : notnull
     {
         foreach (var input in inputs) input.NonDisposable();
@@ -34,9 +34,10 @@ public static partial class Operations
         
         for (int epoch = 0; epoch < maxEpochs; epoch++)
         { 
-            var totalLoss = new ScalarValue(0, aidx);
+            using var totalLoss = new ScalarValue(0, aidx);
             for (int i = 0; i < inputs.Length; i++)
             {
+                Console.WriteLine($"Epoch {epoch}, i {i}");
                 var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()); 
                 var outputTensor = forward(inputTensor);
                 using var lossTensor = loss(outputTensor, targets[i]);
@@ -49,7 +50,7 @@ public static partial class Operations
             
             var hostLoss = totalLoss.ToHost() / inputs.Length;
             losses.Add(hostLoss);
-            Console.WriteLine($"Epoch {epoch}: Loss {hostLoss}");
+            Console.WriteLine($"Epoch {epoch}, loss {hostLoss}");
             if (float.IsNaN(hostLoss)) throw new Exception($"Loss is NaN at epoch {epoch}!");
             if (hostLoss < epsilon) break;
         }
@@ -57,24 +58,45 @@ public static partial class Operations
         return losses;
     }
 
-    public static void TrainSequences<TIn, TOut>(Func<Tensor<TIn>[], Tensor<TOut>> forward, 
+    public static List<float> TrainSequencesFinal<TIn, TOut>(Func<Tensor<TIn>[], Tensor<TOut>> forward, 
         Func<Tensor<TOut>, Value<TOut>, Tensor<float>> loss, Action reset, Action update,
-        Value<TIn>[][] inputs, Value<TOut>[] targets, int epochs)
+        Value<TIn>[][] sequences, Value<TOut>[] targets, int maxEpochs, float epsilon = 0.005f, int checkInterval = 100, float initialGrad = 1)
         where TIn : notnull where TOut : notnull
     {
-        int aidx = inputs[0][0].AcceleratorIndex;
-        var one = new ScalarValue(Compute.Make(aidx, 1, 1));
-        for (int epoch = 0; epoch < epochs; epoch++)
+        foreach (var sequence in sequences) 
+        foreach (var input in sequence) input.NonDisposable();
+        
+        foreach (var target in targets) target.NonDisposable();
+        
+        int aidx = sequences[0][0].AcceleratorIndex;
+        var scale = new ScalarValue(Compute.Make(aidx, 1, initialGrad)).NonDisposable();
+
+        List<float> losses = [];
+        for (int epoch = 0; epoch < maxEpochs; epoch++)
         {
-            for (int i = 0; i < inputs.Length; i++)
+            using var totalLoss = new ScalarValue(0, aidx);
+            for (int i = 0; i < sequences.Length; i++)
             {
-                reset();
-                using var outputTensor = forward(inputs[i].Select(t => new Tensor<TIn>(t, t.Zeros())).ToArray());
+                var inputTensors = sequences[i].Select(t => new Tensor<TIn>(t, t.Zeros())).ToArray();
+                var outputTensor = forward(inputTensors);
                 using var lossTensor = loss(outputTensor, targets[i]);
-                lossTensor.Backward(one);
+                
+                lossTensor.Backward(scale);
+                totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());
                 update();
+                reset();
             }
+            
+            if (epoch % checkInterval != 0 || epoch == 0) continue;
+            
+            var hostLoss = totalLoss.ToHost() / sequences.Length;
+            losses.Add(hostLoss);
+            
+            if (float.IsNaN(hostLoss)) throw new Exception($"Loss is NaN at epoch {epoch}!");
+            if (hostLoss < epsilon) break;
         }
+
+        return losses;
     }
     #endregion
     #region Evaluation

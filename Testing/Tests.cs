@@ -23,7 +23,7 @@ public class Tests
         var targets = Operations.New(Operations.Stack(targetsRaw));
         Console.WriteLine($"Sequences shape: {Operations.ToString(sequences.Value.Shape)}, targets shape: {Operations.ToString(targets.Value.Shape)}");
 
-        var network = new BatchedVectorLstmNetwork(1, 5, 1, 0, LossFunctions.MeanSquaredError);
+        var network = new BatchedVectorLstmNetwork(1, 5, 1, 0, numSequences, LossFunctions.MeanSquaredError);
         float initialLoss = network.EvaluateLossFinal(sequences, targets, LossFunctions.MeanSquaredError);
         Console.WriteLine($"Initial loss: {initialLoss}");
         Stopwatch sw = Stopwatch.StartNew();
@@ -43,6 +43,4 @@ public class Tests
         //     Console.WriteLine($"  [{seqString}] → {prediction.ToHost()[0]:F4} (expected {targetsRaw[i][0]:F1})");
         // }
     }
-    
-    
 }

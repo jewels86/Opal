@@ -7,23 +7,26 @@ public class BatchedVectorLstmNetwork(
     int hiddenSize,
     int outputSize,
     int numHiddenLayers,
+    int batchSize,
     Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> lossFunction,
     Initialization weightsInitialization = Initialization.Xavier,
     Initialization biasesInitialization = Initialization.Zeros,
     bool optimized = true)
     : LstmNetwork<float[,], float[,], float[,], float[,], float[], float[]>(
-        CreateLayer(inputSize, hiddenSize, optimized, weightsInitialization, biasesInitialization),
-        CreateHiddenLayers(numHiddenLayers, hiddenSize, optimized, weightsInitialization, biasesInitialization),
-        CreateLayer(hiddenSize, outputSize, optimized, weightsInitialization, biasesInitialization),
+        CreateLayer(inputSize, hiddenSize, batchSize, optimized, weightsInitialization, biasesInitialization),
+        CreateHiddenLayers(numHiddenLayers, hiddenSize, batchSize, optimized, weightsInitialization, biasesInitialization),
+        CreateLayer(hiddenSize, outputSize, batchSize, optimized, weightsInitialization, biasesInitialization),
         lossFunction, hiddenSize)
 {
     public bool Optimized => optimized;
+    public int BatchSize => batchSize;
 
-    protected override LstmLayer<float[,], float[,], float[,], float[]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize, Optimized);
+    protected override LstmLayer<float[,], float[,], float[,], float[]> CreateHiddenLayer() => CreateLayer(HiddenSize, HiddenSize, BatchSize, Optimized);
 
     private static LstmLayer<float[,], float[,], float[,], float[]> CreateLayer(
         int inputSize,
         int outputSize,
+        int batchSize,
         bool optimized,
         Initialization weightsInitialization = Initialization.Xavier,
         Initialization biasesInitialization = Initialization.Zeros)
@@ -70,10 +73,10 @@ public class BatchedVectorLstmNetwork(
             DecoderInputBiases = decoderInputBiases,
             DecoderCellBiases = decoderCellBiases,
             DecoderOutputBiases = decoderOutputBiases,
-            EncoderHidden = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
-            DecoderHidden = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
-            EncoderState = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
-            DecoderState = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
+            EncoderHidden = Operations.New(Operations.Fill(0f, batchSize, outputSize)),
+            DecoderHidden = Operations.New(Operations.Fill(0f, batchSize, outputSize)),
+            EncoderState = Operations.New(Operations.Fill(0f, batchSize, outputSize)),
+            DecoderState = Operations.New(Operations.Fill(0f, batchSize, outputSize)),
             Catalog = new BatchedVectorCatalog()
         };
 
@@ -95,10 +98,10 @@ public class BatchedVectorLstmNetwork(
             DecoderInputBiases = decoderInputBiases,
             DecoderCellBiases = decoderCellBiases,
             DecoderOutputBiases = decoderOutputBiases,
-            EncoderHidden = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
-            DecoderHidden = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
-            EncoderState = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
-            DecoderState = Operations.New(Operations.Fill(0f, outputSize, outputSize)),
+            EncoderHidden = Operations.New(Operations.Fill(0f, batchSize, outputSize)),
+            DecoderHidden = Operations.New(Operations.Fill(0f, batchSize, outputSize)),
+            EncoderState = Operations.New(Operations.Fill(0f, batchSize, outputSize)),
+            DecoderState = Operations.New(Operations.Fill(0f, batchSize, outputSize)),
             Catalog = catalog,
             OptimizedCatalog = catalog
         };
@@ -107,13 +110,14 @@ public class BatchedVectorLstmNetwork(
     private static List<LstmLayer<float[,], float[,], float[,], float[]>> CreateHiddenLayers(
         int numLayers, 
         int hiddenSize,
+        int batchSize,
         bool optimized,
         Initialization weightsInitialization = Initialization.Xavier,
         Initialization biasesInitialization = Initialization.He)
     {
         var layers = new List<LstmLayer<float[,], float[,], float[,], float[]>>();
         for (int i = 0; i < numLayers; i++)
-            layers.Add(CreateLayer(hiddenSize, hiddenSize, optimized, weightsInitialization, biasesInitialization));
+            layers.Add(CreateLayer(hiddenSize, hiddenSize, batchSize, optimized, weightsInitialization, biasesInitialization));
         return layers;
     }
 
@@ -145,7 +149,6 @@ public class BatchedVectorLstmNetwork(
         for (int t = 0; t < seqLength; t++)
         {
             var timestepInput = Operations.GetSlice(sequences, t);
-            Console.WriteLine($"Timestep input shape: {Operations.ToString(timestepInput.Value.Shape)}");
             results.Add(Forward(timestepInput));
         }
         
@@ -161,10 +164,10 @@ public class BatchedVectorLstmNetwork(
     public void TrainFinal(Tensor<float[,,]> sequences, Tensor<float[,]> targets, Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> loss, int epochs, float lr)
     {
         List<ITensor> tensors = [];
-        tensors.AddRange(InputLayer.Parameters);
-        foreach (var hidden in HiddenLayers) tensors.AddRange(hidden.Parameters);
-        tensors.AddRange(OutputLayer.Parameters);
-        Operations.Train<float[,,], float[,]>(ForwardSequenceFinal, loss, () => UpdateParameters(lr, DefaultGradClipNorm, tensors), [sequences.Value], [targets.Value], epochs);
+        tensors.AddRange(InputLayer.AllParameters);
+        foreach (var hidden in HiddenLayers) tensors.AddRange(hidden.AllParameters);
+        tensors.AddRange(OutputLayer.AllParameters);
+        Operations.Train<float[,,], float[,]>(ForwardSequenceFinal, loss, () => UpdateParameters(lr, DefaultGradClipNorm, tensors, false), [sequences.Value], [targets.Value], epochs);
     }
 
     public float EvaluateLossFinal(Tensor<float[,,]> sequences, Tensor<float[,]> targets, Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> loss)

@@ -70,7 +70,7 @@ public abstract class RecurrentNetwork<TIn, THidden, TOut, TWeightsIn, TWeightsH
         Operations.EvaluateLoss(Forward, LossFunction, inputs, targets);
 
     public void TrainSequences(Value<TIn>[][] sequences, Value<TOut>[] targets, int epochs, float lr) =>
-        Operations.TrainSequences(ForwardSequence, LossFunction, ResetState, () => UpdateParameters(lr), sequences, targets, epochs);
+        Operations.TrainSequencesFinal(ForwardSequence, LossFunction, ResetState, () => UpdateParameters(lr), sequences, targets, epochs);
     
     public float EvaluateLossSequences(Value<TIn>[][] sequences, Value<TOut>[] targets) =>
         Operations.EvaluateLossSequences(ForwardSequence, LossFunction, sequences, targets);

@@ -96,10 +96,10 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
 
     public virtual void ResetState()
     {
-        Compute.Zero(EncoderState.Value);
-        Compute.Zero(DecoderState.Value);
-        Compute.Zero(EncoderHidden.Value);
-        Compute.Zero(DecoderHidden.Value);
+        EncoderState = new(EncoderState.Value.Zeros());
+        DecoderState = new(DecoderState.Value.Zeros());
+        EncoderHidden = new(EncoderHidden.Value.Zeros());
+        DecoderHidden = new(DecoderHidden.Value.Zeros());
     }
 
     public virtual ITensor[] Weights =>
@@ -119,6 +119,8 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
         DecoderForgetWeights, DecoderInputWeights, DecoderCellWeights, DecoderOutputWeights,
         DecoderForgetBiases, DecoderInputBiases, DecoderCellBiases, DecoderOutputBiases
     ];
+    public virtual ITensor[] States => [EncoderState, DecoderState, EncoderHidden, DecoderHidden];
+    public virtual ITensor[] AllParameters => Parameters.Concat(States).ToArray();
 
     #region Read/Write
     public void Write(BinaryWriter writer)
