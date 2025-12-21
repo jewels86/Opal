@@ -21,7 +21,7 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
     public LstmLayer<TOut, TOut, TWeightsOut, TBiasesOut> OutputLayer { get; set; } = outputLayer;
     public Func<Tensor<TOut>, Value<TOut>, Tensor<float>> LossFunction { get; } = lossFunction;
     
-    public float? DefaultGradClipNorm { get; set; } = 1f;
+    public float? DefaultGradClipNorm { get; set; } = null;
 
     protected int HiddenSize { get; } = hiddenSize;
 
@@ -48,12 +48,16 @@ public abstract class LstmNetwork<TIn, TOut, TWeightsIn, TWeightsOut, TBiasesIn,
 
     public void UpdateParameters(float lr, float? gradClipNorm = null, List<ITensor>? clipTensors = null, bool reset = true)
     {
+        //Console.WriteLine($"Before update - weight sample: {InputLayer.EncoderForgetWeights.Value.ToProxy().FlatData[0]}");
+
         if (clipTensors is not null && gradClipNorm.HasValue)
             Operations.ClipGradientsByNorm(gradClipNorm.Value, clipTensors.ToArray());
         InputLayer.UpdateParameters(lr);
         foreach (var layer in HiddenLayers)
             layer.UpdateParameters(lr);
         OutputLayer.UpdateParameters(lr);
+        //Console.WriteLine($"After update - weight sample: {InputLayer.EncoderForgetWeights.Value.ToProxy().FlatData[0]}");
+
         if (reset) ResetState();
     }
 

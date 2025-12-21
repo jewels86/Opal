@@ -37,10 +37,11 @@ public static partial class Operations
             using var totalLoss = new ScalarValue(0, aidx);
             for (int i = 0; i < inputs.Length; i++)
             {
-                Console.WriteLine($"Epoch {epoch}, i {i}");
                 var inputTensor = new Tensor<TIn>(inputs[i], inputs[i].Zeros()); 
                 var outputTensor = forward(inputTensor);
                 using var lossTensor = loss(outputTensor, targets[i]);
+                
+                //Console.WriteLine($"Loss at epoch {epoch}, input {i}: {lossTensor.Value.ToHost()}");
                 
                 lossTensor.Backward(scale);
                 totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());

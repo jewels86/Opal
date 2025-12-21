@@ -152,7 +152,8 @@ public class BatchedVectorLstmNetwork(
             results.Add(Forward(timestepInput));
         }
         
-        return results[^1];
+        var finalResult = results[^1];
+        return finalResult;
     }
     
     public void Train(Tensor<float[,,]> sequences, Tensor<float[,,]> targets, Func<Tensor<float[,,]>, Value<float[,,]>, Tensor<float>> loss, int epochs, float lr) => 
@@ -167,7 +168,7 @@ public class BatchedVectorLstmNetwork(
         tensors.AddRange(InputLayer.AllParameters);
         foreach (var hidden in HiddenLayers) tensors.AddRange(hidden.AllParameters);
         tensors.AddRange(OutputLayer.AllParameters);
-        Operations.Train<float[,,], float[,]>(ForwardSequenceFinal, loss, () => UpdateParameters(lr, DefaultGradClipNorm, tensors, false), [sequences.Value], [targets.Value], epochs);
+        Operations.Train<float[,,], float[,]>(ForwardSequenceFinal, loss, () => UpdateParameters(lr, DefaultGradClipNorm, tensors, true), [sequences.Value], [targets.Value], epochs);
     }
 
     public float EvaluateLossFinal(Tensor<float[,,]> sequences, Tensor<float[,]> targets, Func<Tensor<float[,]>, Value<float[,]>, Tensor<float>> loss)

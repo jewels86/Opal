@@ -75,17 +75,20 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
     public virtual Tensor<TOut> Forward(Tensor<TIn> input)
     {
         var encoderOutput = Encoder(input);
-        var decoderOutput = Decoder(encoderOutput);
-        return decoderOutput;
+        // var decoderOutput = Decoder(encoderOutput);
+        // return decoderOutput;
+        return encoderOutput;
     }
     
     public Value<TOut> Forward(Value<TIn> input) => Forward(new Tensor<TIn>(input)).Value;
 
     public virtual void UpdateParameters(float lr)
     {
+        //Console.WriteLine($"EncoderForgetWeights gradient: {EncoderForgetWeights.Gradient.ToProxy().FlatData.Take(5).Select(x => x.ToString("F8")).Aggregate((a,b) => a + ", " + b)}");
         Operations.Sgd(Weights, lr);
         Operations.Sgd(Biases, lr);
         ZeroGradients();
+
     }
 
     public virtual void ZeroGradients()
@@ -100,6 +103,14 @@ public class LstmLayer<TIn, TOut, TWeights, TBiases> : ILayer<TIn, TOut>
         DecoderState = new(DecoderState.Value.Zeros());
         EncoderHidden = new(EncoderHidden.Value.Zeros());
         DecoderHidden = new(DecoderHidden.Value.Zeros());
+        // EncoderState.Value.UpdateWith(EncoderState.Value.Zeros());
+        // EncoderState.Gradient.UpdateWith(EncoderState.Gradient.Zeros());
+        // DecoderState.Value.UpdateWith(DecoderState.Value.Zeros());
+        // DecoderState.Gradient.UpdateWith(DecoderState.Gradient.Zeros());
+        // EncoderHidden.Value.UpdateWith(EncoderHidden.Value.Zeros());
+        // EncoderHidden.Gradient.UpdateWith(EncoderHidden.Gradient.Zeros());
+        // DecoderHidden.Value.UpdateWith(DecoderHidden.Value.Zeros());
+        // DecoderHidden.Gradient.UpdateWith(DecoderHidden.Gradient.Zeros());
     }
 
     public virtual ITensor[] Weights =>

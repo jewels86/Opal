@@ -15,7 +15,7 @@ public class Tests
         for (int i = 0; i < numSequences; i++)
         {
             sequencesRaw[i] = new float[sequenceLength][];
-            for (int j = 0; j < sequenceLength; j++) sequencesRaw[i][j] = [Random.Shared.NextSingle() * 2 - 1];
+            for (int j = 0; j < sequenceLength; j++) sequencesRaw[i][j] = [(i == 0) ? 1 : 0];
         }
         
         var targetsRaw = sequencesRaw.Select(seq => seq[0]).ToArray();
@@ -23,7 +23,7 @@ public class Tests
         var targets = Operations.New(Operations.Stack(targetsRaw));
         Console.WriteLine($"Sequences shape: {Operations.ToString(sequences.Value.Shape)}, targets shape: {Operations.ToString(targets.Value.Shape)}");
 
-        var network = new BatchedVectorLstmNetwork(1, 5, 1, 0, numSequences, LossFunctions.MeanSquaredError);
+        var network = new BatchedVectorLstmNetwork(1, 5, 1, 2, numSequences, LossFunctions.MeanSquaredError);
         float initialLoss = network.EvaluateLossFinal(sequences, targets, LossFunctions.MeanSquaredError);
         Console.WriteLine($"Initial loss: {initialLoss}");
         Stopwatch sw = Stopwatch.StartNew();

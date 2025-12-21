@@ -39,7 +39,7 @@ public class OptimizedLstmLayer<TIn, TOut, TWeights, TBiases> : LstmLayer<TIn, T
 public interface IOptimizedLstmCatalog<TIn, TOut, TWeights, TBiases>
     where TIn : notnull where TOut : notnull where TWeights : notnull where TBiases : notnull
 {
-    (Tensor<TOut>, Tensor<TOut>) InLstmUpdate(Tensor<TIn> input, Tensor<TOut> hidden, Tensor<TOut> prevState, LstmUpdateParameters<TWeights, TBiases> parameters); 
+    (Tensor<TOut>, Tensor<TOut>) InLstmUpdate(Tensor<TIn> input, Tensor<TOut> prevHidden, Tensor<TOut> prevState, LstmUpdateParameters<TWeights, TBiases> parameters); 
     (Tensor<TOut>, Tensor<TOut>) OutLstmUpdate(Tensor<TOut> input, Tensor<TOut> hidden, Tensor<TOut> state, LstmUpdateParameters<TWeights, TBiases> parameters);
 }
 
