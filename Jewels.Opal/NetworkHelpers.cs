@@ -41,7 +41,7 @@ public static partial class Operations
                 var outputTensor = forward(inputTensor);
                 using var lossTensor = loss(outputTensor, targets[i]);
                 
-                //Console.WriteLine($"Loss at epoch {epoch}, input {i}: {lossTensor.Value.ToHost()}");
+                Console.WriteLine($"Loss at epoch {epoch}, input {i}: {lossTensor.Value.ToHost()}");
                 
                 lossTensor.Backward(scale);
                 totalLoss.UpdateWith(totalLoss + lossTensor.Value.AsScalar());

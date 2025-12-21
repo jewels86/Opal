@@ -45,6 +45,8 @@ public class BatchedVectorCatalog :
         if (Production) gatesOut.Dispose();
         var newHiddenValue = prevHidden.Value.CreateAlike(newHidden);
         var newStateValue = prevState.Value.CreateAlike(newState);
+        
+        Console.WriteLine($"Lstm new hidden: {Operations.ToString(newHiddenValue.ToHost())}");
 
         List<ITensor> inputs =
         [

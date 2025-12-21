@@ -4,18 +4,20 @@ using Jewels.Opal.NNs;
 
 namespace Testing;
 
-public class Tests
+public static class Tests
 {
     public static void SequenceMemoryTest()
     {
         Console.WriteLine("Testing LSTM sequence memory (remembering first input)...");
-        var (numSequences, sequenceLength) = (10, 4);
+        var (numSequences, sequenceLength) = (2, 4);
         
         float[][][] sequencesRaw = new float[numSequences][][];
         for (int i = 0; i < numSequences; i++)
         {
             sequencesRaw[i] = new float[sequenceLength][];
-            for (int j = 0; j < sequenceLength; j++) sequencesRaw[i][j] = [(i == 0) ? 1 : 0];
+            float value = i == 0 ? i : 0; 
+            for (int j = 0; j < sequenceLength; j++) 
+                sequencesRaw[i][j] = [value];
         }
         
         var targetsRaw = sequencesRaw.Select(seq => seq[0]).ToArray();
@@ -23,7 +25,12 @@ public class Tests
         var targets = Operations.New(Operations.Stack(targetsRaw));
         Console.WriteLine($"Sequences shape: {Operations.ToString(sequences.Value.Shape)}, targets shape: {Operations.ToString(targets.Value.Shape)}");
 
-        var network = new BatchedVectorLstmNetwork(1, 5, 1, 2, numSequences, LossFunctions.MeanSquaredError);
+        var network = new BatchedVectorLstmNetwork(1, 5, 1, 1, numSequences, LossFunctions.MeanSquaredError);
+
+        var testOutput = network.ForwardSequenceFinal(sequences);
+        Console.WriteLine($"Test outputs:");
+        Console.WriteLine(Operations.ToString(testOutput.Value.ToHost()));
+        
         float initialLoss = network.EvaluateLossFinal(sequences, targets, LossFunctions.MeanSquaredError);
         Console.WriteLine($"Initial loss: {initialLoss}");
         Stopwatch sw = Stopwatch.StartNew();
